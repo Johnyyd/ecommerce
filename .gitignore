@@ -1,0 +1,13 @@
+.agents/
+.claude/
+.gitnexus/
+my-project/
+AGENTS.md
+CLAUDE.md
+STATE.md
+LOOP.md
+skills-lock.json
+loop-budget.md
+loop-constraints.md
+loop-run-log.md
+
