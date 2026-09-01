@@ -1,0 +1,37 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pgbouncer
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        app: pgbouncer
+    spec:
+      containers:
+      - name: pgbouncer
+        image: edoburu/pgbouncer:latest
+        env:
+        - name: DB_HOST
+          value: "postgres"
+        - name: POOL_MODE
+          value: "transaction"
+        envFrom:
+        - secretRef:
+            name: db-secrets
+        ports:
+        - containerPort: 6432
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: pgbouncer
+spec:
+  ports:
+  - port: 6432
+  selector:
+    app: pgbouncer

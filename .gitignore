@@ -11,3 +11,27 @@ loop-budget.md
 loop-constraints.md
 loop-run-log.md
 
+.env
+.env.example
+
+backend/venv/
+backend/__pycache__
+backend/.pytest_cache
+backend/app/__pycache__
+backend/app/core/__pycache__
+backend/app/interfaces/__pycache__
+backend/app/schemas/__pycache__
+backend/app/services/__pycache__
+backend/app/models/__pycache__
+backend/tests/__pycache__
+backend/tests/core/__pycache__
+backend/tests/api/__pycache__
+backend/tests/domain/__pycache__
+
+frontend/node_modules
+frontend/.next
+/backend/app/api/__pycache__
+/backend/app/api/endpoints/__pycache__
+/backend/app/repositories/__pycache__
+/backend/app/crud/__pycache__
+/backend/app/api/v1/endpoints/__pycache__
