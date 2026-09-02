@@ -12,10 +12,11 @@ spec:
       labels:
         app: backend
     spec:
+      enableServiceLinks: false
       containers:
       - name: backend
         image: ecommerce-backend:latest
-        imagePullPolicy: Never # if local
+        imagePullPolicy: IfNotPresent # if local
         env:
         - name: POSTGRES_SERVER
           value: "pgbouncer"

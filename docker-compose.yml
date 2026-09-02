@@ -41,6 +41,7 @@ services:
       MAX_CLIENT_CONN: 100
       DEFAULT_POOL_SIZE: 20
       AUTH_TYPE: md5
+      LISTEN_PORT: 6432
     ports:
       - "6432:6432"
     depends_on:

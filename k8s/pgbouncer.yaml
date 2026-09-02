@@ -20,6 +20,8 @@ spec:
           value: "postgres"
         - name: POOL_MODE
           value: "transaction"
+        - name: LISTEN_PORT
+          value: "6432"
         envFrom:
         - secretRef:
             name: db-secrets

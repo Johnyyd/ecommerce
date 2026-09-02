@@ -5,10 +5,11 @@ metadata:
 spec:
   template:
     spec:
+      enableServiceLinks: false
       containers:
       - name: migration
         image: ecommerce-backend:latest
-        imagePullPolicy: Never
+        imagePullPolicy: IfNotPresent
         command: ["alembic", "upgrade", "head"]
         env:
         - name: POSTGRES_SERVER
