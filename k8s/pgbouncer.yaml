@@ -4,6 +4,7 @@ metadata:
   name: pgbouncer
 spec:
   replicas: 2
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: pgbouncer
@@ -22,6 +23,8 @@ spec:
           value: "transaction"
         - name: LISTEN_PORT
           value: "6432"
+        - name: AUTH_TYPE
+          value: "scram-sha-256"
         envFrom:
         - secretRef:
             name: db-secrets

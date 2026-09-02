@@ -4,6 +4,7 @@ metadata:
   name: frontend
 spec:
   replicas: 2
+  revisionHistoryLimit: 2
   selector:
     matchLabels:
       app: frontend

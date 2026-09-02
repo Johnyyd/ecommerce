@@ -25,9 +25,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 from app.core.config import settings
 from app.core.db import DATABASE_URL
 
-# from app.models.base import Base
-# target_metadata = Base.metadata
-target_metadata = None
+from app.models.base import Base
+from app.models.user import User
+from app.models.product import Product, Order, OrderItem
+target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,
 # can be acquired:

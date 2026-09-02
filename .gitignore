@@ -35,3 +35,5 @@ frontend/.next
 /backend/app/repositories/__pycache__
 /backend/app/crud/__pycache__
 /backend/app/api/v1/endpoints/__pycache__
+/backend/alembic/versions/__pycache__
+/backend/alembic/__pycache__

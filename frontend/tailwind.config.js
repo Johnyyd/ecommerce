@@ -7,8 +7,8 @@ export default {
   theme: {
     extend: {
       fontFamily: {
-        sans: ['Geist', 'sans-serif'],
-        mono: ['Geist Mono', 'monospace'],
+        sans: ['Inter', 'sans-serif'],
+        mono: ['monospace'],
       },
       colors: {
         zinc: {
