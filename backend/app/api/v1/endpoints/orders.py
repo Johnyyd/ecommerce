@@ -9,9 +9,8 @@ from app.core.db import get_db_session
 from app.core.redis import get_redis_client
 from app.schemas.order import OrderCreate, OrderResponse
 from app.crud.order import OrderRepository
-# We would normally use get_current_user here for auth, but skipping to match product pattern for MVP
-from app.core.utils import generate_uuidv7
-
+from app.api.deps import get_current_user
+from app.models.user import User
 router = APIRouter()
 
 def get_order_repository(session: AsyncSession = Depends(get_db_session)) -> OrderRepository:
@@ -20,14 +19,12 @@ def get_order_repository(session: AsyncSession = Depends(get_db_session)) -> Ord
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def create_order(
     order_in: OrderCreate,
-    # current_user = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     repo: OrderRepository = Depends(get_order_repository)
 ) -> Any:
-    # MVP: Generate a fake user UUID since auth is bypassed
-    fake_user_id = generate_uuidv7()
     
     try:
-        order = await repo.create_order_with_transaction(fake_user_id, order_in)
+        order = await repo.create_order_with_transaction(current_user.id, order_in)
         return order
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
@@ -38,12 +35,8 @@ async def create_order(
 async def list_user_orders(
     skip: int = 0,
     limit: int = 100,
-    # current_user = Depends(get_current_user),
+    current_user: User = Depends(get_current_user),
     repo: OrderRepository = Depends(get_order_repository)
 ) -> Any:
-    # MVP: In a real app we fetch by current_user.id
-    # But since we generate a fake user in post, returning all orders is impossible for a specific user without auth.
-    # To satisfy the schema without breaking, let's just pretend we query for a random UUID, which returns empty.
-    fake_user_id = generate_uuidv7()
-    orders = await repo.get_multi_by_user(fake_user_id, skip=skip, limit=limit)
+    orders = await repo.get_multi_by_user(current_user.id, skip=skip, limit=limit)
     return orders

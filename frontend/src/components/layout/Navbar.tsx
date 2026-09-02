@@ -2,12 +2,38 @@ import * as React from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { ShoppingBag } from "@phosphor-icons/react"
 import { useCartStore } from "@/store/useCartStore"
+import { useAuthStore } from "@/store/useAuthStore"
+import { useLocation } from "wouter"
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false)
   const { toggleCart, items } = useCartStore()
+  const { isAuthenticated, logout } = useAuthStore()
+  const [, setLocation] = useLocation()
   
   const cartItemCount = items.reduce((acc, item) => acc + item.quantity, 0)
+  
+  const handleNav = (path: string) => {
+    setIsOpen(false)
+    if (path === '/logout') {
+      logout()
+      setLocation('/')
+    } else {
+      setLocation(path)
+    }
+  }
+
+  const navItems = [
+    { label: 'Home', path: '/' },
+    ...(isAuthenticated 
+      ? [
+          { label: 'Profile', path: '/profile' },
+          { label: 'Sign out', path: '/logout' }
+        ]
+      : [
+          { label: 'Sign in', path: '/login' }
+        ])
+  ]
 
   return (
     <>
@@ -60,10 +86,10 @@ export function Navbar() {
             className="fixed inset-0 z-40 bg-zinc-950/80 backdrop-blur-3xl flex items-center justify-center"
           >
             <nav className="flex flex-col gap-8 items-center">
-              {['Home', 'Products', 'Journal', 'Contact'].map((item, i) => (
-                <div key={item} className="overflow-hidden">
-                  <motion.a
-                    href="#"
+              {navItems.map((item, i) => (
+                <div key={item.label} className="overflow-hidden">
+                  <motion.button
+                    onClick={() => handleNav(item.path)}
                     initial={{ y: "100%", opacity: 0 }}
                     animate={{ y: 0, opacity: 1 }}
                     exit={{ y: "100%", opacity: 0 }}
@@ -74,8 +100,8 @@ export function Navbar() {
                     }}
                     className="block text-4xl md:text-6xl font-medium text-white hover:text-zinc-300 transition-colors tracking-tighter"
                   >
-                    {item}
-                  </motion.a>
+                    {item.label}
+                  </motion.button>
                 </div>
               ))}
             </nav>

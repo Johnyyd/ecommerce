@@ -1,6 +1,8 @@
 import { useEffect } from "react"
 import { Route, Switch } from "wouter"
 import { Storefront } from "@/pages/Storefront"
+import { ProductDetail } from "@/pages/ProductDetail"
+import { Profile } from "@/pages/Profile"
 import { Login } from "@/pages/Login"
 import { Admin } from "@/pages/Admin"
 import { useAuthStore } from "@/store/useAuthStore"
@@ -44,6 +46,8 @@ function App() {
     <div className="min-h-screen bg-zinc-50 selection:bg-electric-blue selection:text-white">
       <Switch>
         <Route path="/" component={Storefront} />
+        <Route path="/product/:id" component={ProductDetail} />
+        <Route path="/profile" component={Profile} />
         <Route path="/login" component={Login} />
         <Route path="/admin" component={Admin} />
         <Route>404, Not Found!</Route>
