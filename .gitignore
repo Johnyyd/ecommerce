@@ -37,3 +37,4 @@ frontend/.next
 /backend/app/api/v1/endpoints/__pycache__
 /backend/alembic/versions/__pycache__
 /backend/alembic/__pycache__
+/.superpowers

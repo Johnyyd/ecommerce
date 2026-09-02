@@ -8,6 +8,9 @@ from app.crud.user import UserRepository
 from app.services.user import UserService
 from app.services.token import TokenService
 from pydantic import BaseModel
+from app.schemas.user import UserResponse
+from app.api.deps import get_current_user
+from app.models.user import User
 
 router = APIRouter()
 
@@ -92,3 +95,9 @@ async def refresh_token(
     )
     
     return {"access_token": new_at, "token_type": "bearer"}
+
+@router.get("/me", response_model=UserResponse)
+async def read_users_me(
+    current_user: User = Depends(get_current_user)
+):
+    return current_user

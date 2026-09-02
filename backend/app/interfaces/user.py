@@ -13,6 +13,10 @@ class UserRepositoryInterface(ABC):
         pass
 
     @abstractmethod
+    async def get_by_username(self, username: str) -> Optional[User]:
+        pass
+
+    @abstractmethod
     async def create(self, user: User) -> User:
         pass
         

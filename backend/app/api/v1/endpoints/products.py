@@ -11,6 +11,8 @@ from app.core.redis import get_redis_client
 from app.schemas.product import ProductCreate, ProductUpdate, ProductResponse
 from app.services.product import ProductService
 from app.crud.product import ProductRepository
+from app.api.deps import get_current_admin
+from app.models.user import User
 
 
 router = APIRouter()
@@ -20,7 +22,10 @@ def get_product_service(session: AsyncSession = Depends(get_db_session)) -> Prod
     return ProductService(repo)
 
 @router.get("/presigned-url")
-async def get_presigned_url(filename: str):
+async def get_presigned_url(
+    filename: str,
+    current_admin: User = Depends(get_current_admin)
+):
     """
     Returns an AWS S3 Presigned URL to allow frontend direct upload.
     """
@@ -73,6 +78,7 @@ async def get_product(
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 async def create_product(
     product_in: ProductCreate,
+    current_admin: User = Depends(get_current_admin),
     service: ProductService = Depends(get_product_service),
     redis: Redis = Depends(get_redis_client)
 ) -> Any:
@@ -88,6 +94,7 @@ async def create_product(
 async def update_product(
     product_id: UUID,
     product_in: ProductUpdate,
+    current_admin: User = Depends(get_current_admin),
     service: ProductService = Depends(get_product_service),
     redis: Redis = Depends(get_redis_client)
 ) -> Any:
@@ -106,6 +113,7 @@ async def update_product(
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(
     product_id: UUID,
+    current_admin: User = Depends(get_current_admin),
     service: ProductService = Depends(get_product_service),
     redis: Redis = Depends(get_redis_client)
 ):

@@ -13,6 +13,7 @@ class User(Base):
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
     is_active: Mapped[bool] = mapped_column(Boolean, default=True)
+    role: Mapped[str] = mapped_column(String(20), default="customer")
     
     __table_args__ = (
         Index("ix_users_email_unique", "email", unique=True, postgresql_where=text("deleted_at IS NULL")),

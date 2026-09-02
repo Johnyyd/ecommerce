@@ -19,6 +19,12 @@ class UserRepository(UserRepositoryInterface):
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
+    async def get_by_username(self, username: str) -> Optional[User]:
+        stmt = select(User).where(User.username == username, User.deleted_at.is_(None))
+        result = await self.session.execute(stmt)
+        return result.scalars().first()
+
+
     async def create(self, user: User) -> User:
         self.session.add(user)
         await self.session.commit()
