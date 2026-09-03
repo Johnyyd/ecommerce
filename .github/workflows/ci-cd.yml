@@ -70,7 +70,7 @@ jobs:
         run: pytest tests/ --cov=app --cov-report=xml
 
   docker-build-push:
-    name: Build & Push Docker Images
+    name: Build Docker Images (Local Test)
     needs: [frontend-ci, backend-ci]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
@@ -78,30 +78,43 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Log in to Docker Registry
-        uses: docker/login-action@v3
-        with:
-          username: ${{ secrets.DOCKER_USERNAME }}
-          password: ${{ secrets.DOCKER_PASSWORD }}
+      # =========================================================================
+      # [TƯƠNG LAI] NẾU MUỐN ĐẨY IMAGE LÊN DOCKER HUB THÌ BỎ COMMENT KHỐI NÀY:
+      # Yêu cầu: Cấu hình 2 biến DOCKER_USERNAME và DOCKER_PASSWORD ở Settings > Secrets
+      # =========================================================================
+      # - name: Log in to Docker Registry
+      #   uses: docker/login-action@v3
+      #   with:
+      #     username: ${{ secrets.DOCKER_USERNAME }}
+      #     password: ${{ secrets.DOCKER_PASSWORD }}
 
-      - name: Build and Push Backend
+      - name: Build Backend Image
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:latest
+          # Đang test local nên không push. 
+          # Khi đẩy lên cloud, đổi push: false thành true và mở comment dòng tags bên dưới
+          push: false 
+          tags: ecommerce-backend:latest
+          # tags: ${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:latest
 
-      - name: Build and Push Frontend
+      - name: Build Frontend Image
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
-          push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:latest
+          push: false
+          tags: ecommerce-frontend:latest
+          # tags: ${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:latest
 
   k8s-deploy:
+    # =========================================================================
+    # [TƯƠNG LAI] NẾU MUỐN TỰ ĐỘNG DEPLOY LÊN CLOUD K8S (Ví dụ EKS, GKE, DigitalOcean)
+    # 1. Đổi 'if: false' thành 'if: github.event_name == ...'
+    # 2. Cấu hình biến KUBECONFIG trong GitHub Secrets để GitHub kết nối được tới cụm K8s
+    # =========================================================================
     name: Deploy to Kubernetes
     needs: docker-build-push
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: false # XÓA HOẶC ĐỔI DÒNG NÀY KHI MUỐN DEPLOY LÊN SERVER THẬT
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -121,7 +134,10 @@ jobs:
 
       - name: Update Deployments (Rolling Update)
         run: |
-          kubectl set image deployment/backend backend=${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:${{ github.sha }}
-          kubectl set image deployment/frontend frontend=${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:${{ github.sha }}
+          # Khi deploy thật, K8s phải pull image từ DockerHub, thay thế bằng các dòng sau:
+          # kubectl set image deployment/backend backend=${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:${{ github.sha }}
+          # kubectl set image deployment/frontend frontend=${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:${{ github.sha }}
+          kubectl set image deployment/backend backend=ecommerce-backend:latest
+          kubectl set image deployment/frontend frontend=ecommerce-frontend:latest
           kubectl rollout status deployment/backend --timeout=90s
           kubectl rollout status deployment/frontend --timeout=90s
