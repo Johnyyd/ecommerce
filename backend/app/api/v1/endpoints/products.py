@@ -49,12 +49,10 @@ async def list_products(
     products = await service.get_products(skip=skip, limit=limit)
     
     # Serialize and cache for 5 minutes
-    # Using model_dump to serialize Pydantic objects to dicts, then to json string.
-    # Since these are SQLAlchemy models returned by service, we first validate them into Pydantic models.
     response_data = [ProductResponse.model_validate(p).model_dump(mode='json') for p in products]
     await redis.setex(cache_key, 300, json.dumps(response_data))
     
-    return products
+    return response_data
 
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
@@ -73,7 +71,7 @@ async def get_product(
         
     response_data = ProductResponse.model_validate(product).model_dump(mode='json')
     await redis.setex(cache_key, 300, json.dumps(response_data))
-    return product
+    return response_data
 
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 async def create_product(

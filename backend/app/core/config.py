@@ -5,7 +5,7 @@ import os
 class Settings(BaseSettings):
     PROJECT_NAME: str = "E-Commerce API"
     ENVIRONMENT: str = "development"
-    POSTGRES_SERVER: str = "localhost"
+    POSTGRES_SERVER: str = "postgres"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "ecommerce_user"
     POSTGRES_PASSWORD: str = "ecommerce_password"

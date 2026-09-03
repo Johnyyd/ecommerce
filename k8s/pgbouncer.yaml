@@ -25,6 +25,16 @@ spec:
           value: "6432"
         - name: AUTH_TYPE
           value: "scram-sha-256"
+        - name: DB_USER
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: POSTGRES_USER
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: db-secrets
+              key: POSTGRES_PASSWORD
         envFrom:
         - secretRef:
             name: db-secrets

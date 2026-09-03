@@ -7,17 +7,23 @@ spec:
     spec:
       enableServiceLinks: false
       containers:
-      - name: migration
-        image: ecommerce-backend:latest
-        imagePullPolicy: IfNotPresent
-        command: ["alembic", "upgrade", "head"]
-        env:
-        - name: POSTGRES_SERVER
-          value: "postgres" # Connect directly to PG for migrations, not pgbouncer
-        - name: POSTGRES_PORT
-          value: "5432"
-        envFrom:
-        - secretRef:
-            name: app-secrets
+        - name: migration
+          image: ecommerce-backend
+          imagePullPolicy: IfNotPresent
+          workingDir: /app
+          command:
+            [
+              "sh",
+              "-c",
+              'export DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_SERVER}:${POSTGRES_PORT}/${POSTGRES_DB}" && alembic -c alembic.ini upgrade head',
+            ]
+          env:
+            - name: POSTGRES_SERVER
+              value: "postgres" # Connect directly to PG for migrations, not pgbouncer
+            - name: POSTGRES_PORT
+              value: "5432"
+          envFrom:
+            - secretRef:
+                name: app-secrets
       restartPolicy: Never
   backoffLimit: 4

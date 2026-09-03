@@ -15,37 +15,39 @@ spec:
     spec:
       enableServiceLinks: false
       containers:
-      - name: backend
-        image: ecommerce-backend:latest
-        imagePullPolicy: IfNotPresent # if local
-        env:
-        - name: POSTGRES_SERVER
-          value: "pgbouncer"
-        - name: POSTGRES_PORT
-          value: "6432"
-        - name: REDIS_HOST
-          value: "redis"
-        - name: REDIS_PORT
-          value: "6379"
-        # Dynamic Gunicorn worker limit per mandates (e.g. 1 CPU -> 5 workers)
-        - name: WEB_CONCURRENCY
-          value: "5" 
-        envFrom:
-        - secretRef:
-            name: app-secrets
-        resources:
-          limits:
-            cpu: "1"
-            memory: "1Gi"
-          requests:
-            cpu: "500m"
-            memory: "256Mi"
-        lifecycle:
-          preStop:
-            exec:
-              command: ["sleep", "5"] # Graceful shutdown mandate
-        ports:
-        - containerPort: 8000
+        - name: backend
+          image: ecommerce-backend
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: HOME
+              value: "/tmp"
+            - name: POSTGRES_SERVER
+              value: "pgbouncer"
+            - name: POSTGRES_PORT
+              value: "6432"
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            # Dynamic Gunicorn worker limit per mandates (e.g. 1 CPU -> 5 workers)
+            - name: WEB_CONCURRENCY
+              value: "5"
+          envFrom:
+            - secretRef:
+                name: app-secrets
+          resources:
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+            requests:
+              cpu: "500m"
+              memory: "256Mi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"] # Graceful shutdown mandate
+          ports:
+            - containerPort: 8000
 ---
 apiVersion: v1
 kind: Service
@@ -53,6 +55,6 @@ metadata:
   name: backend
 spec:
   ports:
-  - port: 8000
+    - port: 8000
   selector:
     app: backend
