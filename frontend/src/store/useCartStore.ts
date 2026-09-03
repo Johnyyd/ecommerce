@@ -1,5 +1,28 @@
 import { create } from 'zustand'
-import { persist } from 'zustand/middleware'
+import { createJSONStorage, persist } from 'zustand/middleware'
+
+const memoryStorage = {
+  getItem: (name: string) => {
+    if (typeof globalThis === 'undefined') return null
+    return (globalThis as typeof globalThis & { __ecommerceCartStorage?: Record<string, string> }).__ecommerceCartStorage?.[name] ?? null
+  },
+  setItem: (name: string, value: string) => {
+    if (typeof globalThis === 'undefined') return
+    ;(globalThis as typeof globalThis & { __ecommerceCartStorage?: Record<string, string> }).__ecommerceCartStorage ??= {}
+    ;(globalThis as typeof globalThis & { __ecommerceCartStorage?: Record<string, string> }).__ecommerceCartStorage![name] = value
+  },
+  removeItem: (name: string) => {
+    if (typeof globalThis === 'undefined') return
+    delete (globalThis as typeof globalThis & { __ecommerceCartStorage?: Record<string, string> }).__ecommerceCartStorage?.[name]
+  },
+}
+
+const cartStorage = () => {
+  if (typeof window !== 'undefined' && window.localStorage) {
+    return window.localStorage
+  }
+  return memoryStorage
+}
 
 export interface CartItem {
   id: string
@@ -61,6 +84,7 @@ export const useCartStore = create<CartState>()(
     }),
     {
       name: 'ecommerce-cart',
+      storage: createJSONStorage(cartStorage),
       partialize: (state) => ({ items: state.items }), // Only persist items, not UI state like isOpen
     }
   )

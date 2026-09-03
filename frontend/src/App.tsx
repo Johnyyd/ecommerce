@@ -32,7 +32,7 @@ function App() {
           localStorage.removeItem("access_token")
           setUser(null)
         }
-      } catch (e) {
+      } catch {
         localStorage.removeItem("access_token")
         setUser(null)
       } finally {

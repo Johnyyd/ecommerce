@@ -1,0 +1,169 @@
+.
+├── AGENTS.md
+├── backend
+│   ├── alembic
+│   │   ├── env.py
+│   │   ├── README
+│   │   ├── script.py.mako
+│   │   └── versions
+│   │       ├── 2b45b48e7868_add_products_and_orders.py
+│   │       └── bb49038537d9_add_role_column_to_users.py
+│   ├── alembic.ini
+│   ├── app
+│   │   ├── api
+│   │   │   ├── deps.py
+│   │   │   ├── __init__.py
+│   │   │   └── v1
+│   │   │       └── endpoints
+│   │   │           ├── auth.py
+│   │   │           ├── cart.py
+│   │   │           ├── checkout.py
+│   │   │           ├── orders.py
+│   │   │           ├── products.py
+│   │   │           └── users.py
+│   │   ├── core
+│   │   │   ├── config.py
+│   │   │   ├── db.py
+│   │   │   ├── __init__.py
+│   │   │   ├── logging.py
+│   │   │   ├── redis.py
+│   │   │   ├── security.py
+│   │   │   └── utils.py
+│   │   ├── crud
+│   │   │   ├── __init__.py
+│   │   │   ├── order.py
+│   │   │   ├── product.py
+│   │   │   └── user.py
+│   │   ├── __init__.py
+│   │   ├── interfaces
+│   │   │   ├── __init__.py
+│   │   │   └── user.py
+│   │   ├── main.py
+│   │   ├── models
+│   │   │   ├── base.py
+│   │   │   ├── __init__.py
+│   │   │   ├── product.py
+│   │   │   └── user.py
+│   │   ├── schemas
+│   │   │   ├── cart.py
+│   │   │   ├── __init__.py
+│   │   │   ├── order.py
+│   │   │   ├── product.py
+│   │   │   └── user.py
+│   │   └── services
+│   │       ├── cart.py
+│   │       ├── __init__.py
+│   │       ├── order.py
+│   │       ├── product.py
+│   │       ├── token.py
+│   │       └── user.py
+│   ├── create_admin.py
+│   ├── Dockerfile
+│   ├── entrypoint.sh
+│   ├── pytest.ini
+│   ├── requirements.txt
+│   ├── seed_db.py
+│   └── tests
+│       ├── api
+│       │   ├── test_orders_api.py
+│       │   ├── test_products_api.py
+│       │   └── test_user_api.py
+│       ├── core
+│       │   ├── test_db.py
+│       │   ├── test_logging.py
+│       │   └── test_security.py
+│       └── domain
+│           ├── test_product_domain.py
+│           ├── test_user_domain.py
+│           └── test_user_service.py
+├── CLAUDE.md
+├── docker-compose.yml
+├── frontend
+│   ├── dist
+│   │   ├── assets
+│   │   │   ├── index-21c5920e.js
+│   │   │   └── index-4227503b.css
+│   │   └── index.html
+│   ├── Dockerfile
+│   ├── index.html
+│   ├── nginx.conf
+│   ├── package.json
+│   ├── package-lock.json
+│   ├── postcss.config.js
+│   ├── src
+│   │   ├── App.tsx
+│   │   ├── components
+│   │   │   ├── CartItem.tsx
+│   │   │   ├── layout
+│   │   │   │   ├── Cart.tsx
+│   │   │   │   ├── Navbar.test.tsx
+│   │   │   │   └── Navbar.tsx
+│   │   │   ├── sections
+│   │   │   │   ├── Hero.test.tsx
+│   │   │   │   ├── Hero.tsx
+│   │   │   │   └── ProductBento.tsx
+│   │   │   └── ui
+│   │   │       ├── Button.test.tsx
+│   │   │       ├── Button.tsx
+│   │   │       └── Card.tsx
+│   │   ├── index.css
+│   │   ├── lib
+│   │   │   ├── api
+│   │   │   │   └── orders.ts
+│   │   │   └── utils.ts
+│   │   ├── main.tsx
+│   │   ├── pages
+│   │   │   ├── Admin.tsx
+│   │   │   ├── Cart.tsx
+│   │   │   ├── Login.tsx
+│   │   │   ├── ProductDetail.tsx
+│   │   │   ├── Profile.tsx
+│   │   │   ├── Register.tsx
+│   │   │   └── Storefront.tsx
+│   │   ├── setupTests.ts
+│   │   └── store
+│   │       ├── useAuthStore.ts
+│   │       ├── useCartStore.test.ts
+│   │       ├── useCartStore.ts
+│   │       └── useProductStore.ts
+│   ├── tailwind.config.js
+│   ├── test_click.cjs
+│   ├── tsconfig.json
+│   ├── tsconfig.node.json
+│   ├── vite.config.ts
+│   └── vitest.config.ts
+├── k8s
+│   ├── backend.yaml
+│   ├── frontend.yaml
+│   ├── ingress.yaml
+│   ├── migration-job.yaml
+│   ├── pgbouncer.yaml
+│   ├── postgres.yaml
+│   └── redis.yaml
+├── K8S-TROUBLESHOOTING.md
+├── monitoring
+│   ├── grafana-dashboard.json
+│   └── prometheus.yml
+├── nginx
+│   └── conf.d
+│       └── default.conf
+├── pgbouncer
+│   └── pgbouncer.ini
+├── README.md
+├── REDIS-TROUBLESHOOTING.md
+├── start-docker.bat
+├── start-docker.sh
+├── start-k8s.bat
+├── start-k8s.sh
+├── status.bat
+├── status.sh
+├── stop-docker.bat
+├── stop-docker.sh
+├── stop-k8s.bat
+├── stop-k8s.sh
+├── update-k8s-backend.bat
+├── update-k8s-backend.sh
+├── update-k8s-frontend.bat
+└── update-k8s-frontend.sh
+
+35 directories, 132 files

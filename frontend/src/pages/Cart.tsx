@@ -36,7 +36,7 @@ export function Cart() {
         const err = await res.json()
         toast.error(err.detail || 'Checkout failed')
       }
-    } catch (e) {
+    } catch {
       toast.error('Network error')
     }
   }
