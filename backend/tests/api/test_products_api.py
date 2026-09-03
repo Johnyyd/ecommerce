@@ -8,6 +8,9 @@ from app.core.utils import generate_uuidv7
 from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 
+from app.api.deps import get_current_admin
+from app.models.user import User
+
 @pytest.fixture
 def mock_redis():
     mock = AsyncMock()
@@ -15,8 +18,18 @@ def mock_redis():
     mock.get.return_value = None
     return mock
 
+@pytest.fixture
+def mock_admin_user():
+    return User(
+        id=generate_uuidv7(),
+        username="admin",
+        email="admin@example.com",
+        role="admin",
+        is_active=True
+    )
+
 @pytest.mark.asyncio
-async def test_create_product_api(mock_redis):
+async def test_create_product_api(mock_redis, mock_admin_user):
     mock_service = AsyncMock()
     
     mock_product = Product(
@@ -31,6 +44,7 @@ async def test_create_product_api(mock_redis):
     
     app.dependency_overrides[get_product_service] = lambda: mock_service
     app.dependency_overrides[get_redis_client] = lambda: mock_redis
+    app.dependency_overrides[get_current_admin] = lambda: mock_admin_user
     
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -65,6 +79,7 @@ async def test_list_products_api(mock_redis):
         version=1
     )
     mock_service.get_products.return_value = [mock_product]
+    mock_service.get_products_count.return_value = 1
     
     app.dependency_overrides[get_product_service] = lambda: mock_service
     app.dependency_overrides[get_redis_client] = lambda: mock_redis
@@ -75,8 +90,11 @@ async def test_list_products_api(mock_redis):
         
     assert response.status_code == 200
     data = response.json()
-    assert len(data) == 1
-    assert data[0]["name"] == "Test Product"
+    assert "items" in data
+    assert "total" in data
+    assert len(data["items"]) == 1
+    assert data["items"][0]["name"] == "Test Product"
+    assert data["total"] == 1
     
     mock_redis.get.assert_called_with("products:list:0:100")
     mock_redis.setex.assert_called_once()

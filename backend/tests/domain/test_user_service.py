@@ -20,6 +20,12 @@ class MockUserRepository(UserRepositoryInterface):
                 return user
         return None
 
+    async def get_by_username(self, username: str) -> User | None:
+        for user in self.users.values():
+            if user.username == username and user.deleted_at is None:
+                return user
+        return None
+
     async def create(self, user: User) -> User:
         if user.id is None:
             user.id = generate_uuidv7()

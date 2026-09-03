@@ -6,13 +6,26 @@ from app.models.product import Order, OrderItem
 from app.core.utils import generate_uuidv7
 from unittest.mock import AsyncMock
 
+from app.api.deps import get_current_user
+from app.models.user import User
+
+@pytest.fixture
+def mock_customer():
+    return User(
+        id=generate_uuidv7(),
+        username="customer",
+        email="customer@example.com",
+        role="customer",
+        is_active=True
+    )
+
 @pytest.mark.asyncio
-async def test_create_order_api():
+async def test_create_order_api(mock_customer):
     mock_repo = AsyncMock()
     
     mock_order = Order(
         id=generate_uuidv7(),
-        user_id=generate_uuidv7(),
+        user_id=mock_customer.id,
         total_amount=39.98,
         status="COMPLETED",
         items=[
@@ -28,6 +41,7 @@ async def test_create_order_api():
     mock_repo.create_order_with_transaction.return_value = mock_order
     
     app.dependency_overrides[get_order_repository] = lambda: mock_repo
+    app.dependency_overrides[get_current_user] = lambda: mock_customer
     
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:
@@ -49,11 +63,12 @@ async def test_create_order_api():
     app.dependency_overrides.clear()
 
 @pytest.mark.asyncio
-async def test_create_order_insufficient_stock():
+async def test_create_order_insufficient_stock(mock_customer):
     mock_repo = AsyncMock()
     mock_repo.create_order_with_transaction.side_effect = ValueError("Insufficient stock for product Test")
     
     app.dependency_overrides[get_order_repository] = lambda: mock_repo
+    app.dependency_overrides[get_current_user] = lambda: mock_customer
     
     transport = ASGITransport(app=app)
     async with AsyncClient(transport=transport, base_url="http://test") as ac:

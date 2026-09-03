@@ -17,6 +17,7 @@ async def test_create_user_api():
         id=generate_uuidv7(),
         username="testapiuser",
         email="api@example.com",
+        role="customer",
         is_active=True,
         deleted_at=None,
         created_at=datetime.now(timezone.utc),
