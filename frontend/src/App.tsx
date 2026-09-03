@@ -4,6 +4,7 @@ import { Storefront } from "@/pages/Storefront"
 import { ProductDetail } from "@/pages/ProductDetail"
 import { Profile } from "@/pages/Profile"
 import { Login } from "@/pages/Login"
+import { Register } from "@/pages/Register"
 import { Admin } from "@/pages/Admin"
 import { useAuthStore } from "@/store/useAuthStore"
 
@@ -49,6 +50,7 @@ function App() {
         <Route path="/product/:id" component={ProductDetail} />
         <Route path="/profile" component={Profile} />
         <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
         <Route path="/admin" component={Admin} />
         <Route>404, Not Found!</Route>
       </Switch>

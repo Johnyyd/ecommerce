@@ -22,3 +22,8 @@ class ProductResponse(ProductBase):
     version: int
 
     model_config = ConfigDict(from_attributes=True)
+
+from typing import List
+class PaginatedProductResponse(BaseModel):
+    items: List[ProductResponse]
+    total: int

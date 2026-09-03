@@ -31,7 +31,8 @@ export function Navbar() {
           { label: 'Sign out', path: '/logout' }
         ]
       : [
-          { label: 'Sign in', path: '/login' }
+          { label: 'Sign in', path: '/login' },
+          { label: 'Sign up', path: '/register' }
         ])
   ]
 

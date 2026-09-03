@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 
 from app.core.db import get_db_session
 from app.core.redis import get_redis_client
-from app.schemas.product import ProductCreate, ProductUpdate, ProductResponse
+from app.schemas.product import ProductCreate, ProductUpdate, ProductResponse, PaginatedProductResponse
 from app.services.product import ProductService
 from app.crud.product import ProductRepository
 from app.api.deps import get_current_admin
@@ -32,7 +32,7 @@ async def get_presigned_url(
     presigned_url = f"https://my-ecommerce-bucket.s3.amazonaws.com/{filename}?AWSAccessKeyId=MOCK&Signature=MOCK&Expires=3600"
     return {"url": presigned_url, "method": "PUT"}
 
-@router.get("/", response_model=List[ProductResponse])
+@router.get("/", response_model=PaginatedProductResponse)
 async def list_products(
     skip: int = 0,
     limit: int = 100,
@@ -47,9 +47,11 @@ async def list_products(
         return json.loads(cached)
         
     products = await service.get_products(skip=skip, limit=limit)
+    total_count = await service.get_products_count()
     
     # Serialize and cache for 5 minutes
-    response_data = [ProductResponse.model_validate(p).model_dump(mode='json') for p in products]
+    items_data = [ProductResponse.model_validate(p).model_dump(mode='json') for p in products]
+    response_data = {"items": items_data, "total": total_count}
     await redis.setex(cache_key, 300, json.dumps(response_data))
     
     return response_data

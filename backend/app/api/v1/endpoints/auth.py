@@ -24,6 +24,19 @@ def get_user_service(session: AsyncSession = Depends(get_db_session)) -> UserSer
 
 token_service = TokenService()
 
+from app.schemas.user import UserCreate
+
+@router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
+async def register(
+    user_in: UserCreate,
+    user_service: UserService = Depends(get_user_service)
+):
+    try:
+        user = await user_service.create_user(user_in)
+        return user
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
 @router.post("/login")
 async def login(
     data: LoginData,

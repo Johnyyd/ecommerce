@@ -25,6 +25,12 @@ class ProductRepository:
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
+    async def get_count(self) -> int:
+        from sqlalchemy import func
+        stmt = select(func.count()).select_from(Product)
+        result = await self.session.execute(stmt)
+        return result.scalar() or 0
+
     async def create(self, obj_in: ProductCreate) -> Product:
         db_obj = Product(**obj_in.model_dump())
         self.session.add(db_obj)
