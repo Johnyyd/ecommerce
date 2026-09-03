@@ -89,14 +89,14 @@ jobs:
         with:
           context: ./backend
           push: true
-          tags: your-registry/ecommerce-backend:${{ github.sha }},your-registry/ecommerce-backend:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:latest
 
       - name: Build and Push Frontend
         uses: docker/build-push-action@v5
         with:
           context: ./frontend
           push: true
-          tags: your-registry/ecommerce-frontend:${{ github.sha }},your-registry/ecommerce-frontend:latest
+          tags: ${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:latest
 
   k8s-deploy:
     name: Deploy to Kubernetes
@@ -121,7 +121,7 @@ jobs:
 
       - name: Update Deployments (Rolling Update)
         run: |
-          kubectl set image deployment/backend backend=your-registry/ecommerce-backend:${{ github.sha }}
-          kubectl set image deployment/frontend frontend=your-registry/ecommerce-frontend:${{ github.sha }}
+          kubectl set image deployment/backend backend=${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:${{ github.sha }}
+          kubectl set image deployment/frontend frontend=${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:${{ github.sha }}
           kubectl rollout status deployment/backend --timeout=90s
           kubectl rollout status deployment/frontend --timeout=90s

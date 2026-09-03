@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: image-cleaner
+spec:
+  hostPID: true
+  containers:
+  - name: cleaner
+    image: alpine
+    command: ["nsenter", "-t", "1", "-m", "-u", "-n", "-i", "sh", "-c", "ctr -n k8s.io images rm docker.io/library/ecommerce-backend:latest || true; crictl rmi docker.io/library/ecommerce-backend:latest || true"]
+    securityContext:
+      privileged: true
+  restartPolicy: Never
