@@ -48,3 +48,19 @@ Bởi vì chúng ta có một K8s Service tên là `redis`, K8s mặc định t�
 
 **Khắc phục đã thực hiện:**
 - Bổ sung cấu hình `enableServiceLinks: false` vào `backend.yaml`, `frontend.yaml`, và `migration-job.yaml` để vô hiệu hóa tính năng tự động tiêm biến lỗi thời này của K8s, giúp ứng dụng load đúng `REDIS_PORT` kiểu Integer từ `db-secrets`.
+
+---
+
+## 4. Lỗi 500 Internal Server Error và Xung đột với Docker Compose
+**Triệu chứng:**
+Khi gọi API `/api/v1/products/` tại `http://127.0.0.1/api/v1/products/`, NGINX trả về lỗi `500 Internal Server Error`. Mặc dù đã build lại và cập nhật trên Kubernetes, lỗi vẫn xuất hiện ở trình duyệt/máy tính cá nhân.
+
+**Nguyên nhân:**
+Có 2 nguyên nhân chồng chéo:
+1. **Mã nguồn bị thiếu module:** Gunicorn worker trong backend bị crash do lỗi `ModuleNotFoundError: No module named 'app.schemas.cart'` khi import ở `main.py`. Điều này khiến backend không thể khởi động hoàn toàn.
+2. **Xung đột môi trường chạy (Port Conflict):** Mặc dù lỗi code trên Kubernetes đã được khắc phục và hệ thống K8s chạy hoàn hảo, nhưng do bạn đang chạy **cả hai hệ thống Docker Compose và Kubernetes cùng một lúc**. Docker Compose đã chiếm dụng cổng `80` của máy tính. Do đó, yêu cầu `127.0.0.1:80` bị chuyển hướng vào container cũ của Docker Compose (vốn chưa được build lại code) thay vì Kubernetes, dẫn đến lỗi 500 ảo.
+
+**Khắc phục đã thực hiện:**
+- Thêm file `app/schemas/cart.py` với các Pydantic model cần thiết để backend khởi động thành công.
+- Build và khởi động lại (`docker-compose build` và `up -d`) các container của Docker Compose để nhận code mới nhất.
+- **Lưu ý:** Để tránh nhầm lẫn trong quá trình debug Kubernetes, hãy tắt hệ thống Docker Compose (`docker-compose down`) nếu bạn đang kiểm thử trên K8s (LoadBalancer) qua cổng 80, hoặc map sang cổng khác.
