@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-
+import { useCartStore } from './useCartStore'
 export interface User {
   id: string
   username: string
@@ -25,5 +25,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   isLoading: true,
   setUser: (user) => set({ user, isAuthenticated: !!user, isLoading: false }),
   setIsLoading: (loading) => set({ isLoading: loading }),
-  logout: () => set({ user: null, isAuthenticated: false, isLoading: false })
+  logout: () => {
+    set({ user: null, isAuthenticated: false, isLoading: false })
+    useCartStore.getState().clearCart()
+  }
 }))
