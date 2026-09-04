@@ -5,9 +5,21 @@ metadata:
 spec:
   hostPID: true
   containers:
-  - name: cleaner
-    image: alpine
-    command: ["nsenter", "-t", "1", "-m", "-u", "-n", "-i", "sh", "-c", "ctr -n k8s.io images rm docker.io/library/ecommerce-backend:latest docker.io/library/ecommerce-frontend:latest || true; crictl rmi docker.io/library/ecommerce-backend:latest docker.io/library/ecommerce-frontend:latest || true"]
-    securityContext:
-      privileged: true
+    - name: cleaner
+      image: alpine
+      command:
+        [
+          "nsenter",
+          "-t",
+          "1",
+          "-m",
+          "-u",
+          "-n",
+          "-i",
+          "sh",
+          "-c",
+          "ctr -n k8s.io images rm docker.io/library/ecommerce-backend:latest docker.io/library/ecommerce-frontend:latest || true; crictl rmi docker.io/library/ecommerce-backend:latest docker.io/library/ecommerce-frontend:latest || true",
+        ]
+      securityContext:
+        privileged: true
   restartPolicy: Never

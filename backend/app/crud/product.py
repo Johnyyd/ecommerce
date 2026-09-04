@@ -20,14 +20,53 @@ class ProductRepository:
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
-    async def get_multi(self, skip: int = 0, limit: int = 100) -> List[Product]:
-        stmt = select(Product).offset(skip).limit(limit)
+    async def get_multi(
+        self, 
+        skip: int = 0, 
+        limit: int = 100,
+        category_id: Optional[UUID] = None,
+        brand: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        q: Optional[str] = None
+    ) -> List[Product]:
+        stmt = select(Product)
+        if category_id:
+            stmt = stmt.where(Product.category_id == category_id)
+        if brand:
+            stmt = stmt.where(Product.brand == brand)
+        if min_price is not None:
+            stmt = stmt.where(Product.price >= min_price)
+        if max_price is not None:
+            stmt = stmt.where(Product.price <= max_price)
+        if q:
+            stmt = stmt.where(Product.name.ilike(f"%{q}%"))
+            
+        stmt = stmt.offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
-    async def get_count(self) -> int:
+    async def get_count(
+        self,
+        category_id: Optional[UUID] = None,
+        brand: Optional[str] = None,
+        min_price: Optional[float] = None,
+        max_price: Optional[float] = None,
+        q: Optional[str] = None
+    ) -> int:
         from sqlalchemy import func
         stmt = select(func.count()).select_from(Product)
+        if category_id:
+            stmt = stmt.where(Product.category_id == category_id)
+        if brand:
+            stmt = stmt.where(Product.brand == brand)
+        if min_price is not None:
+            stmt = stmt.where(Product.price >= min_price)
+        if max_price is not None:
+            stmt = stmt.where(Product.price <= max_price)
+        if q:
+            stmt = stmt.where(Product.name.ilike(f"%{q}%"))
+            
         result = await self.session.execute(stmt)
         return result.scalar() or 0
 

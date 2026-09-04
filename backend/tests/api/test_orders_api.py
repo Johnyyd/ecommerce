@@ -2,7 +2,7 @@ import pytest
 from httpx import AsyncClient, ASGITransport
 from app.main import app
 from app.api.v1.endpoints.orders import get_order_repository
-from app.models.product import Order, OrderItem
+from app.models.order import Order, OrderItem
 from app.core.utils import generate_uuidv7
 from unittest.mock import AsyncMock
 
@@ -28,6 +28,8 @@ async def test_create_order_api(mock_customer):
         user_id=mock_customer.id,
         total_amount=39.98,
         status="COMPLETED",
+        address_id=generate_uuidv7(),
+        payment_method="COD",
         items=[
             OrderItem(
                 id=generate_uuidv7(),
@@ -51,7 +53,9 @@ async def test_create_order_api(mock_customer):
                     "product_id": str(mock_order.items[0].product_id),
                     "quantity": 2
                 }
-            ]
+            ],
+            "address_id": str(generate_uuidv7()),
+            "payment_method": "COD"
         })
         
     assert response.status_code == 201
@@ -78,7 +82,9 @@ async def test_create_order_insufficient_stock(mock_customer):
                     "product_id": str(generate_uuidv7()),
                     "quantity": 9999
                 }
-            ]
+            ],
+            "address_id": str(generate_uuidv7()),
+            "payment_method": "COD"
         })
         
     assert response.status_code == 400

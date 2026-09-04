@@ -16,7 +16,7 @@ spec:
       enableServiceLinks: false
       containers:
         - name: backend
-          image: ecommerce-backend
+          image: ecommerce-backend:latest
           imagePullPolicy: IfNotPresent
           env:
             - name: HOME

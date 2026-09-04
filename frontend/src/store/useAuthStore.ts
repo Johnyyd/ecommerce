@@ -28,5 +28,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     set({ user: null, isAuthenticated: false, isLoading: false })
     useCartStore.getState().clearCart()
+    if (typeof window !== 'undefined') {
+      localStorage.removeItem("access_token")
+    }
   }
 }))

@@ -40,3 +40,17 @@ async def list_user_orders(
 ) -> Any:
     orders = await repo.get_multi_by_user(current_user.id, skip=skip, limit=limit)
     return orders
+
+@router.post("/{id}/cancel", response_model=OrderResponse)
+async def cancel_order(
+    id: UUID,
+    current_user: User = Depends(get_current_user),
+    repo: OrderRepository = Depends(get_order_repository)
+) -> Any:
+    try:
+        order = await repo.cancel_order(id, current_user.id)
+        return order
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Transaction failed: " + str(e))

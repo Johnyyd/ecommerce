@@ -8,7 +8,7 @@ spec:
       enableServiceLinks: false
       containers:
         - name: migration
-          image: ecommerce-backend
+          image: ecommerce-backend:latest
           imagePullPolicy: IfNotPresent
           workingDir: /app
           command:

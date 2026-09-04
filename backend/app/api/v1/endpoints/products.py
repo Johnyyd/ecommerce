@@ -1,6 +1,6 @@
 import json
 from uuid import UUID
-from typing import List, Annotated, Any
+from typing import List, Annotated, Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 # pyrefly: ignore [missing-import]
@@ -36,18 +36,31 @@ async def get_presigned_url(
 async def list_products(
     skip: int = 0,
     limit: int = 100,
+    category_id: Optional[UUID] = None,
+    brand: Optional[str] = None,
+    min_price: Optional[float] = None,
+    max_price: Optional[float] = None,
+    q: Optional[str] = None,
     service: ProductService = Depends(get_product_service),
     redis: Redis = Depends(get_redis_client)
 ) -> Any:
-    cache_key = f"products:list:{skip}:{limit}"
+    # Build cache key carefully including all params
+    params = f"{skip}:{limit}:{category_id}:{brand}:{min_price}:{max_price}:{q}"
+    cache_key = f"products:list:{params}"
     
     # Try to get from cache
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)
         
-    products = await service.get_products(skip=skip, limit=limit)
-    total_count = await service.get_products_count()
+    products = await service.get_products(
+        skip=skip, limit=limit, category_id=category_id, brand=brand, 
+        min_price=min_price, max_price=max_price, q=q
+    )
+    total_count = await service.get_products_count(
+        category_id=category_id, brand=brand, 
+        min_price=min_price, max_price=max_price, q=q
+    )
     
     # Serialize and cache for 5 minutes
     items_data = [ProductResponse.model_validate(p).model_dump(mode='json') for p in products]

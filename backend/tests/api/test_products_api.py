@@ -96,7 +96,7 @@ async def test_list_products_api(mock_redis):
     assert data["items"][0]["name"] == "Test Product"
     assert data["total"] == 1
     
-    mock_redis.get.assert_called_with("products:list:0:100")
+    mock_redis.get.assert_called_with("products:list:0:100:None:None:None:None:None")
     mock_redis.setex.assert_called_once()
     
     app.dependency_overrides.clear()

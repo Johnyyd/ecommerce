@@ -1,11 +1,14 @@
 import { useEffect } from "react"
 import { Route, Switch } from "wouter"
 import { Storefront } from "@/pages/Storefront"
+import { ProductsPage } from "@/pages/ProductsPage"
 import { ProductDetail } from "@/pages/ProductDetail"
 import { Profile } from "@/pages/Profile"
 import { Login } from "@/pages/Login"
 import { Register } from "@/pages/Register"
 import { Admin } from "@/pages/Admin"
+import { Checkout } from "@/pages/Checkout"
+import { Cart } from "@/pages/Cart"
 import { useAuthStore } from "@/store/useAuthStore"
 
 function App() {
@@ -47,7 +50,10 @@ function App() {
     <div className="min-h-screen bg-zinc-50 selection:bg-electric-blue selection:text-white">
       <Switch>
         <Route path="/" component={Storefront} />
+        <Route path="/products" component={ProductsPage} />
         <Route path="/product/:id" component={ProductDetail} />
+        <Route path="/cart" component={Cart} />
+        <Route path="/checkout" component={Checkout} />
         <Route path="/profile" component={Profile} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />

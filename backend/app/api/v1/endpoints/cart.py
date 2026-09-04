@@ -9,19 +9,7 @@ from app.api.deps import get_current_user
 
 router = APIRouter()
 
-class CartItemIn(BaseModel):
-    product_id: str
-    quantity: int = 1
-    name: str | None = None
-    price: float | None = None
-    image: str | None = None
-
-class CartItemOut(BaseModel):
-    product_id: str
-    quantity: int
-    name: str | None = None
-    price: float | None = None
-    image: str | None = None
+from app.schemas.cart import CartItemIn, CartItemOut
 
 @router.get("/", response_model=List[CartItemOut])
 async def get_cart(

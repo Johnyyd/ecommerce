@@ -2,6 +2,6 @@ global:
   scrape_interval: 15s
 
 scrape_configs:
-  - job_name: 'ecommerce-backend'
+  - job_name: "ecommerce-backend:latest"
     static_configs:
-      - targets: ['backend:8000']
+      - targets: ["backend:8000"]

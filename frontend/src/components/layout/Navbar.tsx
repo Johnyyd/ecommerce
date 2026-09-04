@@ -25,6 +25,7 @@ export function Navbar() {
 
   const navItems = [
     { label: 'Home', path: '/' },
+    { label: 'Shop', path: '/products' },
     ...(isAuthenticated 
       ? [
           { label: 'Profile', path: '/profile' },

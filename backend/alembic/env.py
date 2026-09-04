@@ -26,8 +26,7 @@ from app.core.config import settings
 from app.core.db import DATABASE_URL
 
 from app.models.base import Base
-from app.models.user import User
-from app.models.product import Product, Order, OrderItem
+import app.models
 target_metadata = Base.metadata
 
 # other values from the config, defined by the needs of env.py,

@@ -92,11 +92,11 @@ jobs:
         uses: docker/build-push-action@v5
         with:
           context: ./backend
-          # Đang test local nên không push. 
+          # Đang test local nên không push.
           # Khi đẩy lên cloud, đổi push: false thành true và mở comment dòng tags bên dưới
-          push: false 
+          push: false
           tags: ecommerce-backend:latest
-          # tags: ${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:latest
+          # tags: ${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:latest:${{ github.sha }},${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:latest
 
       - name: Build Frontend Image
         uses: docker/build-push-action@v5
@@ -142,7 +142,7 @@ jobs:
       #
       # - name: Update Deployments (Rolling Update)
       #   run: |
-      #     kubectl set image deployment/backend backend=${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:${{ github.sha }}
+      #     kubectl set image deployment/backend backend=${{ secrets.DOCKER_USERNAME }}/ecommerce-backend:latest:${{ github.sha }}
       #     kubectl set image deployment/frontend frontend=${{ secrets.DOCKER_USERNAME }}/ecommerce-frontend:${{ github.sha }}
       #     kubectl rollout status deployment/backend --timeout=90s
       #     kubectl rollout status deployment/frontend --timeout=90s

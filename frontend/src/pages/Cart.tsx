@@ -2,8 +2,6 @@ import { useCartStore } from '@/store/useCartStore'
 import { CartItem } from '@/components/CartItem'
 import { useEffect } from 'react'
 import { useLocation } from 'wouter'
-import { toast } from 'sonner'
-
 // Helper navigate function using wouter's useLocation
 const useNavigate = () => {
   const [, setLocation] = useLocation()
@@ -11,7 +9,7 @@ const useNavigate = () => {
 }
 
 export function Cart() {
-  const { items, clearCart } = useCartStore()
+  const { items } = useCartStore()
   const navigate = useNavigate()
 
   useEffect(() => {
@@ -20,25 +18,8 @@ export function Cart() {
 
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0)
 
-  const handleCheckout = async () => {
-    try {
-      const res = await fetch('/api/v1/checkout/', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-      })
-      if (res.ok) {
-        const order = await res.json()
-        toast.success('Order placed!')
-        clearCart()
-        navigate(`/orders/${order.id}`)
-      } else {
-        const err = await res.json()
-        toast.error(err.detail || 'Checkout failed')
-      }
-    } catch {
-      toast.error('Network error')
-    }
+  const handleCheckout = () => {
+    navigate('/checkout')
   }
 
   if (items.length === 0) {
