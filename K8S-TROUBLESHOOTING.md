@@ -64,3 +64,24 @@ Có 2 nguyên nhân chồng chéo:
 - Thêm file `app/schemas/cart.py` với các Pydantic model cần thiết để backend khởi động thành công.
 - Build và khởi động lại (`docker-compose build` và `up -d`) các container của Docker Compose để nhận code mới nhất.
 - **Lưu ý:** Để tránh nhầm lẫn trong quá trình debug Kubernetes, hãy tắt hệ thống Docker Compose (`docker-compose down`) nếu bạn đang kiểm thử trên K8s (LoadBalancer) qua cổng 80, hoặc map sang cổng khác.
+
+---
+
+## 5. Lỗi Service K8s bị kẹt ở trạng thái Terminating (Không truy cập được 127.0.0.1)
+**Triệu chứng:**
+Ngay cả sau khi đã tắt Docker Compose và chạy lại `start-k8s.bat`, bạn vẫn không thể truy cập `http://127.0.0.1` trên trình duyệt. Trong log hiển thị cảnh báo: `Warning: Detected changes to resource frontend which is currently being deleted`. Service `frontend` của K8s bị kẹt ở trạng thái `LoadBalancer <pending>` hoặc đang trong quá trình Terminating vĩnh viễn.
+
+**Nguyên nhân:**
+Quá trình trước đó bạn đã vô tình chạy song song cả Docker Compose và Kubernetes. Docker Compose đã chiếm giữ hoàn toàn cổng `80` (`127.0.0.1`). Khi K8s cố gắng tạo Service LoadBalancer trên cùng cổng này, nó thất bại và sinh ra lỗi nội bộ. Khi bạn chạy script tắt/khởi động lại K8s, K8s cố gắng xóa Service cũ đi nhưng bị kẹt lại bởi cơ chế `finalizers` (cơ chế dọn dẹp tài nguyên của K8s), khiến nó lơ lửng mãi mãi ở trạng thái Terminating.
+
+**Khắc phục đã thực hiện:**
+- **Bước 1:** Ép K8s gỡ bỏ cơ chế `finalizers` bảo vệ của Service đang bị lỗi để ép nó xóa ngay lập tức:
+  ```bash
+  kubectl patch svc frontend -p '{"metadata":{"finalizers":[]}}' --type=merge
+  ```
+- **Bước 2:** Chắc chắn rằng Docker Compose đã được tắt hoàn toàn (`.\stop-docker.bat`).
+- **Bước 3:** Khởi tạo lại Service `frontend` mới tinh để nó bắt thành công cổng 80:
+  ```bash
+  kubectl apply -f k8s/frontend.yaml
+  ```
+Sau khi thực hiện, K8s sẽ được cấp IP thành công và `127.0.0.1` sẽ trỏ đúng vào Pod frontend của K8s.
