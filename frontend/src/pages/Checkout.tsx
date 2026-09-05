@@ -57,13 +57,13 @@ export function Checkout() {
         payment_method: paymentMethod,
       };
       
-      await createOrder(token, orderData);
+      const order = await createOrder(token, orderData);
       clearCart();
       toast.success('Order placed successfully!');
       
-      if (paymentMethod === 'VNPAY' || paymentMethod === 'MOMO') {
-        toast.info(`Redirecting to ${paymentMethod} (Mocking payment gateway)...`);
-        setTimeout(() => setLocation('/profile'), 1500);
+      if (order.payment_url) {
+        toast.info(`Redirecting to payment gateway...`);
+        setTimeout(() => window.location.href = order.payment_url!, 1500);
       } else {
         setLocation('/profile');
       }

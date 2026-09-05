@@ -7,6 +7,8 @@ export interface OrderItemCreate {
 
 export interface OrderCreate {
   items: OrderItemCreate[]
+  address_id: string
+  payment_method: string
 }
 
 export interface OrderItemResponse {
@@ -16,12 +18,23 @@ export interface OrderItemResponse {
   unit_price: number
 }
 
+export interface PaymentResponse {
+  id: string
+  transaction_id?: string
+  status: string
+  provider: string
+}
+
 export interface OrderResponse {
   id: string
   user_id: string
+  address_id: string
   total_amount: number
   status: string
+  payment_method: string
   items: OrderItemResponse[]
+  payment?: PaymentResponse
+  payment_url?: string
 }
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {

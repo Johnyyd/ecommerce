@@ -76,7 +76,12 @@ class OrderRepository:
         # Refresh and eager load relationships
         stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == db_order.id)
         result = await self.session.execute(stmt)
-        return result.scalars().first()
+        final_order = result.scalars().first()
+        
+        from app.services.payment import PaymentService
+        final_order.payment_url = PaymentService.generate_payment_url(final_order.id, float(final_order.total_amount), final_order.payment_method)
+        
+        return final_order
 
     async def get_by_id(self, order_id: UUID, user_id: UUID) -> Optional[Order]:
         stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == order_id, Order.user_id == user_id)
@@ -84,7 +89,10 @@ class OrderRepository:
         return result.scalars().first()
 
     async def cancel_order(self, order_id: UUID, user_id: UUID) -> Order:
-        order = await self.get_by_id(order_id, user_id)
+        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == order_id, Order.user_id == user_id).with_for_update()
+        result = await self.session.execute(stmt)
+        order = result.scalars().first()
+        
         if not order:
             raise ValueError("Order not found")
         if order.status not in ["PENDING", "PROCESSING"]:

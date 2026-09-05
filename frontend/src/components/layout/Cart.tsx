@@ -2,43 +2,23 @@ import { motion, AnimatePresence } from "motion/react"
 import { X, ShoppingBag, Trash } from "@phosphor-icons/react"
 import { useCartStore } from "@/store/useCartStore"
 import { useAuthStore } from "@/store/useAuthStore"
-import { createOrder } from "@/lib/api/orders"
 import { Button } from "@/components/ui/Button"
 import { useLocation } from "wouter"
-import { useState } from "react"
 
 export function Cart() {
-  const { isOpen, items, getTotal, toggleCart, removeItem, updateQuantity, clearCart } = useCartStore()
+  const { isOpen, items, getTotal, toggleCart, removeItem, updateQuantity } = useCartStore()
   const { isAuthenticated } = useAuthStore()
   const [, setLocation] = useLocation()
-  const [isCheckingOut, setIsCheckingOut] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const total = getTotal()
 
-  const handleCheckout = async () => {
+  const handleCheckout = () => {
     if (!isAuthenticated) {
       toggleCart()
       setLocation("/login")
       return
     }
-
-    try {
-      setIsCheckingOut(true)
-      setError(null)
-      await createOrder({
-        items: items.map(item => ({
-          product_id: item.id,
-          quantity: item.quantity
-        }))
-      })
-      clearCart()
-      toggleCart()
-      setLocation("/profile")
-    } catch (err: any) {
-      setError(err.message || "Checkout failed")
-    } finally {
-      setIsCheckingOut(false)
-    }
+    toggleCart()
+    setLocation("/checkout")
   }
 
   return (
@@ -121,17 +101,16 @@ export function Cart() {
             </div>
 
             <div className="p-6 border-t border-zinc-100 bg-zinc-50/50">
-              {error && <p className="text-red-500 text-sm mb-4">{error}</p>}
               <div className="flex items-center justify-between mb-6">
                 <span className="font-medium text-zinc-500">Subtotal</span>
                 <span className="font-medium text-xl">${total.toFixed(2)}</span>
               </div>
               <Button 
                 className="w-full" 
-                disabled={items.length === 0 || isCheckingOut}
+                disabled={items.length === 0}
                 onClick={handleCheckout}
               >
-                {isCheckingOut ? "Processing..." : "Checkout"}
+                Checkout
               </Button>
             </div>
           </motion.div>

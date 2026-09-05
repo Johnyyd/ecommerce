@@ -24,6 +24,7 @@ export interface Order {
   payment_method: string;
   items: OrderItem[];
   payment: Payment | null;
+  payment_url?: string;
 }
 
 export interface OrderCreate {

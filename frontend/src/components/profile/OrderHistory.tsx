@@ -59,6 +59,12 @@ export function OrderHistory() {
                       {order.status}
                     </span>
                   </div>
+                  <div>
+                    <p className="text-[10px] text-zinc-400 mb-1 tracking-widest uppercase">Payment</p>
+                    <span className="inline-flex items-center text-xs font-medium text-zinc-700">
+                      {order.payment_method} {order.payment?.status ? `(${order.payment.status})` : ''}
+                    </span>
+                  </div>
                   <div className="text-right">
                     <p className="text-[10px] text-zinc-400 mb-1 tracking-widest uppercase">Total</p>
                     <p className="font-medium text-zinc-900">${order.total_amount.toFixed(2)}</p>
@@ -78,11 +84,19 @@ export function OrderHistory() {
                 ))}
               </div>
 
-              {['PENDING', 'PROCESSING'].includes(order.status) && (
-                <div className="mt-6 pt-4 border-t border-zinc-50 flex justify-end">
+              {(['PENDING', 'PROCESSING'].includes(order.status)) && (
+                <div className="mt-6 pt-4 border-t border-zinc-50 flex justify-end gap-4">
+                  {order.status === 'PENDING' && order.payment_method !== 'COD' && order.payment_url && (
+                    <button 
+                      onClick={() => window.location.href = order.payment_url!}
+                      className="text-xs font-medium text-blue-600 hover:text-blue-700 bg-blue-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                      Pay Now
+                    </button>
+                  )}
                   <button 
                     onClick={() => handleCancel(order.id)}
-                    className="text-xs font-medium text-red-500 hover:text-red-600"
+                    className="text-xs font-medium text-red-500 hover:text-red-600 px-3 py-1.5"
                   >
                     Cancel Order
                   </button>

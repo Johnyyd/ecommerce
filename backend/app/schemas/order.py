@@ -38,5 +38,6 @@ class OrderResponse(BaseModel):
     payment_method: str
     items: List[OrderItemResponse] = []
     payment: Optional[PaymentResponse] = None
+    payment_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)

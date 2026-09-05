@@ -9,6 +9,7 @@ import { Register } from "@/pages/Register"
 import { Admin } from "@/pages/Admin"
 import { Checkout } from "@/pages/Checkout"
 import { Cart } from "@/pages/Cart"
+import { PaymentResult } from "@/pages/PaymentResult"
 import { useAuthStore } from "@/store/useAuthStore"
 
 function App() {
@@ -54,6 +55,7 @@ function App() {
         <Route path="/product/:id" component={ProductDetail} />
         <Route path="/cart" component={Cart} />
         <Route path="/checkout" component={Checkout} />
+        <Route path="/payment" component={PaymentResult} />
         <Route path="/profile" component={Profile} />
         <Route path="/login" component={Login} />
         <Route path="/register" component={Register} />
