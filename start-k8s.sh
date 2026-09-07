@@ -9,6 +9,13 @@ if ! command -v kubectl &> /dev/null; then
     exit 1
 fi
 
+# Check if Kubernetes cluster is reachable
+if ! kubectl cluster-info &> /dev/null; then
+    echo "Error: Cannot connect to a Kubernetes cluster."
+    echo "Please start a local Kubernetes cluster (e.g., minikube start or kind create cluster) before running this script."
+    exit 1
+fi
+
 # Create secrets from .env file
 if [ -f .env ]; then
     echo "Creating Kubernetes secrets from .env..."

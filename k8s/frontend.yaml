@@ -1,4 +1,4 @@
-4apiVersion: apps/v1
+apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: frontend
@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: frontend
-          image: ecommerce-frontend
+          image: ecommerce-frontend:latest
           imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
