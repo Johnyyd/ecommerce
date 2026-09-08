@@ -20,7 +20,7 @@ export function PaymentResult() {
     }
   }, [orderId, setLocation]);
 
-  const API_URL = (import.meta as any).env.VITE_API_URL || 'http://127.0.0.1/api/v1';
+  const API_URL = (import.meta as any).env.VITE_API_URL || '/api/v1';
 
   const handlePayment = async (result: 'SUCCESS' | 'FAILED') => {
     setLoading(true);

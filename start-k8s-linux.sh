@@ -148,8 +148,8 @@ docker build -t ecommerce-frontend:latest ./frontend
 
 echo "Đang nạp images vào cluster ($CLUSTER_TOOL)..."
 if [ "$CLUSTER_TOOL" = "minikube" ]; then
-    minikube image load ecommerce-backend:latest
-    minikube image load ecommerce-frontend:latest
+    minikube image load --overwrite=true ecommerce-backend:latest
+    minikube image load --overwrite=true ecommerce-frontend:latest
 elif [ "$CLUSTER_TOOL" = "kind" ]; then
     kind load docker-image ecommerce-backend:latest
     kind load docker-image ecommerce-frontend:latest

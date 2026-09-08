@@ -42,7 +42,7 @@ interface OrderState {
   cancelOrder: (token: string, id: string) => Promise<void>;
 }
 
-const API_URL = (import.meta as any).env.VITE_API_URL || 'http://127.0.0.1/api/v1';
+const API_URL = (import.meta as any).env.VITE_API_URL || '/api/v1';
 
 export const useOrderStore = create<OrderState>((set, get) => ({
   orders: [],

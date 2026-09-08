@@ -4,7 +4,7 @@ docker build -t ecommerce-frontend:latest ./frontend
 
 if command -v minikube &> /dev/null && minikube status &> /dev/null; then
     echo "Loading image into Minikube..."
-    minikube image load ecommerce-frontend:latest
+    minikube image load --overwrite=true ecommerce-frontend:latest
 elif command -v kind &> /dev/null && kind get clusters 2>/dev/null | grep -q 'kind'; then
     echo "Loading image into Kind..."
     kind load docker-image ecommerce-frontend:latest
