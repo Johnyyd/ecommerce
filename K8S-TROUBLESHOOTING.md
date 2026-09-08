@@ -97,3 +97,19 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
   kubectl apply -f k8s/frontend.yaml
   ```
   Sau khi thực hiện, K8s sẽ được cấp IP thành công và `127.0.0.1` sẽ trỏ đúng vào Pod frontend của K8s.
+
+## 6. Truy cập các service
+Để theo dõi trạng thái các Pod và Service, chạy:
+  '''bash status.sh'''
+hoặc:
+  '''kubectl get pods -w'''
+
+Cách truy cập ứng dụng trên Minikube (chọn 1 trong 2):
+1. Cách 1 (Khuyên dùng - Nhanh gọn): Mở thẳng URL frontend trong trình duyệt:
+  '''minikube service frontend'''
+
+2. Cách 2 (LoadBalancer / Ingress qua http://localhost):
+  Mở một terminal mới và chạy lệnh (yêu cầu sudo để bind cổng 80):
+  '''minikube tunnel'''
+  Sau đó truy cập: http://localhost (Frontend) và http://localhost:8000 (Backend)
+
