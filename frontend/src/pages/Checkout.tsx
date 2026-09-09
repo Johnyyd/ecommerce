@@ -11,7 +11,7 @@ export function Checkout() {
   const [, setLocation] = useLocation();
   const { items, clearCart } = useCartStore();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token');
   const { addresses, fetchAddresses } = useAddressStore();
   const { createOrder, isLoading: creatingOrder } = useOrderStore();
   
@@ -40,7 +40,11 @@ export function Checkout() {
   }, [addresses, selectedAddressId]);
 
   const handlePlaceOrder = async () => {
-    if (!token) return;
+    if (!token) {
+      toast.error('Please login to place an order');
+      setLocation('/login');
+      return;
+    }
     if (items.length === 0) {
       toast.error('Your cart is empty');
       return;

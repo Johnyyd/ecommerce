@@ -3,7 +3,7 @@ import { useOrderStore } from '@/store/useOrderStore';
 import { motion } from 'motion/react';
 
 export function OrderHistory() {
-  const token = localStorage.getItem('token');
+  const token = localStorage.getItem('access_token') || localStorage.getItem('token');
   const { orders, isLoading, error, fetchOrders, cancelOrder } = useOrderStore();
 
   useEffect(() => {

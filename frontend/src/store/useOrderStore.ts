@@ -80,6 +80,7 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       }
       const data = await res.json();
       await get().fetchOrders(token);
+      set({ isLoading: false });
       return data;
     } catch (err: any) {
       set({ error: err.message, isLoading: false });
