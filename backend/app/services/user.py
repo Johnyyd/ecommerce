@@ -30,3 +30,17 @@ class UserService:
         if not verify_password(password, user.hashed_password):
             return None
         return user
+
+    async def get_users(self, skip: int = 0, limit: int = 100) -> list[User]:
+        return await self.user_repo.get_multi(skip=skip, limit=limit)
+
+    async def update_user(self, user_id, role: str | None = None, is_active: bool | None = None) -> User:
+        user = await self.user_repo.get_by_id(user_id)
+        if not user:
+            raise ValueError("User not found")
+        if role is not None:
+            user.role = role
+        if is_active is not None:
+            user.is_active = is_active
+        return await self.user_repo.update(user)
+

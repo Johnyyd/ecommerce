@@ -115,3 +115,27 @@ class OrderRepository:
         await self.session.commit()
         await self.session.refresh(order)
         return order
+
+    async def get_all_orders(self, skip: int = 0, limit: int = 100, status: Optional[str] = None) -> List[Order]:
+        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).order_by(Order.created_at.desc()).offset(skip).limit(limit)
+        if status:
+            stmt = stmt.where(Order.status == status)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+
+    async def admin_update_status(self, order_id: UUID, new_status: str) -> Order:
+        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == order_id).with_for_update()
+        result = await self.session.execute(stmt)
+        order = result.scalars().first()
+        if not order:
+            raise ValueError("Order not found")
+        order.status = new_status
+        if new_status == "COMPLETED" and order.payment:
+            order.payment.status = "SUCCESS"
+        elif new_status == "CANCELLED" and order.payment:
+            order.payment.status = "REFUNDED" if order.payment.status == "SUCCESS" else "CANCELLED"
+        self.session.add(order)
+        await self.session.commit()
+        await self.session.refresh(order)
+        return order
+

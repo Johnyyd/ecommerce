@@ -36,6 +36,9 @@ class MockUserRepository(UserRepositoryInterface):
         self.users[user.id] = user
         return user
 
+    async def get_multi(self, skip: int = 0, limit: int = 100) -> list[User]:
+        return list(self.users.values())[skip : skip + limit]
+
 @pytest.mark.asyncio
 async def test_user_service_create_user():
     repo = MockUserRepository()

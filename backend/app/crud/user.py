@@ -38,3 +38,9 @@ class UserRepository(UserRepositoryInterface):
         await self.session.commit()
         await self.session.refresh(user)
         return user
+
+    async def get_multi(self, skip: int = 0, limit: int = 100) -> list[User]:
+        stmt = select(User).where(User.deleted_at.is_(None)).order_by(User.created_at.desc()).offset(skip).limit(limit)
+        result = await self.session.execute(stmt)
+        return list(result.scalars().all())
+

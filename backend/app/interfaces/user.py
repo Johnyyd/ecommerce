@@ -23,3 +23,8 @@ class UserRepositoryInterface(ABC):
     @abstractmethod
     async def update(self, user: User) -> User:
         pass
+
+    @abstractmethod
+    async def get_multi(self, skip: int = 0, limit: int = 100) -> list[User]:
+        pass
+

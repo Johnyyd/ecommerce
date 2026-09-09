@@ -3,7 +3,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from fastapi import FastAPI
 from app.core.config import settings
-from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments
+from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories
 from app.core.logging import setup_logging
 import logging
 
@@ -33,6 +33,8 @@ app.include_router(cart.router, prefix="/api/v1/cart", tags=["cart"])
 app.include_router(orders.router, prefix="/api/v1/orders", tags=["orders"])
 app.include_router(addresses.router, prefix="/api/v1/addresses", tags=["addresses"])
 app.include_router(payments.router, prefix="/api/v1/payments", tags=["payments"])
+app.include_router(categories.router, prefix="/api/v1/categories", tags=["categories"])
+
 
 @app.get("/api/health")
 async def health_check():
