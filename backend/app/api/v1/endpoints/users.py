@@ -4,7 +4,7 @@ from app.core.db import get_db_session
 from app.schemas.user import UserCreate, UserResponse, UserAdminUpdate
 from app.services.user import UserService
 from app.crud.user import UserRepository
-from app.api.deps import get_current_admin
+from app.api.deps import get_current_admin, get_current_staff
 from app.models.user import User
 from typing import Annotated, List
 from uuid import UUID
@@ -30,7 +30,7 @@ async def create_user(
 async def list_users(
     skip: int = 0,
     limit: int = 100,
-    current_admin: User = Depends(get_current_admin),
+    current_staff: User = Depends(get_current_staff),
     service: UserService = Depends(get_user_service)
 ):
     return await service.get_users(skip=skip, limit=limit)

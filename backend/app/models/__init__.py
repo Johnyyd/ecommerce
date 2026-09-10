@@ -3,6 +3,8 @@ from app.models.user import User
 from app.models.product import Product, Category
 from app.models.address import Address
 from app.models.order import Order, OrderItem, Payment
+from app.models.brand import Brand
+from app.models.voucher import Voucher
 
 __all__ = [
     "Base",
@@ -12,5 +14,8 @@ __all__ = [
     "Address",
     "Order",
     "OrderItem",
-    "Payment"
+    "Payment",
+    "Brand",
+    "Voucher"
 ]
+

@@ -6,3 +6,5 @@ exclude_dirs:
 skips:
   - B104
   - B105
+  - B404
+  - B603

@@ -8,7 +8,7 @@ from app.core.db import get_db_session
 from app.models.product import Category
 from app.models.user import User
 from app.schemas.category import CategoryCreate, CategoryResponse
-from app.api.deps import get_current_admin
+from app.api.deps import get_current_staff
 
 router = APIRouter()
 
@@ -21,7 +21,7 @@ async def list_categories(session: AsyncSession = Depends(get_db_session)):
 @router.post("/", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_category(
     category_in: CategoryCreate,
-    current_admin: User = Depends(get_current_admin),
+    current_staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session)
 ):
     # Check if slug or name already exists
@@ -39,7 +39,7 @@ async def create_category(
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_category(
     id: UUID,
-    current_admin: User = Depends(get_current_admin),
+    current_staff: User = Depends(get_current_staff),
     session: AsyncSession = Depends(get_db_session)
 ):
     stmt = select(Category).where(Category.id == id)

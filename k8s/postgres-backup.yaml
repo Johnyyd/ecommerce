@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: postgres-backups-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: 5Gi
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: postgres-daily-backup
+spec:
+  # Lập lịch chạy lúc 02:00 sáng hàng ngày (UTC)
+  schedule: "0 2 * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: postgres-backup-worker
+              image: postgres:16-alpine
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  BACKUP_FILE="/backups/db_backup_$(date +%Y%m%d_%H%M%S).dump"
+                  echo "Starting PostgreSQL backup to $BACKUP_FILE..."
+                  export PGPASSWORD="$POSTGRES_PASSWORD"
+                  pg_dump -h postgres -p 5432 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -F c -b -v -f "$BACKUP_FILE"
+                  echo "Backup completed successfully: $(ls -lh $BACKUP_FILE)"
+                  echo "Cleaning backups older than 7 days..."
+                  find /backups -name "*.dump" -type f -mtime +7 -delete || true
+                  echo "Done!"
+              envFrom:
+                - secretRef:
+                    name: db-secrets
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: postgres-backups-pvc

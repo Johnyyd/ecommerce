@@ -10,7 +10,7 @@ from app.core.db import get_db_session
 from app.core.redis import get_redis_client
 from app.schemas.order import OrderCreate, OrderResponse
 from app.crud.order import OrderRepository
-from app.api.deps import get_current_user, get_current_admin
+from app.api.deps import get_current_user, get_current_admin, get_current_staff
 from app.models.user import User
 router = APIRouter()
 
@@ -64,7 +64,7 @@ async def list_all_orders_admin(
     skip: int = 0,
     limit: int = 100,
     status: Optional[str] = None,
-    current_admin: User = Depends(get_current_admin),
+    current_staff: User = Depends(get_current_staff),
     repo: OrderRepository = Depends(get_order_repository)
 ) -> Any:
     return await repo.get_all_orders(skip=skip, limit=limit, status=status)
@@ -73,7 +73,7 @@ async def list_all_orders_admin(
 async def update_order_status_admin(
     id: UUID,
     status_in: OrderStatusUpdate,
-    current_admin: User = Depends(get_current_admin),
+    current_staff: User = Depends(get_current_staff),
     repo: OrderRepository = Depends(get_order_repository)
 ) -> Any:
     try:
@@ -82,4 +82,5 @@ async def update_order_status_admin(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Failed to update order status: " + str(e))
+
 

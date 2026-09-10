@@ -42,3 +42,15 @@ async def get_current_admin(
             detail="The user doesn't have enough privileges"
         )
     return current_user
+
+async def get_current_staff(
+    current_user: User = Depends(get_current_user)
+) -> User:
+    """Allows either 'admin' or 'manager' role."""
+    if current_user.role not in ["admin", "manager"]:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Staff privileges required (Admin or Manager)"
+        )
+    return current_user
+

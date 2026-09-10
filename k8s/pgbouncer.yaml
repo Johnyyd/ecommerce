@@ -16,6 +16,7 @@ spec:
       containers:
       - name: pgbouncer
         image: edoburu/pgbouncer:latest
+        imagePullPolicy: IfNotPresent
         env:
         - name: DB_HOST
           value: "postgres"

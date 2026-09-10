@@ -8,7 +8,7 @@ from app.core.utils import generate_uuidv7
 from unittest.mock import AsyncMock
 from datetime import datetime, timezone
 
-from app.api.deps import get_current_admin
+from app.api.deps import get_current_admin, get_current_staff
 from app.models.user import User
 
 @pytest.fixture
@@ -44,6 +44,7 @@ async def test_create_product_api(mock_redis, mock_admin_user):
     
     app.dependency_overrides[get_product_service] = lambda: mock_service
     app.dependency_overrides[get_redis_client] = lambda: mock_redis
+    app.dependency_overrides[get_current_staff] = lambda: mock_admin_user
     app.dependency_overrides[get_current_admin] = lambda: mock_admin_user
     
     transport = ASGITransport(app=app)

@@ -37,7 +37,7 @@ export function Login() {
       if (meRes.ok) {
         const user = await meRes.json()
         setUser(user)
-        if (user.role === "admin") {
+        if (user.role === "admin" || user.role === "manager") {
           setLocation("/admin")
         } else {
           setLocation("/")

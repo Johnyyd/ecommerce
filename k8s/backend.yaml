@@ -32,9 +32,14 @@ spec:
             # Dynamic Gunicorn worker limit per mandates (e.g. 1 CPU -> 5 workers)
             - name: WEB_CONCURRENCY
               value: "5"
+            - name: BACKUP_DIR
+              value: "/backups"
           envFrom:
             - secretRef:
                 name: app-secrets
+          volumeMounts:
+            - name: backup-storage
+              mountPath: /backups
           resources:
             limits:
               cpu: "1"
@@ -48,6 +53,12 @@ spec:
                 command: ["sleep", "5"] # Graceful shutdown mandate
           ports:
             - containerPort: 8000
+      securityContext:
+        fsGroup: 102
+      volumes:
+        - name: backup-storage
+          persistentVolumeClaim:
+            claimName: postgres-backups-pvc
 ---
 apiVersion: v1
 kind: Service
