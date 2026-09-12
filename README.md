@@ -450,6 +450,9 @@ stop-docker.bat
 #### Địa chỉ truy cập ứng dụng (Docker Compose):
 - 🌐 **Giao diện người dùng (Frontend)**: [http://localhost](http://localhost) (Cổng 80)
 - 🔌 **API Documentation (Swagger UI)**: [http://localhost:8000/docs](http://localhost:8000/docs)
+- 📊 **Hệ thống giám sát (Grafana Dashboard)**: [http://localhost:3000](http://localhost:3000) (Tài khoản mặc định: `admin` / `admin`)
+- 📈 **Máy chủ thu thập Metrics (Prometheus)**: [http://localhost:9090](http://localhost:9090)
+- 🎯 **Chỉ số hiệu năng Backend (Metrics)**: [http://localhost:8000/metrics](http://localhost:8000/metrics)
 - 🛠️ **Cổng kết nối PgBouncer**: `localhost:6432`
 - 🗄️ **Cổng kết nối PostgreSQL**: `localhost:5432`
 - ⚡ **Cổng kết nối Redis**: `localhost:6379`
@@ -761,12 +764,56 @@ flowchart LR
 
 ## 📊 13. Giám sát & Vận hành (Monitoring & Observability)
 
-Dự án tích hợp sẵn cấu hình thu thập metrics và trực quan hóa:
+Hệ thống tích hợp giải pháp giám sát hiệu năng toàn diện đạt chuẩn Cloud-Native với **Prometheus** và **Grafana**:
 
-1. **Prometheus Configuration ([monitoring/prometheus.yml](file:///home/tringuyen/Documents/GitHub/ecommerce/monitoring/prometheus.yml))**:
-   - Tự động scrape các chỉ số hiệu năng (HTTP request rate, response latency, error rates) từ Backend tại cổng `8000` mỗi 15 giây.
-2. **Grafana Dashboard Template ([monitoring/grafana-dashboard.json](file:///home/tringuyen/Documents/GitHub/ecommerce/monitoring/grafana-dashboard.json))**:
-   - Template dashboard trực quan hóa tần suất request API theo từng Method và Path: `rate(http_requests_total[5m])`.
+### 1. Kiến trúc luồng giám sát (Monitoring Flow)
+```mermaid
+flowchart LR
+    BE["FastAPI Backend\n(:8000/metrics)"] -->|"Scrape 15s"| Prom["Prometheus Server\n(:9090)"]
+    Prom -->|"Datasource Proxy"| Graf["Grafana Dashboard\n(:3000)"]
+    Graf -->|"Trực quan hóa KPI"| User["DevOps / SRE / Admin"]
+```
+
+- **Backend Instrumentation**: Tích hợp thư viện `prometheus-fastapi-instrumentator` vào FastAPI (`backend/app/main.py`), tự động ghi nhận mọi request và xuất định dạng chuẩn Prometheus tại endpoint `/metrics`.
+- **Prometheus Scraper**: Định cấu hình trong [monitoring/prometheus.yml](file:///home/tringuyen/Documents/GitHub/ecommerce/monitoring/prometheus.yml) với chu kỳ thu thập 15 giây (scrape interval), tự động kết nối tới `backend:8000/metrics`.
+- **Grafana Auto-Provisioning**:
+  - Datasources: [monitoring/grafana/provisioning/datasources/datasources.yml](file:///home/tringuyen/Documents/GitHub/ecommerce/monitoring/grafana/provisioning/datasources/datasources.yml) tự động kết nối đến Prometheus mà không cần nhập thủ công trong giao diện.
+  - Dashboards Provider: [monitoring/grafana/provisioning/dashboards/dashboards.yml](file:///home/tringuyen/Documents/GitHub/ecommerce/monitoring/grafana/provisioning/dashboards/dashboards.yml) tự động nạp bảng điều khiển từ file JSON.
+
+---
+
+### 2. Bảng điều khiển Grafana (Grafana Dashboard)
+Dashboard sản xuất hoàn chỉnh [monitoring/grafana-dashboard.json](file:///home/tringuyen/Documents/GitHub/ecommerce/monitoring/grafana-dashboard.json) (`uid: ecommerce-overview`) bao gồm các phân khu trực quan:
+
+1. 🟢 **System Health & KPI Cards**:
+   - **Backend Status**: Trạng thái máy chủ UP/DOWN (`up{job="ecommerce-backend"}`).
+   - **Current Throughput**: Tần suất xử lý yêu cầu tức thời theo giây (`sum(rate(http_requests_total[1m]))`).
+   - **P95 Latency**: Độ trễ phân vị 95% của toàn hệ thống (`histogram_quantile(0.95, ...)`).
+   - **Server Error Rate**: Tỷ lệ lỗi 5xx so với tổng request (`sum(rate(5xx)) / sum(rate(total)) * 100`).
+   - **Resident Memory**: Mức tiêu thụ RAM thực tế của tiến trình Python Backend (`process_resident_memory_bytes`).
+2. 📈 **Traffic & Throughput Breakdown**:
+   - Biểu đồ Timeseries Request Rate theo từng Endpoint và HTTP Method (`{{method}} {{handler}}`).
+   - Biểu đồ Donut phân bổ tỷ lệ phản hồi HTTP Status Codes (2xx, 3xx, 4xx, 5xx).
+3. ⏱️ **Latency & Response Time**:
+   - Biểu đồ đa phân vị độ trễ (P50 Median, P90, P95, P99).
+   - Biểu đồ thời gian phản hồi trung bình cho từng API endpoint.
+4. 💻 **Runtime & Resource Usage**:
+   - Bộ nhớ RAM Resident (RSS) và Virtual (VMS).
+   - Tỷ lệ tải CPU (%) của ứng dụng Backend.
+
+---
+
+### 3. Hướng dẫn sử dụng & Đăng nhập
+- **Địa chỉ truy cập**: [http://localhost:3000](http://localhost:3000)
+- **Tài khoản đăng nhập mặc định**:
+  - **Username**: `admin`
+  - **Password**: `admin`
+- **Tự động kích hoạt**:
+  - **Trên Docker Compose**: Tự động chạy sẵn khi thực thi `bash start-docker.sh` (hoặc `start-docker.bat`).
+  - **Trên Kubernetes**: Được định nghĩa đầy đủ trong [k8s/monitoring.yaml](file:///home/tringuyen/Documents/GitHub/ecommerce/k8s/monitoring.yaml) (ConfigMaps, Deployments và Services). Trên Minikube, mở trực tiếp bằng lệnh:
+    ```bash
+    minikube service grafana
+    ```
 
 ---
 

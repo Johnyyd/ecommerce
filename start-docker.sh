@@ -15,3 +15,5 @@ docker-compose up --build -d
 echo "Services started successfully!"
 echo "Backend API is available at http://localhost:8000"
 echo "Frontend is available at http://localhost:80"
+echo "Prometheus is available at http://localhost:9090"
+echo "Grafana Dashboard is available at http://localhost:3000 (Default: admin / admin)"

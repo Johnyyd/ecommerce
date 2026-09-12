@@ -196,6 +196,11 @@ if [ "$CLUSTER_TOOL" = "minikube" ]; then
     echo -e "2. ${YELLOW}Cách 2 (LoadBalancer / Ingress qua http://localhost):${NC}"
     echo -e "   Mở một terminal mới và chạy lệnh (yêu cầu sudo để bind cổng 80):"
     echo -e "   ${CYAN}minikube tunnel${NC}"
-    echo -e "   Sau đó truy cập: ${CYAN}http://localhost${NC} (Frontend) và ${CYAN}http://localhost:8000${NC} (Backend)"
+    echo -e "   Sau đó truy cập: ${CYAN}http://localhost${NC} (Frontend), ${CYAN}http://localhost:8000${NC} (Backend)"
+    echo -e "   và ${CYAN}http://localhost:3000${NC} (Grafana Monitoring)"
+    echo ""
+    echo -e "3. ${YELLOW}Truy cập trực tiếp Grafana Dashboard trên Minikube:${NC}"
+    echo -e "   ${CYAN}minikube service grafana${NC}"
+    echo -e "   Đăng nhập mặc định: ${YELLOW}admin / admin${NC}"
 fi
 echo ""

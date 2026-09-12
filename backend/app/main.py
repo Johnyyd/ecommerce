@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup
 from app.core.logging import setup_logging
+from prometheus_fastapi_instrumentator import Instrumentator
 import logging
 
 setup_logging()
@@ -14,6 +15,9 @@ app = FastAPI(
     # "Vô hiệu hóa Swagger UI (openapi_url=None) khi ở môi trường Production."
     openapi_url=None if settings.ENVIRONMENT == "production" else "/openapi.json"
 )
+
+# Prometheus metrics instrumentation
+Instrumentator().instrument(app).expose(app)
 
 # "Loại bỏ CORSMiddleware ở FastAPI trong môi trường Production để Gateway/Nginx xử lý Preflight OPTIONS."
 if settings.ENVIRONMENT != "production":

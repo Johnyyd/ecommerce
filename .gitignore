@@ -12,7 +12,6 @@ loop-constraints.md
 loop-run-log.md
 
 .env
-.env.example
 
 backend/venv/
 backend/__pycache__
