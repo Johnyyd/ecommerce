@@ -44,6 +44,7 @@
 - [🧪 11. Kiểm thử & Đảm bảo chất lượng (Testing & Quality Assurance)](#-11-kiểm-thử--đảm-bảo-chất-lượng-testing--quality-assurance)
 - [🔄 12. Quy trình CI/CD Pipeline (GitHub Actions)](#-12-quy-trình-cicd-pipeline-github-actions)
 - [📊 13. Giám sát & Vận hành (Monitoring & Observability)](#-13-giám-sát--vận-hành-monitoring--observability)
+  - [Kiểm thử tải (Benchmark) & Kubernetes Auto-Scaling (HPA)](#4-kiểm-thử-tải-benchmark--kubernetes-auto-scaling-hpa)
 - [🛠️ 14. Khắc phục sự cố thường gặp (Troubleshooting & FAQs)](#️-14-khắc-phục-sự-cố-thường-gặp-troubleshooting--faqs)
 
 ---
@@ -814,6 +815,15 @@ Dashboard sản xuất hoàn chỉnh [monitoring/grafana-dashboard.json](file://
     ```bash
     minikube service grafana
     ```
+
+---
+
+### 4. Kiểm thử tải (Benchmark) & Kubernetes Auto-Scaling (HPA)
+Hệ thống được trang bị đầy đủ tài liệu và công cụ đo lường hiệu năng chuyên sâu:
+- 📖 **Tài liệu hướng dẫn & Báo cáo số liệu chi tiết**: [BENCHMARK.md](file:///home/tringuyen/Documents/GitHub/ecommerce/BENCHMARK.md).
+- 🚀 **Script tự động hóa**: [`benchmark.sh`](file:///home/tringuyen/Documents/GitHub/ecommerce/benchmark.sh) (chạy menu tương tác hoặc `./benchmark.sh [1-3]`).
+- ⚡ **Khả năng co giãn tự động (HPA)**: Định nghĩa tại [k8s/hpa.yaml](file:///home/tringuyen/Documents/GitHub/ecommerce/k8s/hpa.yaml). Khi ApacheBench phát tải đồng thời cao, Kubernetes tự động mở rộng Backend từ **3 Pods lên 6-8 Pods** và thu nhỏ về 3 Pods khi hết tải.
+- 📊 **Quan sát thời gian thực**: Trực quan hóa Throughput (req/s), Latency Percentiles và CPU/Memory biến thiên ngay trên Dashboard Grafana.
 
 ---
 

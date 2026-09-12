@@ -84,9 +84,11 @@ if [ "$CLUSTER_TOOL" = "minikube" ]; then
     echo "Cấu hình DNS cho Minikube node..."
     minikube ssh "echo -e 'nameserver 8.8.8.8\nnameserver 1.1.1.1' | sudo tee /etc/resolv.conf" 2>/dev/null || true
 
-    # Enable ingress addon if not enabled
+    # Enable ingress & metrics-server addons if not enabled
     echo "Bật Ingress addon trên Minikube..."
     minikube addons enable ingress 2>/dev/null || true
+    echo "Bật Metrics-Server addon trên Minikube (hỗ trợ HPA Autoscaler)..."
+    minikube addons enable metrics-server 2>/dev/null || true
 
 elif [ "$CLUSTER_TOOL" = "kind" ]; then
     echo -e "Sử dụng ${GREEN}Kind${NC} làm cluster provider."
