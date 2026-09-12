@@ -150,6 +150,8 @@ docker build -t ecommerce-frontend:latest ./frontend
 
 echo "Đang nạp images vào cluster ($CLUSTER_TOOL)..."
 if [ "$CLUSTER_TOOL" = "minikube" ]; then
+    minikube ssh "docker rmi -f ecommerce-backend:latest 2>/dev/null || true"
+    minikube ssh "docker rmi -f ecommerce-frontend:latest 2>/dev/null || true"
     minikube image load --overwrite=true ecommerce-backend:latest
     minikube image load --overwrite=true ecommerce-frontend:latest
 elif [ "$CLUSTER_TOOL" = "kind" ]; then
