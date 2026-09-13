@@ -23,6 +23,15 @@ class Settings(BaseSettings):
 
     SECRET_KEY: str = "super_secret_key_change_me_in_production"
 
-    model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
+    # PayOS / VietQR Open Banking Credentials
+    PAYOS_CLIENT_ID: str = "payos_client_id_demo"
+    PAYOS_API_KEY: str = "payos_api_key_demo"
+    PAYOS_CHECKSUM_KEY: str = "payos_checksum_key_secret_2026"
+    VIETQR_BANK_ID: str = "vietinbank"  # VietinBank BIN 970415 or slug
+    VIETQR_BANK_NAME: str = "Vietinbank"
+    VIETQR_ACCOUNT_NO: str = "100879630629"
+    VIETQR_ACCOUNT_NAME: str = "ECOMMERCE ENTERPRISE"
+
+    model_config = SettingsConfigDict(env_file=(".env", "backend/.env"), env_file_encoding="utf-8", extra="ignore")
 
 settings = Settings()

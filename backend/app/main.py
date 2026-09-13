@@ -3,7 +3,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from fastapi import FastAPI
 from app.core.config import settings
-from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup
+from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup, reviews
 from app.core.logging import setup_logging
 from prometheus_fastapi_instrumentator import Instrumentator
 import logging
@@ -41,6 +41,7 @@ app.include_router(categories.router, prefix="/api/v1/categories", tags=["catego
 app.include_router(brands.router, prefix="/api/v1/brands", tags=["brands"])
 app.include_router(vouchers.router, prefix="/api/v1/vouchers", tags=["vouchers"])
 app.include_router(backup.router, prefix="/api/v1/admin/backups", tags=["backups"])
+app.include_router(reviews.router, prefix="/api/v1/reviews", tags=["reviews"])
 
 
 

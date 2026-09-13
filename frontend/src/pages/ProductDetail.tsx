@@ -7,6 +7,7 @@ import { Product } from "@/store/useProductStore"
 import { Button } from "@/components/ui/Button"
 import { Navbar } from "@/components/layout/Navbar"
 import { Cart } from "@/components/layout/Cart"
+import { ProductReviews } from "@/components/reviews/ProductReviews"
 
 export function ProductDetail({ params: propsParams }: { params?: { id: string } }) {
   const routerParams = useParams()
@@ -70,6 +71,7 @@ export function ProductDetail({ params: propsParams }: { params?: { id: string }
               <p className="text-zinc-500">{error}</p>
             </div>
           ) : (
+            <>
             <div className="flex flex-col md:flex-row gap-12 lg:gap-24">
               {/* Product Image Side */}
               <motion.div 
@@ -128,6 +130,10 @@ export function ProductDetail({ params: propsParams }: { params?: { id: string }
                 </div>
               </motion.div>
             </div>
+
+            {/* Pillar 2: Verified Customer Reviews */}
+            <ProductReviews productId={product.id} />
+            </>
           )}
         </div>
       </main>

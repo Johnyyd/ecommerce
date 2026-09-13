@@ -5,6 +5,8 @@ from app.models.address import Address
 from app.models.order import Order, OrderItem, Payment
 from app.models.brand import Brand
 from app.models.voucher import Voucher
+from app.models.payment_transaction import PaymentTransaction
+from app.models.review import Review
 
 __all__ = [
     "Base",
@@ -16,6 +18,8 @@ __all__ = [
     "OrderItem",
     "Payment",
     "Brand",
-    "Voucher"
+    "Voucher",
+    "PaymentTransaction",
+    "Review"
 ]
 

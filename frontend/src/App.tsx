@@ -1,5 +1,6 @@
 import { useEffect } from "react"
 import { Route, Switch } from "wouter"
+import { Toaster } from "sonner"
 import { Storefront } from "@/pages/Storefront"
 import { ProductsPage } from "@/pages/ProductsPage"
 import { ProductDetail } from "@/pages/ProductDetail"
@@ -11,9 +12,15 @@ import { Checkout } from "@/pages/Checkout"
 import { Cart } from "@/pages/Cart"
 import { PaymentResult } from "@/pages/PaymentResult"
 import { useAuthStore } from "@/store/useAuthStore"
+import { useThemeStore } from "@/store/useThemeStore"
 
 function App() {
   const { setUser, setIsLoading } = useAuthStore()
+  const { isDark, initTheme } = useThemeStore()
+
+  useEffect(() => {
+    initTheme()
+  }, [initTheme])
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -48,7 +55,13 @@ function App() {
   }, [setUser, setIsLoading])
 
   return (
-    <div className="min-h-screen bg-zinc-50 selection:bg-electric-blue selection:text-white">
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950 text-zinc-900 dark:text-zinc-50 selection:bg-electric-blue selection:text-white transition-colors duration-200">
+      <Toaster
+        position="top-right"
+        richColors
+        closeButton
+        theme={isDark ? "dark" : "light"}
+      />
       <Switch>
         <Route path="/" component={Storefront} />
         <Route path="/products" component={ProductsPage} />

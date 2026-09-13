@@ -1,10 +1,13 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useLocation } from 'wouter';
 import { useCartStore } from '@/store/useCartStore';
 import { useAuthStore } from '@/store/useAuthStore';
 import { useAddressStore } from '@/store/useAddressStore';
 import { useOrderStore } from '@/store/useOrderStore';
 import { Navbar } from '@/components/layout/Navbar';
+import { VietQRModal } from '@/components/payment/VietQRModal';
+import { paymentApi } from '@/services/paymentApi';
+import { PaymentCreateResponse } from '@/types/payment';
 import { toast } from 'sonner';
 
 export function Checkout() {
@@ -16,7 +19,11 @@ export function Checkout() {
   const { createOrder, isLoading: creatingOrder } = useOrderStore();
   
   const [selectedAddressId, setSelectedAddressId] = useState<string>('');
-  const [paymentMethod, setPaymentMethod] = useState<string>('COD');
+  const [paymentMethod, setPaymentMethod] = useState<string>('VIETQR');
+  const [vietQRData, setVietQRData] = useState<PaymentCreateResponse | null>(null);
+  const [isVietQRModalOpen, setIsVietQRModalOpen] = useState<boolean>(false);
+  const [hasPlacedOrder, setHasPlacedOrder] = useState<boolean>(false);
+  const hasPlacedOrderRef = useRef<boolean>(false);
 
   const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
 
@@ -38,6 +45,12 @@ export function Checkout() {
       setSelectedAddressId(defaultAddr ? defaultAddr.id : addresses[0].id);
     }
   }, [addresses, selectedAddressId]);
+
+  useEffect(() => {
+    if (!authLoading && items.length === 0 && !hasPlacedOrderRef.current && !isVietQRModalOpen) {
+      setLocation('/cart');
+    }
+  }, [authLoading, items.length, isVietQRModalOpen, setLocation]);
 
   const handlePlaceOrder = async () => {
     if (!token) {
@@ -62,14 +75,30 @@ export function Checkout() {
       };
       
       const order = await createOrder(token, orderData);
-      clearCart();
-      toast.success('Order placed successfully!');
-      
-      if (order.payment_url) {
-        toast.info(`Redirecting to payment gateway...`);
-        setTimeout(() => window.location.href = order.payment_url!, 1500);
+      hasPlacedOrderRef.current = true;
+      setHasPlacedOrder(true);
+
+      if (paymentMethod === 'VIETQR' || paymentMethod === 'PAYOS') {
+        try {
+          const qrRes = await paymentApi.createPaymentLink(order.id, 'VIETQR');
+          setVietQRData(qrRes);
+          setIsVietQRModalOpen(true);
+          clearCart();
+          toast.success('Order placed. Please scan the QR code to complete payment.');
+        } catch (err: any) {
+          clearCart();
+          toast.error('Unable to generate VietQR link: ' + (err.message || 'Connection error'));
+          setLocation('/profile');
+        }
       } else {
-        setLocation('/profile');
+        clearCart();
+        toast.success('Order placed successfully!');
+        if (order.payment_url) {
+          toast.info(`Redirecting to payment gateway...`);
+          setTimeout(() => window.location.href = order.payment_url!, 1500);
+        } else {
+          setLocation('/profile');
+        }
       }
     } catch (err: any) {
       toast.error(err.message || 'Failed to place order');
@@ -77,8 +106,7 @@ export function Checkout() {
   };
 
   if (authLoading) return <div>Loading...</div>;
-  if (items.length === 0) {
-    setLocation('/cart');
+  if (!hasPlacedOrder && !isVietQRModalOpen && items.length === 0) {
     return null;
   }
 
@@ -128,24 +156,32 @@ export function Checkout() {
               <h2 className="text-xl font-medium mb-6">Payment Method</h2>
               <div className="flex flex-col gap-4">
                 {[
+                  { id: 'VIETQR', label: 'VietQR / PayOS (Instant 24/7 Bank QR Transfer)', badge: 'Recommended' },
                   { id: 'COD', label: 'Cash on Delivery (COD)' },
                   { id: 'VNPAY', label: 'VNPay' },
                   { id: 'MOMO', label: 'MoMo E-Wallet' },
                   { id: 'CREDIT_CARD', label: 'Credit Card' }
                 ].map(method => (
-                  <label key={method.id} className={`flex items-center gap-4 p-4 rounded-xl border cursor-pointer transition-colors ${paymentMethod === method.id ? 'border-zinc-900 bg-zinc-50' : 'border-zinc-200 hover:border-zinc-300'}`}>
-                    <input 
-                      type="radio" 
-                      name="payment_method" 
-                      value={method.id} 
-                      checked={paymentMethod === method.id} 
-                      onChange={() => setPaymentMethod(method.id)} 
-                      className="hidden"
-                    />
-                    <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentMethod === method.id ? 'border-zinc-900' : 'border-zinc-300'}`}>
-                      {paymentMethod === method.id && <div className="w-3 h-3 rounded-full bg-zinc-900" />}
+                  <label key={method.id} className={`flex items-center justify-between p-4 rounded-xl border cursor-pointer transition-all ${paymentMethod === method.id ? 'border-zinc-900 bg-zinc-50 shadow-sm' : 'border-zinc-200 hover:border-zinc-300'}`}>
+                    <div className="flex items-center gap-4">
+                      <input 
+                        type="radio" 
+                        name="payment_method" 
+                        value={method.id} 
+                        checked={paymentMethod === method.id} 
+                        onChange={() => setPaymentMethod(method.id)} 
+                        className="hidden"
+                      />
+                      <div className={`w-5 h-5 rounded-full border flex items-center justify-center ${paymentMethod === method.id ? 'border-zinc-900' : 'border-zinc-300'}`}>
+                        {paymentMethod === method.id && <div className="w-3 h-3 rounded-full bg-zinc-900" />}
+                      </div>
+                      <span className="font-medium text-zinc-900">{method.label}</span>
                     </div>
-                    <span className="font-medium text-zinc-900">{method.label}</span>
+                    {method.badge && (
+                      <span className="text-xs font-semibold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800">
+                        {method.badge}
+                      </span>
+                    )}
                   </label>
                 ))}
               </div>
@@ -184,6 +220,21 @@ export function Checkout() {
 
         </div>
       </main>
+
+      <VietQRModal
+        isOpen={isVietQRModalOpen}
+        paymentData={vietQRData}
+        onClose={() => {
+          setIsVietQRModalOpen(false);
+          setLocation('/profile');
+        }}
+        onPaymentSuccess={() => {
+          setTimeout(() => {
+            setIsVietQRModalOpen(false);
+            setLocation('/profile');
+          }, 1500);
+        }}
+      />
     </>
   );
 }
