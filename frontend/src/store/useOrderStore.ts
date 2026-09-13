@@ -40,6 +40,7 @@ interface OrderState {
   fetchOrders: (token: string) => Promise<void>;
   createOrder: (token: string, order: OrderCreate) => Promise<Order>;
   cancelOrder: (token: string, id: string) => Promise<void>;
+  updatePaymentMethod: (token: string, id: string, paymentMethod: string) => Promise<Order>;
 }
 
 const API_URL = (import.meta as any).env.VITE_API_URL || '/api/v1';
@@ -101,5 +102,31 @@ export const useOrderStore = create<OrderState>((set, get) => ({
       set({ error: err.message, isLoading: false });
       throw err;
     }
+  },
+
+  updatePaymentMethod: async (token, id, paymentMethod) => {
+    set({ isLoading: true, error: null });
+    try {
+      const res = await fetch(`${API_URL}/orders/${id}/payment-method`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`
+        },
+        body: JSON.stringify({ payment_method: paymentMethod })
+      });
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.detail || 'Failed to update payment method');
+      }
+      const data = await res.json();
+      await get().fetchOrders(token);
+      set({ isLoading: false });
+      return data;
+    } catch (err: any) {
+      set({ error: err.message, isLoading: false });
+      throw err;
+    }
   }
 }));
+

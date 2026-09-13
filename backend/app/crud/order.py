@@ -13,9 +13,21 @@ class OrderRepository:
         self.session = session
 
     async def get_multi_by_user(self, user_id: UUID, skip: int = 0, limit: int = 100) -> List[Order]:
-        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.user_id == user_id).offset(skip).limit(limit)
+        stmt = (
+            select(Order)
+            .options(selectinload(Order.items), selectinload(Order.payment))
+            .where(Order.user_id == user_id)
+            .order_by(Order.created_at.desc())
+            .offset(skip)
+            .limit(limit)
+        )
         result = await self.session.execute(stmt)
-        return list(result.scalars().all())
+        orders = list(result.scalars().all())
+        from app.services.payment import PaymentService
+        for order in orders:
+            if order.status == "PENDING":
+                order.payment_url = PaymentService.generate_payment_url(order.id, float(order.total_amount), order.payment_method)
+        return orders
 
     async def create_order_with_transaction(self, user_id: UUID, order_in: OrderCreate) -> Order:
         total_amount = 0.0
@@ -114,6 +126,44 @@ class OrderRepository:
         self.session.add(order)
         await self.session.commit()
         await self.session.refresh(order)
+        return order
+
+    async def update_payment_method(self, order_id: UUID, user_id: UUID, new_payment_method: str) -> Order:
+        stmt = (
+            select(Order)
+            .options(selectinload(Order.items), selectinload(Order.payment))
+            .where(Order.id == order_id, Order.user_id == user_id)
+            .with_for_update()
+        )
+        result = await self.session.execute(stmt)
+        order = result.scalars().first()
+        
+        if not order:
+            raise ValueError("Order not found")
+        if order.status != "PENDING":
+            raise ValueError(f"Cannot change payment method for order in {order.status} state")
+        if order.payment and order.payment.status in ["PAID", "SUCCESS"]:
+            raise ValueError("Order has already been paid")
+            
+        order.payment_method = new_payment_method
+        if order.payment:
+            order.payment.provider = new_payment_method
+            order.payment.status = "PENDING"
+            self.session.add(order.payment)
+        else:
+            db_payment = Payment(
+                order_id=order.id,
+                status="PENDING",
+                provider=new_payment_method
+            )
+            self.session.add(db_payment)
+            
+        self.session.add(order)
+        await self.session.commit()
+        await self.session.refresh(order)
+        
+        from app.services.payment import PaymentService
+        order.payment_url = PaymentService.generate_payment_url(order.id, float(order.total_amount), order.payment_method)
         return order
 
     async def get_all_orders(self, skip: int = 0, limit: int = 100, status: Optional[str] = None) -> List[Order]:

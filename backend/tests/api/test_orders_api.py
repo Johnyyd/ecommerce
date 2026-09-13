@@ -91,3 +91,56 @@ async def test_create_order_insufficient_stock(mock_customer):
     assert "Insufficient stock" in response.json()["detail"]
     
     app.dependency_overrides.clear()
+
+@pytest.mark.asyncio
+async def test_update_order_payment_method_success(mock_customer):
+    mock_repo = AsyncMock()
+    order_id = generate_uuidv7()
+    updated_order = Order(
+        id=order_id,
+        user_id=mock_customer.id,
+        total_amount=50.0,
+        status="PENDING",
+        address_id=generate_uuidv7(),
+        payment_method="COD",
+        items=[]
+    )
+    mock_repo.update_payment_method.return_value = updated_order
+
+    app.dependency_overrides[get_order_repository] = lambda: mock_repo
+    app.dependency_overrides[get_current_user] = lambda: mock_customer
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.patch(f"/api/v1/orders/{order_id}/payment-method", json={
+            "payment_method": "COD"
+        })
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["payment_method"] == "COD"
+    assert data["status"] == "PENDING"
+    mock_repo.update_payment_method.assert_called_once_with(order_id, mock_customer.id, "COD")
+
+    app.dependency_overrides.clear()
+
+@pytest.mark.asyncio
+async def test_update_order_payment_method_not_allowed(mock_customer):
+    mock_repo = AsyncMock()
+    order_id = generate_uuidv7()
+    mock_repo.update_payment_method.side_effect = ValueError("Cannot change payment method for order in COMPLETED state")
+
+    app.dependency_overrides[get_order_repository] = lambda: mock_repo
+    app.dependency_overrides[get_current_user] = lambda: mock_customer
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.patch(f"/api/v1/orders/{order_id}/payment-method", json={
+            "payment_method": "VNPAY"
+        })
+
+    assert response.status_code == 400
+    assert "Cannot change payment method" in response.json()["detail"]
+
+    app.dependency_overrides.clear()
+

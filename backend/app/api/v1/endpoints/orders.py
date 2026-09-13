@@ -8,7 +8,7 @@ from redis.asyncio import Redis
 
 from app.core.db import get_db_session
 from app.core.redis import get_redis_client
-from app.schemas.order import OrderCreate, OrderResponse
+from app.schemas.order import OrderCreate, OrderResponse, OrderPaymentMethodUpdate
 from app.crud.order import OrderRepository
 from app.api.deps import get_current_user, get_current_admin, get_current_staff
 from app.models.user import User
@@ -58,6 +58,25 @@ async def cancel_order(
         raise HTTPException(status_code=400, detail=str(e))
     except Exception as e:
         raise HTTPException(status_code=500, detail="Transaction failed: " + str(e))
+
+@router.patch("/{id}/payment-method", response_model=OrderResponse)
+async def update_order_payment_method(
+    id: UUID,
+    body: OrderPaymentMethodUpdate,
+    current_user: User = Depends(get_current_user),
+    repo: OrderRepository = Depends(get_order_repository)
+) -> Any:
+    """
+    Allow customers to seamlessly update or change payment methods on PENDING orders.
+    Enables transitioning between VietQR, COD, VNPay, MoMo, or Card without duplicate orders.
+    """
+    try:
+        order = await repo.update_payment_method(id, current_user.id, body.payment_method)
+        return order
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=500, detail="Failed to update payment method: " + str(e))
 
 @router.get("/admin", response_model=List[OrderResponse])
 async def list_all_orders_admin(

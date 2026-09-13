@@ -41,3 +41,7 @@ class OrderResponse(BaseModel):
     payment_url: Optional[str] = None
 
     model_config = ConfigDict(from_attributes=True)
+
+class OrderPaymentMethodUpdate(BaseModel):
+    payment_method: str = Field(..., description="New payment method, e.g., COD, VIETQR, VNPAY, MOMO, CREDIT_CARD")
+
