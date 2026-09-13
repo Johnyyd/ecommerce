@@ -46,6 +46,8 @@
 - [📊 13. Giám sát & Vận hành (Monitoring & Observability)](#-13-giám-sát--vận-hành-monitoring--observability)
   - [Kiểm thử tải (Benchmark) & Kubernetes Auto-Scaling (HPA)](#4-kiểm-thử-tải-benchmark--kubernetes-auto-scaling-hpa)
 - [🛠️ 14. Khắc phục sự cố thường gặp (Troubleshooting & FAQs)](#️-14-khắc-phục-sự-cố-thường-gặp-troubleshooting--faqs)
+- [🗺️ 15. Lộ trình phát triển tương lai (Development Roadmap)](ROADMAP.md)
+- [📜 16. Giấy phép & Đóng góp (License & Contributing)](#-16-giấy-phép--đóng-góp-license--contributing)
 
 ---
 
@@ -867,7 +869,14 @@ Phần này đúc kết các tình huống thực tế và cách giải quyết 
 
 ---
 
-## 📜 15. Giấy phép & Đóng góp (License & Contributing)
+## 🗺️ 15. Lộ trình phát triển tương lai (Development Roadmap)
+
+Toàn bộ chiến lược, các trụ cột công nghệ đề xuất nâng cấp (Thanh toán thực tế, Tác vụ ngầm Worker, Meilisearch tiếng Việt, AI Recommender, Refactor Frontend) và ma trận ưu tiên đã được tổng hợp chi tiết tại:
+👉 **[Xem chi tiết Lộ trình Phát triển (ROADMAP.md)](ROADMAP.md)**
+
+---
+
+## 📜 16. Giấy phép & Đóng góp (License & Contributing)
 
 - Dự án được phân phối dưới giấy phép **MIT License**. Bạn hoàn toàn có thể tự do tham khảo, học tập và phát triển thêm các tính năng mới.
 - Mọi đóng góp (Pull Request), báo lỗi (Issues) hoặc gợi ý cải tiến kiến trúc đều được hoan nghênh nồng nhiệt!
