@@ -1,5 +1,11 @@
 #!/bin/sh
 
+if [ "$APP_TYPE" = "worker" ]; then
+    echo "Starting Enterprise ARQ background worker..."
+    export DATABASE_URL="postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_SERVER}:${POSTGRES_PORT}/${POSTGRES_DB}"
+    exec python -m arq app.worker.WorkerSettings
+fi
+
 # Calculate workers based on CPU limits
 # If CPU_LIMIT is not set, default to 1
 if [ -z "$CPU_LIMIT" ]; then

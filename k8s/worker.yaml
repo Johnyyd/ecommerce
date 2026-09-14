@@ -1,0 +1,55 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  labels:
+    app: worker
+spec:
+  replicas: 1
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      app: worker
+  template:
+    metadata:
+      labels:
+        app: worker
+    spec:
+      enableServiceLinks: false
+      containers:
+        - name: worker
+          image: ecommerce-backend:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: APP_TYPE
+              value: "worker"
+            - name: HOME
+              value: "/tmp"
+            - name: POSTGRES_SERVER
+              value: "pgbouncer"
+            - name: POSTGRES_PORT
+              value: "6432"
+            - name: REDIS_HOST
+              value: "redis"
+            - name: REDIS_PORT
+              value: "6379"
+            - name: MEDIA_DIR
+              value: "/app/media"
+            - name: REPORTS_DIR
+              value: "/app/reports"
+          envFrom:
+            - secretRef:
+                name: app-secrets
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+          lifecycle:
+            preStop:
+              exec:
+                command: ["sleep", "5"]
+      securityContext:
+        fsGroup: 102

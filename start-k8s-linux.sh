@@ -84,11 +84,13 @@ if [ "$CLUSTER_TOOL" = "minikube" ]; then
     echo "Cấu hình DNS cho Minikube node..."
     minikube ssh "echo -e 'nameserver 8.8.8.8\nnameserver 1.1.1.1' | sudo tee /etc/resolv.conf" 2>/dev/null || true
 
-    # Enable ingress & metrics-server addons if not enabled
+    # Enable ingress, metrics-server & storage-provisioner addons if not enabled
     echo "Bật Ingress addon trên Minikube..."
     minikube addons enable ingress 2>/dev/null || true
     echo "Bật Metrics-Server addon trên Minikube (hỗ trợ HPA Autoscaler)..."
     minikube addons enable metrics-server 2>/dev/null || true
+    echo "Đảm bảo Storage-Provisioner addon hoạt động trên Minikube..."
+    minikube addons enable storage-provisioner 2>/dev/null || true
 
 elif [ "$CLUSTER_TOOL" = "kind" ]; then
     echo -e "Sử dụng ${GREEN}Kind${NC} làm cluster provider."
@@ -168,6 +170,11 @@ echo -e "${CYAN}[7/7] Triển khai Kubernetes manifests (k8s/)...${NC}"
 # Delete old jobs/pods if they exist so migration job can re-run
 kubectl delete job db-migration-job --ignore-not-found=true
 kubectl delete pod image-cleaner --ignore-not-found=true
+
+# Dọn dẹp PersistentVolume ở trạng thái Released nếu có
+for pv in $(kubectl get pv --no-headers 2>/dev/null | awk '$5=="Released" {print $1}'); do
+    kubectl delete pv "$pv" 2>/dev/null || true
+done
 
 # Wait for Ingress Controller if using Minikube
 if [ "$CLUSTER_TOOL" = "minikube" ]; then

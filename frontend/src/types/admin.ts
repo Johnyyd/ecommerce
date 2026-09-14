@@ -123,6 +123,7 @@ export type TabType =
   | "users"
   | "categories"
   | "backups"
+  | "async_jobs"
 
 export interface AdminOverviewStats {
   totalRevenue: number
@@ -130,3 +131,36 @@ export interface AdminOverviewStats {
   activeUsers: number
   totalProducts: number
 }
+
+export interface QueueMetrics {
+  worker_status: string
+  queued_jobs: number
+  active_or_cached_jobs: number
+  total_reports_generated: number
+  redis_connected: boolean
+  timestamp: string
+}
+
+export interface SandboxEmail {
+  id: string
+  recipient: string
+  subject: string
+  template: string
+  context: Record<string, any>
+  html_body: string
+  sent_at: string
+  delivery_mode: string
+}
+
+export interface MediaUploadResult {
+  file_id: string
+  job_id: string
+  original_url: string
+  variants?: {
+    thumb: string
+    medium: string
+    full: string
+  }
+  savings_percentage?: number
+}
+

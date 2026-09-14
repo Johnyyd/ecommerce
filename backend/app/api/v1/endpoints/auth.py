@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Cookie
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import Annotated
+import logging
 
 from app.core.db import get_db_session
 from app.core.security import verify_password, create_access_token, create_refresh_token, decode_token
@@ -13,6 +14,7 @@ from app.api.deps import get_current_user
 from app.models.user import User
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 class LoginData(BaseModel):
     username: str
@@ -33,9 +35,21 @@ async def register(
 ):
     try:
         user = await user_service.create_user(user_in)
+        try:
+            from app.core.queue import enqueue_email_job
+            import asyncio
+            asyncio.create_task(enqueue_email_job(
+                user.email,
+                "Welcome to Enterprise E-Commerce",
+                "welcome",
+                {"username": user.username}
+            ))
+        except Exception as err:
+            logger.warning("Could not dispatch welcome email for %s: %s", user.username, err)
         return user
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
+
 
 @router.post("/login")
 async def login(

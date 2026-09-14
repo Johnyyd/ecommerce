@@ -11,7 +11,10 @@ elif command -v kind &> /dev/null && kind get clusters 2>/dev/null | grep -q 'ki
     kind load docker-image ecommerce-backend:latest
 fi
 
-echo "Rolling out restart for backend deployment in K8s..."
+echo "Rolling out restart for backend and worker deployment in K8s..."
+kubectl apply -f k8s/worker.yaml
 kubectl rollout restart deployment backend
+kubectl rollout restart deployment worker
 
 echo "Done!"
+

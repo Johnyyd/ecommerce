@@ -38,3 +38,8 @@ frontend/.next
 /backend/alembic/__pycache__
 /.superpowers
 /docs
+
+backend/media/*
+!backend/media/.gitkeep
+backend/reports/*
+!backend/reports/.gitkeep

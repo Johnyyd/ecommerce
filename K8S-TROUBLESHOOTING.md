@@ -98,18 +98,114 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
   ```
   Sau khi thực hiện, K8s sẽ được cấp IP thành công và `127.0.0.1` sẽ trỏ đúng vào Pod frontend của K8s.
 
-## 6. Truy cập các service
-Để theo dõi trạng thái các Pod và Service, chạy:
-  '''bash status.sh'''
-hoặc:
-  '''kubectl get pods -w'''
+## 6. Lỗi Pods Backend bị kẹt ở trạng thái `Pending` (Unbound PersistentVolumeClaims)
 
-Cách truy cập ứng dụng trên Minikube (chọn 1 trong 2):
-1. Cách 1 (Khuyên dùng - Nhanh gọn): Mở thẳng URL frontend trong trình duyệt:
-  '''minikube service frontend'''
+**Triệu chứng:**
+- Khi kiểm tra trạng thái bằng `bash status.sh`, tất cả các Pod `backend` đều bị kẹt ở trạng thái `Pending` (`0/1 Pending`), Deployment `backend` báo `0/3` Ready.
+- Khi kiểm tra chi tiết bằng `kubectl describe pod backend-...` hoặc `kubectl get events`, xuất hiện lỗi cảnh báo:
+  ```text
+  Warning  FailedScheduling  pod/backend-...  0/1 nodes are available: pod has unbound immediate PersistentVolumeClaims. not found
+  ```
+- Kiểm tra PVC bằng `kubectl get pvc` thấy `postgres-backups-pvc` ở trạng thái `Pending`:
+  ```text
+  Waiting for a volume to be created either by the external provisioner 'k8s.io/minikube-hostpath' or manually by the system administrator.
+  ```
 
-2. Cách 2 (LoadBalancer / Ingress qua http://localhost):
-  Mở một terminal mới và chạy lệnh (yêu cầu sudo để bind cổng 80):
-  '''minikube tunnel'''
-  Sau đó truy cập: http://localhost (Frontend) và http://localhost:8000 (Backend)
+**Nguyên nhân:**
+1. **Thiếu tiến trình cấp phát lưu trữ (Storage Provisioner):** Minikube sử dụng StorageClass mặc định `standard` với provisioner `k8s.io/minikube-hostpath`. Do sự cố cụm máy chủ hoặc addon bị tắt, Pod `storage-provisioner` trong namespace `kube-system` không hoạt động. Vì vậy, K8s không thể tự động tạo PersistentVolume (PV) mới khi có yêu cầu từ `postgres-backups-pvc`.
+2. **PV cũ bị kẹt ở trạng thái `Released`:** Khi một PVC cũ bị xóa và tạo lại, PersistentVolume tương ứng không tự giải phóng mà chuyển sang trạng thái `Released` (vẫn giữ tham chiếu `claimRef` cũ), ngăn không cho PVC mới được gán (bind) vào.
+3. **Ảnh hưởng dây chuyền:** Do Pod `backend` định nghĩa volume mount tới `postgres-backups-pvc` (để lưu trữ và tải bản backup PostgreSQL), Kubernetes Scheduler từ chối lập lịch (`PodScheduled: False`) chạy Pod trên Node cho đến khi tất cả các Volume yêu cầu được Bound thành công.
+
+**Cách khắc phục:**
+
+- **Bước 1: Kích hoạt lại addon `storage-provisioner` trên Minikube:**
+  ```bash
+  minikube addons disable storage-provisioner
+  minikube addons enable storage-provisioner
+  ```
+  Kiểm tra pod đã chạy:
+  ```bash
+  kubectl get pods -n kube-system -l integration-test=storage-provisioner
+  # Hoặc:
+  kubectl get pods -n kube-system | grep storage-provisioner
+  ```
+
+- **Bước 2: Xóa các PV cũ đang bị kẹt ở trạng thái `Released` (nếu có):**
+  ```bash
+  kubectl get pv
+  # Nếu thấy PV có STATUS là Released, xóa nó:
+  kubectl delete pv <tên-pv-released>
+  ```
+
+- **Bước 3: Kiểm tra PVC đã Bound và Pods Backend khởi động:**
+  ```bash
+  kubectl get pvc postgres-backups-pvc
+  # Kết quả: STATUS: Bound
+  ```
+  Ngay khi PVC ở trạng thái `Bound`, Kubernetes Scheduler sẽ tự động phân bổ Node và các Pod Backend sẽ lập tức chuyển sang trạng thái `1/1 Running`.
+
+- **Bước 4 (Tự động hóa):** Script `start-k8s-linux.sh` đã được bổ sung lệnh tự động bật addon `storage-provisioner` và dọn dẹp các PV ở trạng thái `Released` trước khi triển khai, ngăn chặn triệt để lỗi này tái diễn.
+
+---
+
+## 7. Lỗi `NotFound: deployments.apps "redis" not found` khi xem log
+
+**Triệu chứng:**
+Khi chạy lệnh `kubectl logs deployments/redis` hoặc `kubectl logs deployments/postgres`, K8s báo lỗi:
+```text
+Error from server (NotFound): deployments.apps "redis" not found in namespace "default"
+```
+
+**Nguyên nhân:**
+Cơ sở dữ liệu **Redis** và **PostgreSQL** trong dự án được triển khai dưới dạng **`StatefulSet`** (để đảm bảo tính toàn vẹn dữ liệu, định danh Pod cố định `redis-0`, `postgres-0` và gắn liền với PersistentVolumeClaims) chứ không phải `Deployment`.
+
+**Cách khắc phục:**
+Sử dụng đúng đối tượng `statefulset` hoặc tên Pod cụ thể để xem logs:
+
+```bash
+# Xem logs Redis:
+kubectl logs statefulset/redis
+# Hoặc:
+kubectl logs redis-0
+
+# Xem logs PostgreSQL:
+kubectl logs statefulset/postgres
+# Hoặc:
+kubectl logs postgres-0
+```
+
+---
+
+## 8. Hướng dẫn Giám sát & Truy cập các Dịch vụ
+
+### Theo dõi trạng thái hệ thống:
+```bash
+bash status.sh
+# Hoặc theo dõi trực tiếp các Pods:
+kubectl get pods -w
+```
+
+### Cách truy cập ứng dụng trên Minikube (chọn 1 trong 2):
+
+1. **Cách 1 (Khuyên dùng - Nhanh gọn nhất):**
+   - Mở giao diện Frontend:
+     ```bash
+     minikube service frontend
+     ```
+   - Mở giao diện giám sát Grafana:
+     ```bash
+     minikube service grafana
+     ```
+
+2. **Cách 2 (LoadBalancer / Ingress qua `localhost`):**
+   - Mở một tab terminal mới và chạy lệnh (yêu cầu mật khẩu sudo để bind cổng 80):
+     ```bash
+     minikube tunnel
+     ```
+   - Sau đó truy cập trên trình duyệt:
+     - **Frontend**: [http://localhost](http://localhost)
+     - **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs) (khi ở chế độ dev) hoặc [http://localhost/api/health](http://localhost/api/health)
+     - **Grafana Monitoring**: [http://localhost:3000](http://localhost:3000) (tài khoản: `admin` / `admin`)
+     - **Prometheus Metrics**: [http://localhost:9090](http://localhost:9090)
+
 

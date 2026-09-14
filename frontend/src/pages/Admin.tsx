@@ -13,7 +13,8 @@ import {
   ArrowLeft,
   ArrowClockwise,
   ShieldCheck,
-  UserGear
+  UserGear,
+  Lightning
 } from "@phosphor-icons/react"
 import { useAuthStore } from "@/store/useAuthStore"
 import { adminApi } from "@/services/adminApi"
@@ -37,13 +38,43 @@ import { AdminVouchers } from "./admin/AdminVouchers"
 import { AdminOrders } from "./admin/AdminOrders"
 import { AdminUsers } from "./admin/AdminUsers"
 import { AdminBackups } from "./admin/AdminBackups"
+import { AdminAsyncJobs } from "./admin/AdminAsyncJobs"
 
 export function Admin() {
   const { user, isLoading } = useAuthStore()
   const [, setLocation] = useLocation()
 
-  // Navigation State
-  const [activeTab, setActiveTab] = useState<TabType>("overview")
+  // Navigation State with URL Hash & localStorage persistence
+  const [activeTab, setActiveTab] = useState<TabType>(() => {
+    if (typeof window !== "undefined") {
+      const hash = window.location.hash.replace("#", "") as TabType
+      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs"]
+      if (validTabs.includes(hash)) return hash
+      const saved = localStorage.getItem("admin_active_tab") as TabType
+      if (validTabs.includes(saved)) return saved
+    }
+    return "overview"
+  })
+
+  const handleTabChange = useCallback((tabId: TabType) => {
+    setActiveTab(tabId)
+    if (typeof window !== "undefined") {
+      localStorage.setItem("admin_active_tab", tabId)
+      window.location.hash = tabId
+    }
+  }, [])
+
+  useEffect(() => {
+    const onHashChange = () => {
+      const hash = window.location.hash.replace("#", "") as TabType
+      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs"]
+      if (validTabs.includes(hash)) {
+        setActiveTab(hash)
+      }
+    }
+    window.addEventListener("hashchange", onHashChange)
+    return () => window.removeEventListener("hashchange", onHashChange)
+  }, [])
 
   // Data States
   const [products, setProducts] = useState<ProductItem[]>([])
@@ -118,7 +149,8 @@ export function Admin() {
       badge: orders.filter(o => o.status === "PENDING").length || orders.length
     },
     { id: "users", label: "Users", icon: <Users size={16} weight="bold" />, badge: users.length },
-    { id: "backups", label: "Backups", icon: <Database size={16} weight="bold" /> }
+    { id: "backups", label: "Backups", icon: <Database size={16} weight="bold" /> },
+    { id: "async_jobs", label: "Async Jobs", icon: <Lightning size={16} weight="bold" /> }
   ]
 
   return (
@@ -190,7 +222,7 @@ export function Admin() {
                 <button
                   key={tab.id}
                   data-testid={`tab-${tab.id}`}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => handleTabChange(tab.id)}
                   className={`relative px-3.5 py-2 rounded-xl text-xs font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                     isSelected
                       ? "text-zinc-900 dark:text-white"
@@ -242,7 +274,7 @@ export function Admin() {
                 orders={orders}
                 users={users}
                 isFetching={isFetching}
-                onNavigateTab={setActiveTab}
+                onNavigateTab={handleTabChange}
               />
             )}
             {activeTab === "products" && (
@@ -296,6 +328,9 @@ export function Admin() {
                 currentUserRole={user?.role}
                 onRefresh={fetchAllData}
               />
+            )}
+            {activeTab === "async_jobs" && (
+              <AdminAsyncJobs />
             )}
           </motion.div>
         </AnimatePresence>

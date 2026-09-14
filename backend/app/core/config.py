@@ -32,6 +32,17 @@ class Settings(BaseSettings):
     VIETQR_ACCOUNT_NO: str = "100879630629"
     VIETQR_ACCOUNT_NAME: str = "ECOMMERCE ENTERPRISE"
 
+    # Pillar 3: Async Workers, Media & Reporting settings
+    FRONTEND_URL: str = "http://localhost:3000"
+    MEDIA_DIR: str = "media"
+    REPORTS_DIR: str = "reports"
+    SMTP_HOST: str | None = None
+    SMTP_PORT: int = 587
+    SMTP_USER: str | None = None
+    SMTP_PASSWORD: str | None = None
+    EMAIL_FROM: str = "noreply@ecommerce.local"
+
     model_config = SettingsConfigDict(env_file=(".env", "backend/.env"), env_file_encoding="utf-8", extra="ignore")
+
 
 settings = Settings()

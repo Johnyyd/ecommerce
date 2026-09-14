@@ -15,7 +15,10 @@ RUN mkdir -p /app/app /app/alembic && touch /app/alembic.ini
 
 COPY . /app
 
-# Code remains owned by root:root (Read-only) per mandate
+# Ensure writable media and reports directory for appuser
+RUN mkdir -p /app/media /app/reports && chown -R appuser:appgroup /app/media /app/reports
+
+# Code remains owned by root:root (Read-only) per mandate, except storage folders
 RUN chmod +x /app/entrypoint.sh
 
 USER appuser

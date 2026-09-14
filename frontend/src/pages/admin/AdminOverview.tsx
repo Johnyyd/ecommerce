@@ -8,7 +8,8 @@ import {
   ArrowRight,
   Plus,
   Receipt,
-  Ticket
+  Ticket,
+  Lightning
 } from "@phosphor-icons/react"
 import { OrderData, ProductItem, UserData, TabType } from "@/types/admin"
 import { Skeleton } from "@/components/ui/Skeleton"
@@ -147,7 +148,7 @@ export function AdminOverview({
       </div>
 
       {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
         <button
           onClick={() => onNavigateTab("products")}
           className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl text-left hover:border-zinc-300 dark:hover:border-zinc-700 transition-all active:scale-[0.98] group"
@@ -191,6 +192,22 @@ export function AdminOverview({
             <div>
               <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-50">Discount Vouchers</div>
               <div className="text-xs text-zinc-500 dark:text-zinc-400">Create promotional codes</div>
+            </div>
+          </div>
+          <ArrowRight size={18} className="text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
+        </button>
+
+        <button
+          onClick={() => onNavigateTab("async_jobs")}
+          className="flex items-center justify-between p-4 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl text-left hover:border-zinc-300 dark:hover:border-zinc-700 transition-all active:scale-[0.98] group"
+        >
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center">
+              <Lightning size={20} weight="bold" />
+            </div>
+            <div>
+              <div className="font-semibold text-sm text-zinc-900 dark:text-zinc-50">Async Jobs & Queue</div>
+              <div className="text-xs text-zinc-500 dark:text-zinc-400">Worker & Email outbox</div>
             </div>
           </div>
           <ArrowRight size={18} className="text-zinc-400 group-hover:translate-x-0.5 transition-transform" />
