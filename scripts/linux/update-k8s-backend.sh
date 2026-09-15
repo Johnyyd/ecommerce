@@ -1,4 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")/../.."
+
 echo "Building new ecommerce-backend:latest image..."
 docker build -t ecommerce-backend:latest ./backend
 

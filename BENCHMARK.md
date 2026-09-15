@@ -10,7 +10,7 @@ Tài liệu này ghi lại toàn bộ quy trình, kiến trúc, kịch bản ki�
 flowchart TD
     subgraph Host["Host Machine (Linux / Arch / Ubuntu)"]
         AB["ApacheBench (ab)\nCông cụ phát tải song song\n-n [requests] -c [concurrency] -k"]
-        Script["Script benchmark.sh\nTự động hóa test & hiển thị HPA"]
+        Script["Script scripts/benchmark/benchmark.sh\nTự động hóa test & hiển thị HPA"]
     end
 
     subgraph K8s["Cụm Kubernetes (Minikube / Node: 192.168.49.2)"]
@@ -135,9 +135,9 @@ spec:
 
 ---
 
-## 3. Hướng dẫn Sử dụng Script Tự động (`benchmark.sh`)
+## 3. Hướng dẫn Sử dụng Script Tự động (`scripts/benchmark/benchmark.sh`)
 
-Dự án cung cấp sẵn script [`benchmark.sh`](benchmark.sh) giúp tự động phát hiện IP Gateway, giám sát HPA nền và định dạng kết quả trực quan.
+Dự án cung cấp sẵn script [`scripts/benchmark/benchmark.sh`](scripts/benchmark/benchmark.sh) giúp tự động phát hiện IP Gateway, giám sát HPA nền và định dạng kết quả trực quan.
 
 ### 3.1. Chạy nhanh theo Menu Tương tác
 ```bash

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+cd "$(dirname "$0")/../.."
+
 set -euo pipefail
 
 # Script khôi phục database PostgreSQL từ file backup .dump

@@ -1,4 +1,6 @@
 #!/usr/bin/env bash
+cd "$(dirname "$0")/../.."
+
 set -euo pipefail
 
 # Script sao lưu database PostgreSQL thủ công (chạy qua kubectl hoặc docker)

@@ -1,5 +1,8 @@
 @echo off
-REM start-k8s.bat - Automated local Kubernetes deployment for Windows
+cd /d "%~dp0\..\..\.."
+
+chcp 65001 >nul
+REM start-k8s-windows.bat - Automated local Kubernetes deployment for Windows
 
 echo =======================================================
 echo    PREMIUM E-COMMERCE - KUBERNETES AUTOMATION (WINDOWS)
@@ -57,7 +60,14 @@ REM 6. Clean up old resources
 echo [6/7] Cleaning up old jobs and resources...
 kubectl delete job db-migration-job --ignore-not-found=true
 kubectl delete pod image-cleaner --ignore-not-found=true
-echo OK: Old jobs removed.
+
+REM Clean up Released Persistent Volumes (if any)
+for /f "tokens=1,5" %%i in ('kubectl get pv --no-headers 2^>nul') do (
+    if "%%j"=="Released" (
+        kubectl delete pv %%i >nul 2>&1
+    )
+)
+echo OK: Old jobs and resources removed.
 
 REM 7. Apply Kubernetes Manifests
 echo [7/7] Applying Kubernetes manifests (k8s/)...
@@ -68,8 +78,14 @@ echo =======================================================
 echo          KUBERNETES DEPLOYMENT COMPLETED!              
 echo =======================================================
 echo.
-echo Check the status of your pods with:
-echo    status.bat
-echo or:
+echo Để theo dõi trạng thái các Pod và Service, chạy:
+echo    scripts\windows\status.bat
+echo hoặc:
 echo    kubectl get pods -w
+echo.
+echo Cách truy cập ứng dụng trên Kubernetes (Docker Desktop / Docker):
+echo - Frontend (Website): http://localhost
+echo - Backend (API Docs): http://localhost:8000/docs
+echo - Grafana (Monitoring): http://localhost:3000
+echo   (Đăng nhập mặc định Grafana: admin / admin)
 echo.

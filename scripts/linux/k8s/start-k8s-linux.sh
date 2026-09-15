@@ -1,4 +1,6 @@
 #!/bin/bash
+cd "$(dirname "$0")/../../.."
+
 # start-k8s-linux.sh - Automated local Kubernetes deployment for Linux (Minikube / Kind)
 
 set -e
@@ -140,9 +142,16 @@ if [ -f .env ]; then
 fi
 
 # -------------------------------------------------------------
-# 6. Build and Load Docker Images
+# 6. Normalize Line Endings (CRLF to LF)
 # -------------------------------------------------------------
-echo -e "${CYAN}[6/7] Build và nạp Docker images vào Kubernetes cluster...${NC}"
+echo -e "${CYAN}[6/8] Chuẩn hóa định dạng dòng (CRLF sang LF) cho các file .sh...${NC}"
+find . -type f -name "*.sh" -not -path "*/\.git/*" -exec sed -i 's/\r$//' {} + 2>/dev/null || true
+echo -e "${GREEN}✓ Đã chuẩn hóa file script.${NC}"
+
+# -------------------------------------------------------------
+# 7. Build and Load Docker Images
+# -------------------------------------------------------------
+echo -e "${CYAN}[7/8] Build và nạp Docker images vào Kubernetes cluster...${NC}"
 
 echo "Đang build image ecommerce-backend:latest..."
 docker build -t ecommerce-backend:latest ./backend
@@ -163,9 +172,9 @@ fi
 echo -e "${GREEN}✓ Images đã được nạp thành công vào cluster.${NC}"
 
 # -------------------------------------------------------------
-# 7. Deploy Kubernetes Manifests
+# 8. Deploy Kubernetes Manifests
 # -------------------------------------------------------------
-echo -e "${CYAN}[7/7] Triển khai Kubernetes manifests (k8s/)...${NC}"
+echo -e "${CYAN}[8/8] Triển khai Kubernetes manifests (k8s/)...${NC}"
 
 # Delete old jobs/pods if they exist so migration job can re-run
 kubectl delete job db-migration-job --ignore-not-found=true
@@ -194,7 +203,7 @@ echo -e "${GREEN}        TRIỂN KHAI KUBERNETES HOÀN TẤT!               ${NC
 echo -e "${GREEN}=======================================================${NC}"
 echo ""
 echo -e "Để theo dõi trạng thái các Pod và Service, chạy:"
-echo -e "   ${YELLOW}bash status.sh${NC}"
+echo -e "   ${YELLOW}bash scripts/linux/status.sh${NC}"
 echo -e "hoặc:"
 echo -e "   ${YELLOW}kubectl get pods -w${NC}"
 echo ""

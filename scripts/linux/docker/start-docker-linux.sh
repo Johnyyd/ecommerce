@@ -1,5 +1,7 @@
 #!/bin/bash
-# start-docker.sh
+cd "$(dirname "$0")/../../.."
+
+# scripts/linux/docker/start-docker-linux.sh
 
 echo "Starting Premium E-Commerce Platform via Docker Compose..."
 

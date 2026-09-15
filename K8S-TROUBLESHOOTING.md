@@ -12,7 +12,7 @@ Kubernetes Manifests (như `pgbouncer.yaml`, `redis.yaml`...) được cấu hì
 
 **Khắc phục đã thực hiện:**
 
-- Cập nhật script `start-k8s.bat` và `start-k8s.sh` để tự động tạo `db-secrets` và `app-secrets` từ file `.env` trước khi chạy `kubectl apply -f k8s/`.
+- Cập nhật script `scripts\windows\k8s\start-k8s-windows.bat` và `scripts/linux/k8s/start-k8s-linux.sh` để tự động tạo `db-secrets` và `app-secrets` từ file `.env` trước khi chạy `kubectl apply -f k8s/`.
 - Sửa lỗi không đồng nhất tên Secret trong file `k8s/redis.yaml` (đổi từ `redis-secrets` sang `db-secrets`).
 
 ---
@@ -36,7 +36,7 @@ minikube image load ecommerce-backend:latest
 minikube image load ecommerce-frontend:latest
 ```
 
-_Lưu ý: Nếu bạn sử dụng Docker Desktop Kubernetes, các image cục bộ thường được chia sẻ tự động, tuy nhiên hãy chắc chắn bạn đã build chúng thành công (bằng cách chạy `start-docker.bat` hoặc lệnh `docker-compose build` một lần)._
+_Lưu ý: Nếu bạn sử dụng Docker Desktop Kubernetes, các image cục bộ thường được chia sẻ tự động, tuy nhiên hãy chắc chắn bạn đã build chúng thành công (bằng cách chạy `scripts\windows\docker\start-docker-windows.bat` hoặc lệnh `docker-compose build` một lần)._
 **Khắc phục tự động:**
 
 - Đã cấu hình đổi `imagePullPolicy: Never` thành `imagePullPolicy: IfNotPresent` ở các file `backend.yaml`, `frontend.yaml`, và `migration-job.yaml` để Docker Desktop tự động kéo image cục bộ lên K8s.
@@ -80,7 +80,7 @@ Có 2 nguyên nhân chồng chéo:
 ## 5. Lỗi Service K8s bị kẹt ở trạng thái Terminating (Không truy cập được 127.0.0.1)
 
 **Triệu chứng:**
-Ngay cả sau khi đã tắt Docker Compose và chạy lại `start-k8s.bat`, bạn vẫn không thể truy cập `http://127.0.0.1` trên trình duyệt. Trong log hiển thị cảnh báo: `Warning: Detected changes to resource frontend which is currently being deleted`. Service `frontend` của K8s bị kẹt ở trạng thái `LoadBalancer <pending>` hoặc đang trong quá trình Terminating vĩnh viễn.
+Ngay cả sau khi đã tắt Docker Compose và chạy lại `scripts\windows\k8s\start-k8s-windows.bat`, bạn vẫn không thể truy cập `http://127.0.0.1` trên trình duyệt. Trong log hiển thị cảnh báo: `Warning: Detected changes to resource frontend which is currently being deleted`. Service `frontend` của K8s bị kẹt ở trạng thái `LoadBalancer <pending>` hoặc đang trong quá trình Terminating vĩnh viễn.
 
 **Nguyên nhân:**
 Quá trình trước đó bạn đã vô tình chạy song song cả Docker Compose và Kubernetes. Docker Compose đã chiếm giữ hoàn toàn cổng `80` (`127.0.0.1`). Khi K8s cố gắng tạo Service LoadBalancer trên cùng cổng này, nó thất bại và sinh ra lỗi nội bộ. Khi bạn chạy script tắt/khởi động lại K8s, K8s cố gắng xóa Service cũ đi nhưng bị kẹt lại bởi cơ chế `finalizers` (cơ chế dọn dẹp tài nguyên của K8s), khiến nó lơ lửng mãi mãi ở trạng thái Terminating.
@@ -91,7 +91,7 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
   ```bash
   kubectl patch svc frontend -p '{"metadata":{"finalizers":[]}}' --type=merge
   ```
-- **Bước 2:** Chắc chắn rằng Docker Compose đã được tắt hoàn toàn (`.\stop-docker.bat`).
+- **Bước 2:** Chắc chắn rằng Docker Compose đã được tắt hoàn toàn (`.\scripts\windows\docker\stop-docker.bat`).
 - **Bước 3:** Khởi tạo lại Service `frontend` mới tinh để nó bắt thành công cổng 80:
   ```bash
   kubectl apply -f k8s/frontend.yaml
@@ -101,7 +101,7 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
 ## 6. Lỗi Pods Backend bị kẹt ở trạng thái `Pending` (Unbound PersistentVolumeClaims)
 
 **Triệu chứng:**
-- Khi kiểm tra trạng thái bằng `bash status.sh`, tất cả các Pod `backend` đều bị kẹt ở trạng thái `Pending` (`0/1 Pending`), Deployment `backend` báo `0/3` Ready.
+- Khi kiểm tra trạng thái bằng `bash scripts/linux/status.sh`, tất cả các Pod `backend` đều bị kẹt ở trạng thái `Pending` (`0/1 Pending`), Deployment `backend` báo `0/3` Ready.
 - Khi kiểm tra chi tiết bằng `kubectl describe pod backend-...` hoặc `kubectl get events`, xuất hiện lỗi cảnh báo:
   ```text
   Warning  FailedScheduling  pod/backend-...  0/1 nodes are available: pod has unbound immediate PersistentVolumeClaims. not found
@@ -180,12 +180,23 @@ kubectl logs postgres-0
 
 ### Theo dõi trạng thái hệ thống:
 ```bash
-bash status.sh
+bash scripts/linux/status.sh
 # Hoặc theo dõi trực tiếp các Pods:
 kubectl get pods -w
 ```
 
-### Cách truy cập ứng dụng trên Minikube (chọn 1 trong 2):
+### Cách truy cập ứng dụng (Docker Desktop / Windows / Mac):
+
+Vì Docker Desktop cho phép expose Ingress trực tiếp ra `localhost`, bạn chỉ cần đảm bảo không có dịch vụ nào đang chiếm dụng cổng 80.
+Truy cập trực tiếp trên trình duyệt:
+- **Frontend**: [http://localhost](http://localhost)
+- **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs) (khi ở chế độ dev) hoặc [http://localhost/api/health](http://localhost/api/health)
+- **Grafana Monitoring**: [http://localhost:3000](http://localhost:3000) (tài khoản: `admin` / `admin`)
+- **Prometheus Metrics**: [http://localhost:9090](http://localhost:9090)
+
+---
+
+### Cách truy cập ứng dụng trên Minikube (Linux / Windows / Mac):
 
 1. **Cách 1 (Khuyên dùng - Nhanh gọn nhất):**
    - Mở giao diện Frontend:
@@ -232,7 +243,7 @@ Bạn cần chuyển đổi định dạng dòng kết thúc của các file scr
      ```bash
      docker compose build
      ```
-  6. Xóa pod bị lỗi để Kubernetes tạo lại với image mới (hoặc chạy lại script `start-k8s.bat`):
+  6. Xóa pod bị lỗi để Kubernetes tạo lại với image mới (hoặc chạy lại script `scripts\windows\k8s\start-k8s-windows.bat`):
      ```bash
      kubectl delete pod -l app=backend
      kubectl delete pod -l app=worker
@@ -269,4 +280,4 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
    kubectl delete pvc postgres-backups-pvc
    ```
    *(Lưu ý: Nếu bạn có khai báo một PVC khác cho dữ liệu chính của postgres, hãy xóa cả PVC đó. Ví dụ `kubectl delete pvc data-postgres-0`)*
-3. Chạy lại file khởi tạo K8s `start-k8s.bat` để hệ thống tự động thiết lập lại mọi thứ với một database sạch.
+3. Chạy lại file khởi tạo K8s `scripts\windows\k8s\start-k8s-windows.bat` để hệ thống tự động thiết lập lại mọi thứ với một database sạch.

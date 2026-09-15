@@ -48,7 +48,9 @@ Hệ thống hiện tại đang sử dụng song song 2 môi trường: **Kubern
 **Cách khắc phục:**
 Nếu bạn làm việc và truy cập qua Kubernetes (ví dụ port-forward tới service của backend), bạn cần:
 
-1. Seed Database trong pod K8s: `kubectl exec -it deployment/backend -- python seed_db.py`
+1. Seed Database trong pod K8s: 
+   - **Linux/Mac**: `kubectl exec -it deployment/backend -- python seed_db.py`
+   - **Windows (Command Prompt / PowerShell)**: `kubectl exec deployment/backend -- python seed_db.py` (Bỏ cờ `-it` để tránh lỗi TTY)
 2. Flush Redis trong pod K8s: `kubectl exec statefulset/redis -n default -- redis-cli -a secure_redis_password flushall`
 
 Nếu bạn làm việc và truy cập thông qua Docker Compose (ví dụ qua `localhost:80`):

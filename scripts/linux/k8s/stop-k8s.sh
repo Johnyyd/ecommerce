@@ -1,5 +1,7 @@
 #!/bin/bash
-# stop-k8s.sh
+cd "$(dirname "$0")/../../.."
+
+# scripts/linux/k8s/stop-k8s.sh
 
 echo "Tearing down Premium E-Commerce Platform from Kubernetes..."
 

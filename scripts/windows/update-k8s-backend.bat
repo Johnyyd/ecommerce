@@ -1,4 +1,6 @@
 @echo off
+cd /d "%~dp0\..\.."
+
 echo Building new ecommerce-backend:latest image...
 docker build --no-cache -t ecommerce-backend:latest ./backend
 

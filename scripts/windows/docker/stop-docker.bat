@@ -1,5 +1,7 @@
 @echo off
-REM stop-docker.bat
+cd /d "%~dp0\..\..\.."
+
+REM scripts\windows\docker\stop-docker.bat
 
 echo Stopping Premium E-Commerce Platform Docker Compose services...
 

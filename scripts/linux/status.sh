@@ -1,5 +1,7 @@
 #!/bin/bash
-# status.sh
+cd "$(dirname "$0")/../.."
+
+# scripts/linux/status.sh
 
 echo "======================================================="
 echo "    PREMIUM E-COMMERCE PLATFORM - SYSTEM STATUS"

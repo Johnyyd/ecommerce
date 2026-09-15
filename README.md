@@ -297,18 +297,18 @@ ecommerce/
 ├── pgbouncer/
 │   └── pgbouncer.ini                # Cấu hình Transaction Pool, Port 6432, Scram-sha-256
 ├── scripts/
-│   ├── backup-db.sh                 # Script Bash sao lưu database thủ công (hỗ trợ cả K8s và Docker)
-│   └── restore-db.sh                # Script Bash phục hồi database từ file .dump (hỗ trợ cả K8s và Docker)
+│   ├── scripts/backup-restore/backup-db.sh                 # Script Bash sao lưu database thủ công (hỗ trợ cả K8s và Docker)
+│   └── scripts/backup-restore/restore-db.sh                # Script Bash phục hồi database từ file .dump (hỗ trợ cả K8s và Docker)
 ├── .env.example                     # File mẫu biến môi trường
 ├── docker-compose.yml               # Cấu hình khởi chạy toàn bộ hệ thống bằng Docker Compose
-├── start-docker.sh / .bat           # Script khởi chạy Docker Compose 1-click (Linux / Windows)
-├── stop-docker.sh / .bat            # Script dừng và xóa volumes Docker Compose (Linux / Windows)
+├── scripts/linux/docker/start-docker-linux.sh / .bat           # Script khởi chạy Docker Compose 1-click (Linux / Windows)
+├── scripts/linux/docker/stop-docker.sh / .bat            # Script dừng và xóa volumes Docker Compose (Linux / Windows)
 ├── start-k8s-linux.sh               # Script tự động hóa triển khai Kubernetes thông minh cho Linux
-├── start-k8s.sh / .bat              # Script triển khai Kubernetes tiêu chuẩn (Linux / Windows)
-├── stop-k8s.sh / .bat               # Script gỡ bỏ tài nguyên Kubernetes (Linux / Windows)
-├── status.sh / .bat                 # Script kiểm tra trạng thái sức khỏe toàn bộ hệ thống (Docker & K8s)
-├── update-k8s-backend.sh / .bat     # Script cập nhật nóng Backend image lên Kubernetes
-├── update-k8s-frontend.sh / .bat    # Script cập nhật nóng Frontend image lên Kubernetes
+├── scripts/linux/k8s/start-k8s-linux.sh / .bat              # Script triển khai Kubernetes tiêu chuẩn (Linux / Windows)
+├── scripts/linux/k8s/stop-k8s.sh / .bat               # Script gỡ bỏ tài nguyên Kubernetes (Linux / Windows)
+├── scripts/linux/status.sh / .bat                 # Script kiểm tra trạng thái sức khỏe toàn bộ hệ thống (Docker & K8s)
+├── scripts/linux/update-k8s-backend.sh / .bat     # Script cập nhật nóng Backend image lên Kubernetes
+├── scripts/linux/update-k8s-frontend.sh / .bat    # Script cập nhật nóng Frontend image lên Kubernetes
 ├── K8S-TROUBLESHOOTING.md           # Hướng dẫn chi tiết khắc phục các lỗi K8s thực tế
 └── REDIS-TROUBLESHOOTING.md         # Hướng dẫn chi tiết khắc phục các lỗi Redis Cache Stale
 ```
@@ -429,25 +429,25 @@ Phương pháp nhanh nhất, tự động khởi tạo toàn bộ 5 dịch vụ 
 #### Trên Linux / macOS:
 ```bash
 # 1. Khởi động toàn bộ dịch vụ ở chế độ chạy ngầm
-bash start-docker.sh
+bash scripts/linux/docker/start-docker-linux.sh
 
 # 2. Kiểm tra trạng thái các container đang chạy
-bash status.sh
+bash scripts/linux/status.sh
 
 # 3. Dừng và gỡ bỏ container cùng dữ liệu volumes khi không sử dụng
-bash stop-docker.sh
+bash scripts/linux/docker/stop-docker.sh
 ```
 
 #### Trên Windows:
 ```cmd
 :: 1. Khởi động toàn bộ hệ thống
-start-docker.bat
+scripts\windows\docker\start-docker-windows.bat
 
 :: 2. Kiểm tra trạng thái
-status.bat
+scripts\windows\status.bat
 
 :: 3. Dừng hệ thống
-stop-docker.bat
+scripts\windows\docker\stop-docker.bat
 ```
 
 #### Địa chỉ truy cập ứng dụng (Docker Compose):
@@ -486,11 +486,11 @@ chmod +x start-k8s-linux.sh
 #### 2. Triển khai tiêu chuẩn bằng script thông thường:
 - **Trên Linux/macOS**:
   ```bash
-  bash start-k8s.sh
+  bash scripts/linux/k8s/start-k8s-linux.sh
   ```
 - **Trên Windows**:
   ```cmd
-  start-k8s.bat
+  scripts\windows\k8s\start-k8s-windows.bat
   ```
 
 #### 3. Cách truy cập ứng dụng trên Kubernetes Minikube:
@@ -510,16 +510,16 @@ Tùy vào cách bạn muốn mở traffic, chọn 1 trong 2 cách sau:
 
 #### 4. Kiểm tra trạng thái cụm K8s:
 ```bash
-bash status.sh
+bash scripts/linux/status.sh
 # hoặc kiểm tra trực tiếp qua kubectl
 kubectl get pods,svc,ingress,jobs,cronjobs
 ```
 
 #### 5. Dừng và gỡ bỏ triển khai Kubernetes:
 ```bash
-bash stop-k8s.sh
+bash scripts/linux/k8s/stop-k8s.sh
 # Hoặc trên Windows:
-stop-k8s.bat
+scripts\windows\k8s\stop-k8s.bat
 ```
 
 ---
@@ -530,13 +530,13 @@ Khi bạn thực hiện thay đổi mã nguồn ở Backend hoặc Frontend, b�
 
 - **Cập nhật Backend**:
   ```bash
-  bash update-k8s-backend.sh    # Trên Linux
-  # hoặc update-k8s-backend.bat  # Trên Windows
+  bash scripts/linux/update-k8s-backend.sh    # Trên Linux
+  # hoặc scripts\windows\update-k8s-backend.bat  # Trên Windows
   ```
 - **Cập nhật Frontend**:
   ```bash
-  bash update-k8s-frontend.sh   # Trên Linux
-  # hoặc update-k8s-frontend.bat # Trên Windows
+  bash scripts/linux/update-k8s-frontend.sh   # Trên Linux
+  # hoặc scripts\windows\update-k8s-frontend.bat # Trên Windows
   ```
 
 ---
@@ -613,16 +613,16 @@ Hệ thống cache danh sách sản phẩm tại `/api/v1/products/` trong Redis
 
 Dự án cung cấp bộ công cụ toàn diện hỗ trợ sao lưu và khôi phục dữ liệu ở mọi môi trường:
 
-#### 1. Sao lưu thủ công bằng script ([scripts/backup-db.sh](file:///home/tringuyen/Documents/GitHub/ecommerce/scripts/backup-db.sh)):
+#### 1. Sao lưu thủ công bằng script ([scripts/backup-restore/backup-db.sh](file:///home/tringuyen/Documents/GitHub/ecommerce/scripts/backup-restore/backup-db.sh)):
 Script tự động nhận diện hệ thống đang chạy trên Kubernetes (`postgres-0`) hay Docker (`postgres`) để xuất file `.dump`:
 ```bash
-bash scripts/backup-db.sh
+bash scripts/backup-restore/backup-db.sh
 # Kết quả lưu tại: ./backups/db_backup_YYYYMMDD_HHMMSS.dump
 ```
 
-#### 2. Khôi phục thủ công bằng script ([scripts/restore-db.sh](file:///home/tringuyen/Documents/GitHub/ecommerce/scripts/restore-db.sh)):
+#### 2. Khôi phục thủ công bằng script ([scripts/backup-restore/restore-db.sh](file:///home/tringuyen/Documents/GitHub/ecommerce/scripts/backup-restore/restore-db.sh)):
 ```bash
-bash scripts/restore-db.sh ./backups/db_backup_20260911_020000.dump
+bash scripts/backup-restore/restore-db.sh ./backups/db_backup_20260911_020000.dump
 ```
 
 #### 3. Sao lưu tự động bằng Kubernetes CronJob:
@@ -812,7 +812,7 @@ Dashboard sản xuất hoàn chỉnh [monitoring/grafana-dashboard.json](file://
   - **Username**: `admin`
   - **Password**: `admin`
 - **Tự động kích hoạt**:
-  - **Trên Docker Compose**: Tự động chạy sẵn khi thực thi `bash start-docker.sh` (hoặc `start-docker.bat`).
+  - **Trên Docker Compose**: Tự động chạy sẵn khi thực thi `bash scripts/linux/docker/start-docker-linux.sh` (hoặc `scripts\windows\docker\start-docker-windows.bat`).
   - **Trên Kubernetes**: Được định nghĩa đầy đủ trong [k8s/monitoring.yaml](file:///home/tringuyen/Documents/GitHub/ecommerce/k8s/monitoring.yaml) (ConfigMaps, Deployments và Services). Trên Minikube, mở trực tiếp bằng lệnh:
     ```bash
     minikube service grafana
@@ -823,7 +823,7 @@ Dashboard sản xuất hoàn chỉnh [monitoring/grafana-dashboard.json](file://
 ### 4. Kiểm thử tải (Benchmark) & Kubernetes Auto-Scaling (HPA)
 Hệ thống được trang bị đầy đủ tài liệu và công cụ đo lường hiệu năng chuyên sâu:
 - 📖 **Tài liệu hướng dẫn & Báo cáo số liệu chi tiết**: [BENCHMARK.md](file:///home/tringuyen/Documents/GitHub/ecommerce/BENCHMARK.md).
-- 🚀 **Script tự động hóa**: [`benchmark.sh`](file:///home/tringuyen/Documents/GitHub/ecommerce/benchmark.sh) (chạy menu tương tác hoặc `./benchmark.sh [1-3]`).
+- 🚀 **Script tự động hóa**: [`scripts/benchmark/benchmark.sh`](file:///home/tringuyen/Documents/GitHub/ecommerce/benchmark.sh) (chạy menu tương tác hoặc `./benchmark.sh [1-3]`).
 - ⚡ **Khả năng co giãn tự động (HPA)**: Định nghĩa tại [k8s/hpa.yaml](file:///home/tringuyen/Documents/GitHub/ecommerce/k8s/hpa.yaml). Khi ApacheBench phát tải đồng thời cao, Kubernetes tự động mở rộng Backend từ **3 Pods lên 6-8 Pods** và thu nhỏ về 3 Pods khi hết tải.
 - 📊 **Quan sát thời gian thực**: Trực quan hóa Throughput (req/s), Latency Percentiles và CPU/Memory biến thiên ngay trên Dashboard Grafana.
 
@@ -861,7 +861,7 @@ Phần này đúc kết các tình huống thực tế và cách giải quyết 
 
 ### Q5: Pod báo lỗi `CreateContainerConfigError` do thiếu Secret?
 - **Nguyên nhân**: Quên tạo Kubernetes Secrets chứa thông tin đăng nhập database và redis.
-- **Giải pháp**: Script `start-k8s-linux.sh` và `start-k8s.sh` đã tự động sinh `app-secrets` và `db-secrets` từ file `.env`. Nếu cần tạo thủ công:
+- **Giải pháp**: Script `start-k8s-linux.sh` và `scripts/linux/k8s/start-k8s-linux.sh` đã tự động sinh `app-secrets` và `db-secrets` từ file `.env`. Nếu cần tạo thủ công:
   ```bash
   kubectl create secret generic app-secrets --from-env-file=.env
   kubectl create secret generic db-secrets --from-env-file=.env

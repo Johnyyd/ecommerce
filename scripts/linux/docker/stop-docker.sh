@@ -1,5 +1,7 @@
 #!/bin/bash
-# stop-docker.sh
+cd "$(dirname "$0")/../../.."
+
+# scripts/linux/docker/stop-docker.sh
 
 echo "Stopping Premium E-Commerce Platform Docker Compose services..."
 

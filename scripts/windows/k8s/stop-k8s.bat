@@ -1,5 +1,7 @@
 @echo off
-REM stop-k8s.bat
+cd /d "%~dp0\..\..\.."
+
+REM scripts\windows\k8s\stop-k8s.bat
 
 echo Tearing down Premium E-Commerce Platform from Kubernetes...
 

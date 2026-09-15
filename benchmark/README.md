@@ -3,7 +3,7 @@
 Thư mục này chứa các tài liệu và công cụ kiểm thử hiệu năng cho hệ thống **Premium E-Commerce Platform**.
 
 - **Tài liệu hướng dẫn chi tiết**: Xem tại [BENCHMARK.md](../BENCHMARK.md).
-- **Script kiểm thử tải tự động**: [`../benchmark.sh`](../benchmark.sh).
+- **Script kiểm thử tải tự động**: [`../scripts/benchmark/benchmark.sh`](../scripts/benchmark/benchmark.sh).
 
 ### Cách sử dụng nhanh:
 ```bash

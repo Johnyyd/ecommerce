@@ -1,5 +1,7 @@
 @echo off
-REM start-docker.bat
+cd /d "%~dp0\..\..\.."
+
+REM scripts\windows\docker\start-docker-windows.bat
 
 echo Starting Premium E-Commerce Platform via Docker Compose...
 

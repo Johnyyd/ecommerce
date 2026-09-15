@@ -1,5 +1,7 @@
 @echo off
-REM status.bat
+cd /d "%~dp0\..\.."
+
+REM scripts\windows\status.bat
 
 echo =======================================================
 echo     PREMIUM E-COMMERCE PLATFORM - SYSTEM STATUS
