@@ -43,3 +43,4 @@ backend/media/*
 !backend/media/.gitkeep
 backend/reports/*
 !backend/reports/.gitkeep
+/.hermes
