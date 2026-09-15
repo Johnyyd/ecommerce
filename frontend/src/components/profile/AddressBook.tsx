@@ -2,6 +2,72 @@ import { useState, useEffect } from 'react';
 import { useAddressStore, AddressCreate } from '@/store/useAddressStore';
 import { fetchProvinces, fetchDistricts, fetchWards, Province, District, Ward } from '@/lib/locations';
 
+function CustomSelect({
+  id,
+  value,
+  onChange,
+  options,
+  placeholder,
+  disabled
+}: {
+  id: string;
+  value: string | number;
+  onChange: (val: string | number) => void;
+  options: { value: string | number, label: string }[];
+  placeholder: string;
+  disabled?: boolean;
+}) {
+  const [isOpen, setIsOpen] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (!(e.target as HTMLElement).closest(`#select-container-${id}`)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, [isOpen, id]);
+
+  const selectedLabel = options.find(o => o.value === value)?.label || placeholder;
+
+  return (
+    <div id={`select-container-${id}`} className="relative w-full">
+      <button
+        type="button"
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen(!isOpen)}
+        className={`w-full px-4 py-2.5 rounded-xl border border-zinc-200 bg-white text-left flex justify-between items-center focus:outline-none focus:ring-2 focus:ring-zinc-900 ${disabled ? 'opacity-50 cursor-not-allowed' : 'cursor-pointer'}`}
+      >
+        <span className={value === '' ? 'text-zinc-500' : 'text-zinc-900'}>{selectedLabel}</span>
+        <svg className={`w-4 h-4 text-zinc-400 transition-transform ${isOpen ? 'rotate-180' : ''}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path></svg>
+      </button>
+      {isOpen && (
+        <div className="absolute z-10 w-full mt-1 bg-white border border-zinc-200 rounded-xl shadow-lg max-h-60 overflow-y-auto">
+          {options.length === 0 ? (
+            <div className="px-4 py-2 text-zinc-500 text-sm">No options available</div>
+          ) : (
+            options.map((opt) => (
+              <div
+                key={opt.value}
+                onClick={() => {
+                  onChange(opt.value);
+                  setIsOpen(false);
+                }}
+                className={`px-4 py-2 text-sm cursor-pointer hover:bg-zinc-100 ${value === opt.value ? 'bg-zinc-50 font-medium text-zinc-900' : 'text-zinc-700'}`}
+              >
+                {opt.label}
+              </div>
+            ))
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function AddressBook() {
   const token = localStorage.getItem('access_token');
   const { addresses, isLoading, error, fetchAddresses, createAddress, deleteAddress } = useAddressStore();
@@ -56,6 +122,11 @@ export function AddressBook() {
     const distName = districts.find(d => d.code === selectedDist)?.name || '';
     const wardName = wards.find(w => w.code === selectedWard)?.name || '';
 
+    if (!selectedProv || !selectedDist || !selectedWard) {
+      // Basic form validation for custom selects
+      return;
+    }
+
     const newAddress: AddressCreate = {
       province: provName,
       district: distName,
@@ -97,24 +168,35 @@ export function AddressBook() {
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="province" className="text-sm font-medium text-zinc-700">Province / City</label>
-              <select id="province" required value={selectedProv} onChange={e => setSelectedProv(Number(e.target.value) || '')} className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
-                <option value="">Select Province</option>
-                {provinces.map(p => <option key={p.code} value={p.code}>{p.name}</option>)}
-              </select>
+              <CustomSelect
+                id="province"
+                value={selectedProv}
+                onChange={val => setSelectedProv(Number(val) || '')}
+                placeholder="Select Province"
+                options={provinces.map(p => ({ value: p.code, label: p.name }))}
+              />
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="district" className="text-sm font-medium text-zinc-700">District</label>
-              <select id="district" required disabled={!selectedProv} value={selectedDist} onChange={e => setSelectedDist(Number(e.target.value) || '')} className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
-                <option value="">Select District</option>
-                {districts.map(d => <option key={d.code} value={d.code}>{d.name}</option>)}
-              </select>
+              <CustomSelect
+                id="district"
+                disabled={!selectedProv}
+                value={selectedDist}
+                onChange={val => setSelectedDist(Number(val) || '')}
+                placeholder="Select District"
+                options={districts.map(d => ({ value: d.code, label: d.name }))}
+              />
             </div>
             <div className="flex flex-col gap-2">
               <label htmlFor="ward" className="text-sm font-medium text-zinc-700">Ward</label>
-              <select id="ward" required disabled={!selectedDist} value={selectedWard} onChange={e => setSelectedWard(Number(e.target.value) || '')} className="w-full px-4 py-2.5 rounded-xl border border-zinc-200 focus:outline-none focus:ring-2 focus:ring-zinc-900 bg-white">
-                <option value="">Select Ward</option>
-                {wards.map(w => <option key={w.code} value={w.code}>{w.name}</option>)}
-              </select>
+              <CustomSelect
+                id="ward"
+                disabled={!selectedDist}
+                value={selectedWard}
+                onChange={val => setSelectedWard(Number(val) || '')}
+                placeholder="Select Ward"
+                options={wards.map(w => ({ value: w.code, label: w.name }))}
+              />
             </div>
           </div>
           <div className="flex flex-col gap-2">

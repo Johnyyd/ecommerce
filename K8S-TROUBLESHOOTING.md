@@ -17,29 +17,38 @@ Kubernetes Manifests (như `pgbouncer.yaml`, `redis.yaml`...) được cấu hì
 
 ---
 
-## 2. Lỗi `ErrImageNeverPull`
+## 2. Lỗi `ErrImageNeverPull` và `ImagePullBackOff` / `ErrImagePull`
 
 **Triệu chứng:**
-Các Pod của `backend` và `frontend` bị kẹt ở trạng thái `ErrImageNeverPull`.
+- **Trường hợp A (`ErrImageNeverPull`):** Các Pod của `backend` và `frontend` bị kẹt ở trạng thái `ErrImageNeverPull`.
+- **Trường hợp B (`ImagePullBackOff` / `ErrImagePull`):** Khi kiểm tra `status.sh`, các Pod `backend` và `frontend` bị kẹt ở trạng thái `ImagePullBackOff`. Kiểm tra `kubectl describe pod` ghi nhận lỗi:
+  ```text
+  Failed to pull image "ecommerce-backend:latest": Error response from daemon: 
+  pull access denied for ecommerce-backend, repository does not exist or may require 'docker login'
+  ```
 
 **Nguyên nhân:**
-Các K8s Manifest (e.g. `backend.yaml`) đang thiết lập `imagePullPolicy: Never` vì dự án sử dụng các Docker image được build cục bộ (`ecommerce-backend:latest`).
-Nếu bạn đang sử dụng **Minikube** hoặc **Kind**, Kubernetes daemon nằm tách biệt với Docker daemon trên máy chủ của bạn, do đó K8s không thể tìm thấy các Image này.
+1. **Với `ErrImageNeverPull`:** K8s Manifest đặt `imagePullPolicy: Never`, nhưng image chưa được nạp vào node của Minikube/Kind.
+2. **Với `ImagePullBackOff`:** K8s Manifest vô tình đặt `imagePullPolicy: Always` (hoặc mặc định của K8s khi dùng tag `:latest` mà không chỉ định rõ policy). Khi đặt là `Always`, Kubernetes **bỏ qua hoàn toàn image đã có trong node Minikube** và luôn cố gắng kết nối ra internet để kéo từ Docker Hub (`docker.io/library/ecommerce-backend:latest`). Do image này là bản build nội bộ không tồn tại trên Docker Hub công cộng, Docker daemon trả về lỗi từ chối truy cập `pull access denied` ➔ `ErrImagePull` ➔ `ImagePullBackOff`.
 
-**Cách khắc phục cho bạn (NẾU đang dùng Minikube):**
-Nếu hệ thống của bạn vẫn báo lỗi `ErrImageNeverPull`, bạn cần tải các image vừa build vào bên trong node của K8s.
-Chạy các lệnh sau:
+**Cách khắc phục triệt để:**
 
-```bash
-# Nạp image vào Minikube
-minikube image load ecommerce-backend:latest
-minikube image load ecommerce-frontend:latest
-```
+1. **Thiết lập chuẩn `imagePullPolicy: IfNotPresent`:**
+   Trong tất cả các file manifest (`k8s/backend.yaml`, `k8s/frontend.yaml`, `k8s/worker.yaml`, `k8s/migration-job.yaml`), luôn luôn cấu hình:
+   ```yaml
+   image: ecommerce-backend:latest
+   imagePullPolicy: IfNotPresent
+   ```
+   *Với `IfNotPresent`, K8s sẽ ưu tiên tuyệt đối việc sử dụng image cục bộ đã được nạp sẵn vào Minikube.*
 
-_Lưu ý: Nếu bạn sử dụng Docker Desktop Kubernetes, các image cục bộ thường được chia sẻ tự động, tuy nhiên hãy chắc chắn bạn đã build chúng thành công (bằng cách chạy `scripts\windows\docker\start-docker-windows.bat` hoặc lệnh `docker-compose build` một lần)._
-**Khắc phục tự động:**
+2. **Nạp image vào Minikube sau mỗi lần build code mới:**
+   ```bash
+   minikube image load ecommerce-backend:latest
+   minikube image load ecommerce-frontend:latest
+   ```
 
-- Đã cấu hình đổi `imagePullPolicy: Never` thành `imagePullPolicy: IfNotPresent` ở các file `backend.yaml`, `frontend.yaml`, và `migration-job.yaml` để Docker Desktop tự động kéo image cục bộ lên K8s.
+3. **Tự động hóa hoàn toàn:**
+   Script `scripts/linux/k8s/start-k8s-linux.sh` (và `start-k8s-windows.bat`) đã được tích hợp tự động: build Docker image ➔ xóa cache image cũ trong node ➔ nạp image mới vào Minikube ➔ triển khai các manifests với `imagePullPolicy: IfNotPresent`.
 
 ---
 
