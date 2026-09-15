@@ -35,6 +35,7 @@
   - [Cách 1: Khởi chạy bằng Docker Compose (Khuyên dùng cho Dev)](#cách-1-khởi-chạy-bằng-docker-compose-khuyên-dùng-cho-dev)
   - [Cách 2: Triển khai trên Kubernetes (Minikube / Kind / Production)](#cách-2-triển-khai-trên-kubernetes-minikube--kind--production)
   - [Cập nhật nóng hệ thống trên Kubernetes (Hot Updates)](#cập-nhật-nóng-hệ-thống-trên-kubernetes-hot-updates)
+  - [🌐 Tích hợp Tailscale truy cập từ xa (Remote Access)](#-tích-hợp-tailscale-truy-cập-từ-xa-remote-access)
 - [🗄️ 9. Quản trị Cơ sở dữ liệu & Caching (Database & Cache Ops)](#️-9-quản-trị-cơ-sở-dữ-liệu--caching-database--cache-ops)
   - [Alembic Migrations](#alembic-migrations)
   - [Seed Dữ liệu & CLI Quản trị viên](#seed-dữ-liệu--cli-quản-trị-viên)
@@ -538,6 +539,70 @@ Khi bạn thực hiện thay đổi mã nguồn ở Backend hoặc Frontend, b�
   bash scripts/linux/update-k8s-frontend.sh   # Trên Linux
   # hoặc scripts\windows\update-k8s-frontend.bat # Trên Windows
   ```
+
+---
+
+### 🌐 Tích hợp Tailscale truy cập từ xa (Remote Access)
+
+Dự án hỗ trợ sẵn tính năng chia sẻ mạng riêng ảo **Tailscale** để bạn có thể truy cập **Frontend** (Cửa hàng E-Commerce) và **Grafana Dashboard** từ bất kỳ thiết bị nào khác (điện thoại di động, máy tính bảng, laptop, máy tính từ xa) mà không cần cấu hình Port Forwarding trên Router hay mở cổng Public IP:
+
+```
+[ Máy khác / Điện thoại / Laptop ]
+              │ (Mạng Tailscale WireGuard an toàn)
+              ▼
+    [ Máy chủ / Máy phát triển ]
+     ├── Cổng 80:   Frontend (Website & Reverse Proxy API)
+     └── Cổng 3000: Grafana Dashboard (Giám sát)
+```
+
+#### Phương pháp 1: Tự động chia sẻ qua Tailscale trên máy Host (Khuyên dùng - Nhanh nhất)
+
+Nếu máy phát triển của bạn đã cài đặt và đăng nhập Tailscale (`tailscale up`):
+
+- **Bật chia sẻ Frontend & Grafana**:
+  ```bash
+  # Trên Linux:
+  bash scripts/linux/tailscale/expose-tailscale.sh
+
+  # Trên Windows:
+  scripts\windows\tailscale\expose-tailscale.bat
+  ```
+  Script sẽ tự động nhận diện bạn đang chạy **Kubernetes (Minikube)** hay **Docker Compose**, lấy địa chỉ IP đích và thiết lập chuyển tiếp TCP ngầm qua `tailscale serve`.
+
+- **Dừng chia sẻ khi không dùng**:
+  ```bash
+  # Trên Linux:
+  bash scripts/linux/tailscale/stop-tailscale.sh
+
+  # Trên Windows:
+  scripts\windows\tailscale\stop-tailscale.bat
+  ```
+
+#### Phương pháp 2: Chạy Container Tailscale trong Docker Compose
+
+Nếu bạn muốn Tailscale chạy độc lập như một container trong Docker Compose:
+
+1. Thêm `TS_AUTHKEY` vào file `.env` (tạo Auth Key tại [Tailscale Admin Keys](https://login.tailscale.com/admin/settings/keys)).
+2. Khởi động Docker Compose với profile `tailscale`:
+   ```bash
+   # Trên Linux:
+   bash scripts/linux/docker/start-docker-tailscale.sh
+   # hoặc:
+   docker-compose --profile tailscale up --build -d
+
+   # Trên Windows:
+   scripts\windows\docker\start-docker-tailscale.bat
+   ```
+
+#### Phương pháp 3: Triển khai Tailscale Pod trong Kubernetes
+
+Nếu triển khai trên cụm Kubernetes độc lập (Kind, K3s, Cloud Kubernetes):
+
+1. Tạo Secret chứa `TS_AUTHKEY` hoặc bổ sung vào `.env`.
+2. Triển khai manifest:
+   ```bash
+   kubectl apply -f k8s/addons/tailscale.yaml
+   ```
 
 ---
 
