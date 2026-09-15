@@ -208,4 +208,65 @@ kubectl get pods -w
      - **Grafana Monitoring**: [http://localhost:3000](http://localhost:3000) (tài khoản: `admin` / `admin`)
      - **Prometheus Metrics**: [http://localhost:9090](http://localhost:9090)
 
+---
 
+## 9. Lỗi `exec /app/entrypoint.sh: no such file or directory` (CrashLoopBackOff trên Windows)
+
+**Triệu chứng:**
+Khi chạy trên môi trường Windows, các Pod của `backend` hoặc `worker` bị kẹt ở trạng thái `CrashLoopBackOff`.
+Khi xem log của Pod bằng lệnh `kubectl logs deployment/backend`, bạn nhận được thông báo lỗi:
+`exec /app/entrypoint.sh: no such file or directory` (hoặc lỗi tương tự với `\r: command not found`).
+
+**Nguyên nhân:**
+Lỗi này xảy ra do định dạng ký tự kết thúc dòng (Line Endings) của các file script `.sh` (như `entrypoint.sh`) bị sai. Khi bạn clone code và chạy lệnh `docker compose build` trên Windows, Git mặc định chuyển đổi ký tự kết thúc dòng sang chuẩn Windows (CRLF - `\r\n`). Tuy nhiên, các container chạy nhân Linux, Linux không hiểu ký tự `\r` (Carriage Return) nên nó coi đường dẫn `/bin/sh\r` là một file không tồn tại.
+
+**Khắc phục:**
+Bạn cần chuyển đổi định dạng dòng kết thúc của các file script `.sh` từ **CRLF** sang **LF**, sau đó build lại image:
+
+- **Cách 1 (Bằng VS Code - Khuyên dùng):**
+  1. Mở các file script chạy lúc khởi động (ví dụ `backend/entrypoint.sh`, `worker/start.sh`) bằng VS Code.
+  2. Nhìn xuống góc phải dưới cùng của cửa sổ VS Code, bạn sẽ thấy chữ **CRLF**.
+  3. Click vào chữ **CRLF** và chọn **LF**.
+  4. Lưu file lại.
+  5. Chạy lại lệnh build image trên Windows:
+     ```bash
+     docker compose build
+     ```
+  6. Xóa pod bị lỗi để Kubernetes tạo lại với image mới (hoặc chạy lại script `start-k8s.bat`):
+     ```bash
+     kubectl delete pod -l app=backend
+     kubectl delete pod -l app=worker
+     ```
+
+- **Cách 2 (Bằng Git):** 
+  Thay đổi cấu hình Git để không tự động đổi Line Endings:
+  ```bash
+  git config --global core.autocrlf false
+  ```
+  Sau đó xóa folder chứa code và clone lại.
+
+---
+
+## 10. Lỗi `DuplicateColumnError` ở Pod `db-migration-job` (Error)
+
+**Triệu chứng:**
+Pod `db-migration-job` bị lỗi ở trạng thái `Error`. Khi xem log bằng lệnh `kubectl logs job/db-migration-job`, bạn thấy thông báo tương tự như:
+`asyncpg.exceptions.DuplicateColumnError: column "slug" of relation "categories" already exists`
+
+**Nguyên nhân:**
+Job migration của cơ sở dữ liệu đang cố gắng tạo một cột (column) hoặc bảng (table) đã tồn tại. Điều này thường xảy ra khi bạn chạy lại Kubernetes hoặc Docker Compose trên một cơ sở dữ liệu Postgres đã có sẵn dữ liệu và đã được cập nhật cấu trúc từ trước (khi database không bị xóa hoàn toàn).
+
+**Khắc phục:**
+Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa bỏ Persistent Volume (dữ liệu lưu trữ) của PostgreSQL để database được tạo mới hoàn toàn:
+
+1. Xóa bỏ Pod migration hiện tại đang bị lỗi:
+   ```bash
+   kubectl delete job db-migration-job
+   ```
+2. Gỡ bỏ database hiện tại và xóa ổ cứng lưu trữ:
+   ```bash
+   kubectl delete statefulset postgres
+   kubectl delete pvc postgres-backups-pvc
+   ```
+   *(Lưu ý: Nếu bạn có khai báo một PVC khác cho dữ liệu chính của postgres, hãy xóa cả PVC đó. Ví dụ `kubectl delete pvc data-postgres-0`)*
+3. Chạy lại file khởi tạo K8s `start-k8s.bat` để hệ thống tự động thiết lập lại mọi thứ với một database sạch.
