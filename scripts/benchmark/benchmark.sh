@@ -74,7 +74,7 @@ echo -e "   Tài khoản: ${BOLD}admin / admin${NC} -> Mở Dashboard: ${BOLD}Op
 echo -e "${BOLD}Chọn kịch bản Benchmark:${NC}"
 echo -e "  ${CYAN}1)${NC} Fast Warm-up (Health Check: /api/health)       - 5,000 reqs, Concurrency: 50"
 echo -e "  ${CYAN}2)${NC} Standard Load (Products API: /api/v1/products/) - 10,000 reqs, Concurrency: 100"
-echo -e "  ${CYAN}3)${NC} ${BOLD}HPA Auto-Scale Stress Test (Products API)${NC}      - 25,000 reqs, Concurrency: 150 (Kích hoạt scale pod)"
+echo -e "  ${CYAN}3)${NC} ${BOLD}HPA Auto-Scale Stress Test (Products API)${NC}      - 1,000,000 reqs, Concurrency: 500 (Kích hoạt scale pod)"
 echo -e "  ${CYAN}4)${NC} Custom Parameters (Tự chọn endpoint, số request, concurrency)"
 echo ""
 
@@ -99,8 +99,8 @@ case "$CHOICE" in
         ;;
     3)
         ENDPOINT="/api/v1/products/"
-        REQUESTS=10000
-        CONCURRENCY=100
+        REQUESTS=1000000
+        CONCURRENCY=500
         KEEP_ALIVE="-k"
         ;;
     4)
