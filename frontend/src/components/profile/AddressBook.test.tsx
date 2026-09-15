@@ -48,15 +48,14 @@ describe('AddressBook Component', () => {
       expect(locations.fetchProvinces).toHaveBeenCalled();
     });
 
-    // Find the province select and choose a province
-    const provinceSelect = await screen.findByRole('combobox', { name: /Province \/ City/i });
+    // Click the province select to open dropdown
+    const provinceDropdown = await screen.findByText('Select Province');
+    fireEvent.click(provinceDropdown);
     
-    // Wait for the options to be populated
-    await waitFor(() => {
-      expect(screen.getByText('Thành phố Hà Nội')).toBeInTheDocument();
-    });
-
-    fireEvent.change(provinceSelect, { target: { value: '1' } });
+    // Wait for the options to be populated and click the option
+    const option = await screen.findByText('Thành phố Hà Nội');
+    expect(option).toBeInTheDocument();
+    fireEvent.click(option);
 
     // Verify fetchDistricts was called with province code 1
     await waitFor(() => {
