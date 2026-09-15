@@ -244,14 +244,14 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
 
   return (
     <AnimatePresence>
-      <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-md overflow-y-auto">
+      <div className="fixed inset-0 z-50 flex p-4 bg-black/60 backdrop-blur-md overflow-y-auto">
         {/* Apple-style modal surface */}
         <motion.div
           initial={{ opacity: 0, scale: 0.95, y: 15 }}
           animate={{ opacity: 1, scale: 1, y: 0 }}
           exit={{ opacity: 0, scale: 0.95, y: 15 }}
           transition={{ type: 'spring', damping: 30, stiffness: 350 }}
-          className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-100 overflow-hidden my-8"
+          className="relative w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-zinc-100 overflow-hidden m-auto"
         >
           {/* VIEW: QR PAYMENT CODE */}
           {viewMode === 'qr' && (
