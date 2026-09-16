@@ -9,11 +9,19 @@ import { useLocation } from "wouter"
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false)
   const { toggleCart, items } = useCartStore()
-  const { isAuthenticated, logout } = useAuthStore()
+  const { user, isAuthenticated, logout } = useAuthStore()
   const { isDark, toggleTheme } = useThemeStore()
   const [, setLocation] = useLocation()
   
   const cartItemCount = items.reduce((acc, item) => acc + item.quantity, 0)
+
+  const hasAdminSession = React.useMemo(() => {
+    if (user?.role === 'admin' || user?.role === 'manager') return true
+    if (typeof window !== 'undefined') {
+      return !!localStorage.getItem('admin_access_token')
+    }
+    return false
+  }, [user])
   
   const handleNav = (path: string) => {
     setIsOpen(false)
@@ -28,6 +36,7 @@ export function Navbar() {
   const navItems = [
     { label: 'Home', path: '/' },
     { label: 'Shop', path: '/products' },
+    ...(hasAdminSession ? [{ label: 'Admin Portal', path: '/admin' }] : []),
     ...(isAuthenticated 
       ? [
           { label: 'Profile', path: '/profile' },

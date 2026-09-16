@@ -94,4 +94,19 @@ describe("adminApi Service Layer", () => {
     })
     expect(result).toBe(true)
   })
+
+  it("should prioritize admin_access_token over access_token when customer token is present", async () => {
+    localStorage.setItem("admin_access_token", "admin-secret-token")
+    localStorage.setItem("access_token", "customer-overridden-token")
+
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => []
+    })
+
+    await adminApi.getVouchers()
+    expect(global.fetch).toHaveBeenCalledWith("/api/v1/vouchers/?limit=100", {
+      headers: { Authorization: "Bearer admin-secret-token" }
+    })
+  })
 })

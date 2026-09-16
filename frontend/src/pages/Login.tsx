@@ -38,6 +38,8 @@ export function Login() {
         const user = await meRes.json()
         setUser(user)
         if (user.role === "admin" || user.role === "manager") {
+          localStorage.setItem("admin_access_token", data.access_token)
+          localStorage.setItem("admin_user", JSON.stringify(user))
           setLocation("/admin")
         } else {
           setLocation("/")

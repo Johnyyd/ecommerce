@@ -22,7 +22,7 @@ const API_BASE = (import.meta as any).env.VITE_API_URL || "/api/v1"
 
 export const AdminAsyncJobs: React.FC = () => {
   const getActiveToken = useCallback(() => {
-    return localStorage.getItem("access_token") || localStorage.getItem("token") || ""
+    return localStorage.getItem("admin_access_token") || localStorage.getItem("access_token") || localStorage.getItem("token") || ""
   }, [])
   const token = getActiveToken()
 

@@ -14,9 +14,10 @@ import {
   ArrowClockwise,
   ShieldCheck,
   UserGear,
-  Lightning
+  Lightning,
+  SignOut
 } from "@phosphor-icons/react"
-import { useAuthStore } from "@/store/useAuthStore"
+import { useAuthStore, User } from "@/store/useAuthStore"
 import { adminApi } from "@/services/adminApi"
 import {
   ProductItem,
@@ -87,12 +88,79 @@ export function Admin() {
 
   const [isFetching, setIsFetching] = useState(false)
 
-  const isAdmin = user?.role === "admin"
+  // Dedicated Admin session state to prevent override when testing customer accounts
+  const [adminUser, setAdminUser] = useState<User | null>(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("admin_user")
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved)
+          if (parsed?.role === "admin" || parsed?.role === "manager") return parsed
+        } catch {
+          // Ignore invalid or malformed JSON in localStorage
+        }
+      }
+    }
+    return user && (user.role === "admin" || user.role === "manager") ? user : null
+  })
 
-  // Route Guard: Allow either Admin or Manager
+  const activeAdminUser = adminUser || ((user?.role === "admin" || user?.role === "manager") ? user : null)
+  const isAdmin = activeAdminUser?.role === "admin"
+
+  // Route Guard: Verify Admin or Manager session (useAuthStore or admin_access_token)
   useEffect(() => {
-    if (!isLoading && (!user || (user.role !== "admin" && user.role !== "manager"))) {
-      setLocation("/login")
+    let isMounted = true
+
+    const checkAdminAuth = async () => {
+      // 1. If active store user is admin/manager, adopt it
+      if (user && (user.role === "admin" || user.role === "manager")) {
+        if (isMounted) {
+          setAdminUser(user)
+          localStorage.setItem("admin_user", JSON.stringify(user))
+        }
+        return
+      }
+
+      // 2. Check admin_access_token in localStorage
+      const adminToken = typeof window !== "undefined"
+        ? (localStorage.getItem("admin_access_token") || localStorage.getItem("access_token"))
+        : null
+
+      if (!adminToken) {
+        if (!isLoading && isMounted) {
+          setLocation("/login")
+        }
+        return
+      }
+
+      try {
+        const res = await fetch("/api/v1/auth/me", {
+          headers: { Authorization: `Bearer ${adminToken}` }
+        })
+        if (res.ok) {
+          const verifiedUser = await res.json()
+          if (verifiedUser.role === "admin" || verifiedUser.role === "manager") {
+            if (isMounted) {
+              setAdminUser(verifiedUser)
+              localStorage.setItem("admin_user", JSON.stringify(verifiedUser))
+              localStorage.setItem("admin_access_token", adminToken)
+            }
+            return
+          }
+        }
+      } catch {
+        // Network error during verification, fall through to redirect
+      }
+
+      if (isMounted && !isLoading) {
+        setLocation("/login")
+      }
+    }
+
+    checkAdminAuth()
+
+    return () => {
+      isMounted = false
     }
   }, [user, isLoading, setLocation])
 
@@ -131,10 +199,10 @@ export function Admin() {
   }, [])
 
   useEffect(() => {
-    if (user && (user.role === "admin" || user.role === "manager")) {
+    if (activeAdminUser && (activeAdminUser.role === "admin" || activeAdminUser.role === "manager")) {
       fetchAllData()
     }
-  }, [user, fetchAllData])
+  }, [activeAdminUser, fetchAllData])
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: <ChartLineUp size={16} weight="bold" /> },
@@ -185,16 +253,16 @@ export function Admin() {
                     ) : (
                       <UserGear size={12} weight="bold" />
                     )}
-                    {user?.role}
+                    {activeAdminUser?.role}
                   </span>
                 </div>
                 <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                  Signed in as <strong className="text-zinc-800 dark:text-zinc-200 font-medium">{user?.username}</strong>
+                  Signed in as <strong className="text-zinc-800 dark:text-zinc-200 font-medium">{activeAdminUser?.username}</strong>
                 </p>
               </div>
             </div>
 
-            {/* Refresh Action */}
+            {/* Actions: Refresh & Sign Out */}
             <div className="flex items-center gap-2">
               <button
                 onClick={fetchAllData}
@@ -207,6 +275,20 @@ export function Admin() {
                   className={isFetching ? "animate-spin" : ""}
                 />
                 <span>{isFetching ? "Syncing..." : "Sync Data"}</span>
+              </button>
+              <button
+                onClick={() => {
+                  if (typeof window !== "undefined") {
+                    localStorage.removeItem("admin_access_token")
+                    localStorage.removeItem("admin_user")
+                  }
+                  setLocation("/login")
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200/60 dark:border-red-800/40 rounded-2xl text-xs font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+                title="Sign out of Admin Portal"
+              >
+                <SignOut size={14} weight="bold" />
+                <span>Sign out</span>
               </button>
             </div>
           </div>

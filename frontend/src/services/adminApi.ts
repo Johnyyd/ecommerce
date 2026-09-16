@@ -8,8 +8,13 @@ import {
   BackupFile
 } from "@/types/admin"
 
+export function getAdminToken(): string | null {
+  if (typeof window === "undefined") return null
+  return localStorage.getItem("admin_access_token") || localStorage.getItem("access_token")
+}
+
 function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem("access_token")
+  const token = getAdminToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
