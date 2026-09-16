@@ -15,13 +15,7 @@ export function Navbar() {
   
   const cartItemCount = items.reduce((acc, item) => acc + item.quantity, 0)
 
-  const hasAdminSession = React.useMemo(() => {
-    if (user?.role === 'admin' || user?.role === 'manager') return true
-    if (typeof window !== 'undefined') {
-      return !!localStorage.getItem('admin_access_token')
-    }
-    return false
-  }, [user])
+  const hasAdminSession = user?.role === 'admin' || user?.role === 'manager'
   
   const handleNav = (path: string) => {
     setIsOpen(false)

@@ -7,11 +7,8 @@ import {
   CategoryData,
   BackupFile
 } from "@/types/admin"
-
-export function getAdminToken(): string | null {
-  if (typeof window === "undefined") return null
-  return localStorage.getItem("admin_access_token") || localStorage.getItem("access_token")
-}
+import { getAdminToken } from "@/lib/auth"
+export { getAdminToken }
 
 function getAuthHeader(): Record<string, string> {
   const token = getAdminToken()

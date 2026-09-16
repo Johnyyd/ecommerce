@@ -14,8 +14,12 @@ loop-run-log.md
 .env
 
 backend/venv/
+backend/.venv/
 backend/__pycache__
 backend/.pytest_cache
+backend/.coverage
+backend/coverage.xml
+*.coverage
 backend/app/__pycache__
 backend/app/core/__pycache__
 backend/app/interfaces/__pycache__

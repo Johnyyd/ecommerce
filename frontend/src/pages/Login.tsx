@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useLocation, Link } from "wouter"
 import { useAuthStore } from "@/store/useAuthStore"
+import { setAuthToken } from "@/lib/auth"
 import { motion } from "motion/react"
 
 export function Login() {
@@ -27,7 +28,7 @@ export function Login() {
       }
 
       const data = await res.json()
-      localStorage.setItem("access_token", data.access_token)
+      setAuthToken(data.access_token)
 
       const meRes = await fetch("/api/v1/auth/me", {
         headers: {
@@ -38,8 +39,6 @@ export function Login() {
         const user = await meRes.json()
         setUser(user)
         if (user.role === "admin" || user.role === "manager") {
-          localStorage.setItem("admin_access_token", data.access_token)
-          localStorage.setItem("admin_user", JSON.stringify(user))
           setLocation("/admin")
         } else {
           setLocation("/")

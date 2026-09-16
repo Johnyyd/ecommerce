@@ -20,6 +20,7 @@ import {
 import { PaymentCreateResponse, PaymentStatusResponse } from '@/types/payment';
 import { paymentApi } from '@/services/paymentApi';
 import { useOrderStore } from '@/store/useOrderStore';
+import { getAuthToken } from '@/lib/auth';
 import { toast } from 'sonner';
 
 interface VietQRModalProps {
@@ -148,7 +149,7 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
   // Handle changing payment method
   const handleChangePaymentMethodSubmit = async () => {
     if (!paymentData) return;
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) {
       toast.error('Authentication required to change payment method');
       return;
@@ -185,7 +186,7 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
   // Handle cancelling order directly from modal
   const handleCancelOrderSubmit = async () => {
     if (!paymentData) return;
-    const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+    const token = getAuthToken();
     if (!token) {
       toast.error('Authentication required to cancel order');
       return;

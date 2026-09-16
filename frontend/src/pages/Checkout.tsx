@@ -8,13 +8,14 @@ import { Navbar } from '@/components/layout/Navbar';
 import { VietQRModal } from '@/components/payment/VietQRModal';
 import { paymentApi } from '@/services/paymentApi';
 import { PaymentCreateResponse } from '@/types/payment';
+import { getAuthToken } from '@/lib/auth';
 import { toast } from 'sonner';
 
 export function Checkout() {
   const [, setLocation] = useLocation();
   const { items, clearCart } = useCartStore();
   const { isAuthenticated, isLoading: authLoading } = useAuthStore();
-  const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+  const token = getAuthToken();
   const { addresses, fetchAddresses } = useAddressStore();
   const { createOrder, isLoading: creatingOrder } = useOrderStore();
   

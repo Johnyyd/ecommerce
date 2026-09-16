@@ -1,9 +1,10 @@
 import { ReviewCreate, ReviewResponse, ProductReviewSummary } from '@/types/review';
+import { getAuthToken } from '@/lib/auth';
 
 const API_BASE_URL = '/api/v1';
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+  const token = getAuthToken();
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     ...(options.headers as Record<string, string>),

@@ -260,3 +260,20 @@ async def test_payos_webhook_amount_tampering_rejected():
     assert mock_order.status == "PENDING"
 
     app.dependency_overrides.clear()
+
+@pytest.mark.asyncio
+async def test_mock_payment_webhook_blocked_in_production(monkeypatch):
+    monkeypatch.setattr(settings, "ENVIRONMENT", "production")
+    mock_session = AsyncMock()
+    app.dependency_overrides[get_db_session] = lambda: mock_session
+    order_id = generate_uuidv7()
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        res = await ac.post(f"/api/v1/payments/webhook?order_id={order_id}&status=SUCCESS&mock_secret=mock_secret_123")
+
+    assert res.status_code == 403
+    assert "Mock payment webhook is disabled in production" in res.json()["detail"]
+    mock_session.execute.assert_not_called()
+    app.dependency_overrides.clear()
+

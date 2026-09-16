@@ -13,6 +13,7 @@ import { Cart } from "@/pages/Cart"
 import { PaymentResult } from "@/pages/PaymentResult"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useThemeStore } from "@/store/useThemeStore"
+import { getAuthToken, clearAuthToken } from "@/lib/auth"
 
 function App() {
   const { setUser, setIsLoading } = useAuthStore()
@@ -24,7 +25,7 @@ function App() {
 
   useEffect(() => {
     const checkAuth = async () => {
-      const token = localStorage.getItem("access_token")
+      const token = getAuthToken()
       if (!token) {
         setIsLoading(false)
         return
@@ -40,11 +41,11 @@ function App() {
           const user = await res.json()
           setUser(user)
         } else {
-          localStorage.removeItem("access_token")
+          clearAuthToken()
           setUser(null)
         }
       } catch {
-        localStorage.removeItem("access_token")
+        clearAuthToken()
         setUser(null)
       } finally {
         setIsLoading(false)
