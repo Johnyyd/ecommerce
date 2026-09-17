@@ -103,7 +103,9 @@ flowchart TB
         BE1["Backend Pod 1 (5 Workers)"]
         BE2["Backend Pod 2 (5 Workers)"]
         BE3["Backend Pod 3 (5 Workers)"]
-        HPA -.->|Scale out/in| BackendCluster
+        HPA -.->|Scale out/in| BE1
+        HPA -.->|Scale out/in| BE2
+        HPA -.->|Scale out/in| BE3   
     end
 
     subgraph WorkerLayer["Lớp Tác vụ ngầm (Enterprise ARQ Worker)"]
