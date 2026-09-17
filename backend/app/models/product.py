@@ -1,4 +1,4 @@
-from sqlalchemy import String, Integer, ForeignKey, Numeric, Float
+from sqlalchemy import String, Integer, ForeignKey, Numeric, Float, CheckConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from app.models.base import Base
@@ -28,3 +28,12 @@ class Product(Base):
     image_url: Mapped[str] = mapped_column(String, nullable=True)
     
     category = relationship("Category")
+
+    __table_args__ = (
+        CheckConstraint("stock_quantity >= 0", name="check_stock_quantity_non_negative"),
+    )
+
+    __mapper_args__ = {
+        "version_id_col": version
+    }
+

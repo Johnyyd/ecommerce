@@ -75,6 +75,9 @@ class ProductRepository:
         self.session.add(db_obj)
         await self.session.commit()
         await self.session.refresh(db_obj)
+        
+        from app.services.cache_invalidation import invalidate_product_caches
+        await invalidate_product_caches([db_obj.id])
         return db_obj
 
     async def update(self, db_obj: Product, obj_in: ProductUpdate) -> Product:
@@ -82,16 +85,22 @@ class ProductRepository:
         for field, value in update_data.items():
             setattr(db_obj, field, value)
         
-        # Increment version for optimistic locking if needed
-        db_obj.version += 1
-        
         self.session.add(db_obj)
         await self.session.commit()
         await self.session.refresh(db_obj)
+
+        from app.services.cache_invalidation import invalidate_product_caches
+        await invalidate_product_caches([db_obj.id])
         return db_obj
 
     async def delete(self, product_id: UUID) -> bool:
         stmt = delete(Product).where(Product.id == product_id)
         result = await self.session.execute(stmt)
         await self.session.commit()
-        return result.rowcount > 0
+        
+        if result.rowcount > 0:
+            from app.services.cache_invalidation import invalidate_product_caches
+            await invalidate_product_caches([product_id])
+            return True
+        return False
+

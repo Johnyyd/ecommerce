@@ -49,3 +49,4 @@ backend/reports/*
 !backend/reports/.gitkeep
 .hermes/
 
+/backend/tests/integration/__pycache__
