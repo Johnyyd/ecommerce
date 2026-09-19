@@ -67,6 +67,7 @@ function App() {
         <Route path="/" component={Storefront} />
         <Route path="/products" component={ProductsPage} />
         <Route path="/product/:id" component={ProductDetail} />
+        <Route path="/products/:id" component={ProductDetail} />
         <Route path="/cart" component={Cart} />
         <Route path="/checkout" component={Checkout} />
         <Route path="/payment" component={PaymentResult} />

@@ -16,7 +16,14 @@ IF %ERRORLEVEL% EQU 0 (
     )
 )
 
-echo Rolling out restart for backend deployment in K8s...
+echo Running Database Migration Job in K8s...
+kubectl delete job db-migration-job --ignore-not-found=true
+kubectl apply -f k8s/migration-job.yaml
+kubectl wait --for=condition=complete job/db-migration-job --timeout=60s >nul 2>&1
+
+echo Rolling out restart for backend and worker deployments in K8s...
+kubectl apply -f k8s/worker.yaml
 kubectl rollout restart deployment backend
+kubectl rollout restart deployment worker
 
 echo Done!

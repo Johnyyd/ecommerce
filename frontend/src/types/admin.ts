@@ -35,6 +35,7 @@ export interface VoucherItem {
 export interface OrderItemDetail {
   id: string
   product_id: string
+  product_name?: string
   quantity: number
   unit_price: number
 }
@@ -61,6 +62,7 @@ export interface OrderData {
   shipping_fee?: number | null
   estimated_delivery?: string | null
   shipping_status?: string | null
+  completed_at?: string | null
 }
 
 export interface UserData {

@@ -1,9 +1,10 @@
-from sqlalchemy import String, Integer, ForeignKey, Numeric
+from sqlalchemy import String, Integer, ForeignKey, Numeric, DateTime
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from app.models.base import Base
 from app.core.utils import generate_uuidv7
 from uuid import UUID
+from datetime import datetime
 
 class Order(Base):
     __tablename__ = "orders"
@@ -22,6 +23,9 @@ class Order(Base):
     estimated_delivery: Mapped[str | None] = mapped_column(String(100), nullable=True)
     shipping_status: Mapped[str | None] = mapped_column(String(50), default="PENDING", nullable=True)
     
+    # Order completion timestamp (Ngày hoàn tất/kết thúc đơn hàng)
+    completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    
     items: Mapped[list["OrderItem"]] = relationship("OrderItem", lazy="selectin", cascade="all, delete-orphan")
     payment = relationship("Payment", back_populates="order", uselist=False)
     address = relationship("Address", lazy="selectin")
@@ -34,6 +38,12 @@ class OrderItem(Base):
     product_id: Mapped[UUID] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
+
+    product = relationship("Product", lazy="selectin")
+
+    @property
+    def product_name(self) -> str | None:
+        return self.product.name if self.product else None
 
 class Payment(Base):
     __tablename__ = "payments"

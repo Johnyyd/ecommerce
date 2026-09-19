@@ -5,12 +5,12 @@ REM scripts\windows\docker\stop-docker.bat
 
 echo Stopping Premium E-Commerce Platform Docker Compose services...
 
-REM Bring down the containers and remove volumes (including optional profiles)
+REM Bring down the containers (preserving persistent database volumes)
 where docker-compose >nul 2>nul
 if %errorlevel% equ 0 (
-    docker-compose --profile tailscale down -v 2>nul || docker-compose down -v
+    docker-compose --profile tailscale down 2>nul || docker-compose down
 ) else (
-    docker compose --profile tailscale down -v 2>nul || docker compose down -v
+    docker compose --profile tailscale down 2>nul || docker compose down
 )
 
 where tailscale >nul 2>nul

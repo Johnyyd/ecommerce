@@ -5,11 +5,11 @@ cd "$(dirname "$0")/../../.."
 
 echo "Stopping Premium E-Commerce Platform Docker Compose services..."
 
-# Bring down the containers and remove volumes (including optional profiles)
+# Bring down the containers (preserving persistent database volumes)
 if command -v docker-compose &> /dev/null; then
-    docker-compose --profile tailscale down -v 2>/dev/null || docker-compose down -v
+    docker-compose --profile tailscale down 2>/dev/null || docker-compose down
 elif docker compose version &> /dev/null; then
-    docker compose --profile tailscale down -v 2>/dev/null || docker compose down -v
+    docker compose --profile tailscale down 2>/dev/null || docker compose down
 fi
 
 # Stop Tailscale serve mappings if active

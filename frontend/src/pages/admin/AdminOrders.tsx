@@ -186,6 +186,7 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
               <thead className="bg-zinc-50/75 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200/60 dark:border-zinc-800 font-medium">
                 <tr>
                   <th className="px-6 py-4">Order ID</th>
+                  <th className="px-6 py-4">Timeline / Date</th>
                   <th className="px-6 py-4">Customer</th>
                   <th className="px-6 py-4">Amount</th>
                   <th className="px-6 py-4">Payment</th>
@@ -203,6 +204,18 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
                         <div className="mt-1 flex items-center gap-1 text-[11px] font-mono text-orange-600 dark:text-orange-400 font-semibold">
                           <Truck size={12} weight="bold" />
                           <span>GHN: {o.tracking_code}</span>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Timeline / Date */}
+                    <td className="px-6 py-4 text-[11px] text-zinc-600 dark:text-zinc-300">
+                      <div className="font-medium">
+                        {o.created_at ? new Date(o.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </div>
+                      {o.completed_at && (
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          Completed: {new Date(o.completed_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
                         </div>
                       )}
                     </td>
@@ -337,6 +350,14 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
                     </span>
                   </div>
                   <p className="text-xs text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">#{selectedOrder.id}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
+                    <span>Created: {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('en-US') : '—'}</span>
+                    {selectedOrder.completed_at && (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                        • Completed: {new Date(selectedOrder.completed_at).toLocaleString('en-US')}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setSelectedOrder(null)}
@@ -351,8 +372,8 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
                 {selectedOrder.items?.map(item => (
                   <div key={item.id} className="py-3.5 flex justify-between items-center text-xs">
                     <div>
-                      <span className="font-mono font-medium text-zinc-800 dark:text-zinc-200 block">
-                        Item: {item.product_id ? `${item.product_id.substring(0, 12)}...` : "Standard SKU"}
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200 block">
+                        {item.product_name || (item.product_id ? `Product #${item.product_id.substring(0, 8)}` : "Standard SKU")}
                       </span>
                       <span className="text-zinc-400 dark:text-zinc-500 text-[11px]">Qty: {item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
                     </div>

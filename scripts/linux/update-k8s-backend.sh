@@ -13,6 +13,11 @@ elif command -v kind &> /dev/null && kind get clusters 2>/dev/null | grep -q 'ki
     kind load docker-image ecommerce-backend:latest
 fi
 
+echo "Running Database Migration Job..."
+kubectl delete job db-migration-job --ignore-not-found=true
+kubectl apply -f k8s/migration-job.yaml
+kubectl wait --for=condition=complete job/db-migration-job --timeout=60s 2>/dev/null || echo "Migration job in progress or completed."
+
 echo "Rolling out restart for backend and worker deployment in K8s..."
 kubectl apply -f k8s/worker.yaml
 kubectl rollout restart deployment backend
