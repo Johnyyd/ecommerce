@@ -182,10 +182,16 @@ async def payment_webhook(
             "idempotency_key": idempotency_key
         }
 
-    # Branch B: Fallback / Mock query parameters for backward compatibility
+    # Branch B: Fallback / Mock query parameters for backward compatibility (disabled in production)
     if order_id is not None and status_param is not None and mock_secret is not None:
+        if settings.ENVIRONMENT == "production":
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Mock payment webhook is disabled in production"
+            )
         if mock_secret != "mock_secret_123":
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Invalid signature")
+
 
         stmt = select(Order).options(selectinload(Order.payment)).where(Order.id == order_id)
         result = await session.execute(stmt)

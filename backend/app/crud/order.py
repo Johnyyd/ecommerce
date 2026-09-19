@@ -34,27 +34,33 @@ class OrderRepository:
         order_items = []
         product_repo = ProductRepository(self.session)
 
-        # 1. Pessimistic Locking: Lock products and verify stock
-        sorted_items = sorted(order_in.items, key=lambda x: x.product_id)
+        # 1. Pessimistic Locking: Deduplicate and sort products to avoid deadlocks
+        merged_quantities = {}
+        for item in order_in.items:
+            merged_quantities[item.product_id] = merged_quantities.get(item.product_id, 0) + item.quantity
+
+        sorted_product_ids = sorted(merged_quantities.keys())
+        affected_product_ids = []
         
-        for item in sorted_items:
-            product = await product_repo.get_by_id_for_update(item.product_id)
+        for pid in sorted_product_ids:
+            qty = merged_quantities[pid]
+            product = await product_repo.get_by_id_for_update(pid)
             if not product:
-                raise ValueError(f"Product {item.product_id} not found")
+                raise ValueError(f"Product {pid} not found")
             
-            if product.stock_quantity < item.quantity:
+            if product.stock_quantity < qty:
                 raise ValueError(f"Insufficient stock for product {product.name}")
                 
-            product.stock_quantity -= item.quantity
-            product.version += 1
+            product.stock_quantity -= qty
             self.session.add(product)
+            affected_product_ids.append(pid)
             
-            item_total = float(product.price) * item.quantity
+            item_total = float(product.price) * qty
             total_amount += item_total
             
             order_items.append(OrderItem(
                 product_id=product.id,
-                quantity=item.quantity,
+                quantity=qty,
                 unit_price=product.price
             ))
             
@@ -85,6 +91,10 @@ class OrderRepository:
         # Commit the transaction
         await self.session.commit()
         
+        # Invalidate Redis caches immediately after commit
+        from app.services.cache_invalidation import invalidate_product_caches
+        await invalidate_product_caches(affected_product_ids)
+        
         # Refresh and eager load relationships
         stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == db_order.id)
         result = await self.session.execute(stmt)
@@ -112,12 +122,13 @@ class OrderRepository:
         
         # Restore stock
         product_repo = ProductRepository(self.session)
+        affected_product_ids = []
         for item in order.items:
             product = await product_repo.get_by_id_for_update(item.product_id)
             if product:
                 product.stock_quantity += item.quantity
-                product.version += 1
                 self.session.add(product)
+                affected_product_ids.append(item.product_id)
         
         order.status = "CANCELLED"
         if order.payment:
@@ -126,6 +137,11 @@ class OrderRepository:
         self.session.add(order)
         await self.session.commit()
         await self.session.refresh(order)
+
+        # Invalidate Redis caches after restocking
+        from app.services.cache_invalidation import invalidate_product_caches
+        await invalidate_product_caches(affected_product_ids)
+
         return order
 
     async def update_payment_method(self, order_id: UUID, user_id: UUID, new_payment_method: str) -> Order:
@@ -179,13 +195,33 @@ class OrderRepository:
         order = result.scalars().first()
         if not order:
             raise ValueError("Order not found")
+            
+        old_status = order.status
         order.status = new_status
+        affected_product_ids = []
+
         if new_status == "COMPLETED" and order.payment:
             order.payment.status = "SUCCESS"
-        elif new_status == "CANCELLED" and order.payment:
-            order.payment.status = "REFUNDED" if order.payment.status == "SUCCESS" else "CANCELLED"
+        elif new_status == "CANCELLED":
+            if old_status != "CANCELLED":
+                # Restore stock on cancellation
+                product_repo = ProductRepository(self.session)
+                for item in order.items:
+                    product = await product_repo.get_by_id_for_update(item.product_id)
+                    if product:
+                        product.stock_quantity += item.quantity
+                        self.session.add(product)
+                        affected_product_ids.append(item.product_id)
+            if order.payment:
+                order.payment.status = "REFUNDED" if order.payment.status == "SUCCESS" else "CANCELLED"
+                
         self.session.add(order)
         await self.session.commit()
         await self.session.refresh(order)
+
+        if affected_product_ids:
+            from app.services.cache_invalidation import invalidate_product_caches
+            await invalidate_product_caches(affected_product_ids)
+
         return order
 

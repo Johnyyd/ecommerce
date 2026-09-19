@@ -1,5 +1,7 @@
 import { create } from 'zustand'
 import { useCartStore } from './useCartStore'
+import { clearAuthToken } from '@/lib/auth'
+
 export interface User {
   id: string
   username: string
@@ -16,7 +18,7 @@ interface AuthState {
   isLoading: boolean
   setUser: (user: User | null) => void
   setIsLoading: (loading: boolean) => void
-  logout: () => void
+  logout: (clearAdmin?: boolean) => void
 }
 
 export const useAuthStore = create<AuthState>((set) => ({
@@ -28,8 +30,10 @@ export const useAuthStore = create<AuthState>((set) => ({
   logout: () => {
     set({ user: null, isAuthenticated: false, isLoading: false })
     useCartStore.getState().clearCart()
-    if (typeof window !== 'undefined') {
-      localStorage.removeItem("access_token")
-    }
+    clearAuthToken()
   }
 }))
+
+export const clearAdminSession = () => {
+  clearAuthToken()
+}

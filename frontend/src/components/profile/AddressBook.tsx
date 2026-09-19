@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useAddressStore, AddressCreate } from '@/store/useAddressStore';
 import { fetchProvinces, fetchDistricts, fetchWards, Province, District, Ward } from '@/lib/locations';
+import { getAuthToken } from '@/lib/auth';
 
 function CustomSelect({
   id,
@@ -69,7 +70,7 @@ function CustomSelect({
 }
 
 export function AddressBook() {
-  const token = localStorage.getItem('access_token');
+  const token = getAuthToken();
   const { addresses, isLoading, error, fetchAddresses, createAddress, deleteAddress } = useAddressStore();
   const [isAdding, setIsAdding] = useState(false);
   

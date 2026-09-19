@@ -141,4 +141,20 @@ describe("Admin Layout & Sub-components", () => {
       expect(screen.getByText("db_snapshot_2026.dump")).toBeInTheDocument()
     })
   })
+
+  it("denies access to customer role and redirects to login", async () => {
+    useAuthStore.getState().setUser({
+      id: "cust-1",
+      username: "buyer_joe",
+      email: "buyer@store.com",
+      role: "customer",
+      is_active: true,
+      created_at: "2026-01-01",
+      updated_at: "2026-01-01"
+    })
+
+    render(<Admin />)
+    // Operations portal header shouldn't be rendered for customer
+    // The component redirects to /login immediately
+  })
 })

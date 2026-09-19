@@ -1,17 +1,32 @@
 from uuid import UUID
-from typing import Any
+from typing import Any, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db_session
-from app.api.deps import get_current_user
+from app.api.deps import get_current_user, get_current_staff
 from app.models.user import User
-from app.schemas.review import ReviewCreate, ReviewResponse, ProductReviewSummary
+from app.schemas.review import ReviewCreate, ReviewResponse, ProductReviewSummary, AdminReviewResponse
 from app.crud.review import ReviewRepository
 
 router = APIRouter()
 
 def get_review_repo(session: AsyncSession = Depends(get_db_session)) -> ReviewRepository:
     return ReviewRepository(session)
+
+@router.get("/admin/all", response_model=List[AdminReviewResponse])
+async def get_all_reviews_admin(
+    product_id: Optional[UUID] = None,
+    rating: Optional[int] = None,
+    skip: int = 0,
+    limit: int = 100,
+    current_staff: User = Depends(get_current_staff),
+    repo: ReviewRepository = Depends(get_review_repo)
+) -> Any:
+    """
+    Admin/Manager endpoint: List all reviews across the platform with product & user information.
+    """
+    return await repo.get_all_admin(product_id=product_id, rating=rating, skip=skip, limit=limit)
+
 
 @router.get("/product/{product_id}", response_model=ProductReviewSummary)
 async def get_product_reviews(

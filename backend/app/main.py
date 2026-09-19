@@ -3,7 +3,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from fastapi import FastAPI
 from app.core.config import settings
-from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup, reviews, async_jobs
+from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup, reviews, async_jobs, shipping
 from app.core.logging import setup_logging
 from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.staticfiles import StaticFiles
@@ -66,6 +66,7 @@ app.include_router(brands.router, prefix="/api/v1/brands", tags=["brands"])
 app.include_router(vouchers.router, prefix="/api/v1/vouchers", tags=["vouchers"])
 app.include_router(backup.router, prefix="/api/v1/admin/backups", tags=["backups"])
 app.include_router(reviews.router, prefix="/api/v1/reviews", tags=["reviews"])
+app.include_router(shipping.router, prefix="/api/v1/shipping", tags=["shipping"])
 app.include_router(async_jobs.router, prefix="/api/v1", tags=["async-jobs"])
 
 @app.get("/api/health")

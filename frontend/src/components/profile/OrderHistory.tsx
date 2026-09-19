@@ -8,15 +8,21 @@ import {
   Money, 
   CreditCard, 
   DeviceMobile,
-  ArrowClockwise 
+  ArrowClockwise,
+  Truck,
+  Star
 } from '@phosphor-icons/react';
 import { VietQRModal } from '@/components/payment/VietQRModal';
+import { OrderTrackingTimeline } from '@/components/shipping/OrderTrackingTimeline';
+import { shippingApi } from '@/services/shippingApi';
+import { ShippingTimelineResponse } from '@/types/shipping';
 import { paymentApi } from '@/services/paymentApi';
 import { PaymentCreateResponse } from '@/types/payment';
+import { getAuthToken } from '@/lib/auth';
 import { toast } from 'sonner';
 
 export function OrderHistory() {
-  const token = localStorage.getItem('access_token') || localStorage.getItem('token');
+  const token = getAuthToken();
   const { orders, isLoading, error, fetchOrders, cancelOrder, updatePaymentMethod } = useOrderStore();
 
   // VietQR Modal state for re-paying or paying from Order History
@@ -28,6 +34,29 @@ export function OrderHistory() {
   const [orderToChange, setOrderToChange] = useState<Order | null>(null);
   const [selectedMethod, setSelectedMethod] = useState<string>('COD');
   const [isUpdatingMethod, setIsUpdatingMethod] = useState<boolean>(false);
+
+  // Tracking Timeline Modal state
+  const [trackingData, setTrackingData] = useState<ShippingTimelineResponse | null>(null);
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState<boolean>(false);
+  const [loadingTrackingId, setLoadingTrackingId] = useState<string | null>(null);
+
+  const handleOpenTracking = async (order: Order) => {
+    try {
+      setLoadingTrackingId(order.id);
+      setIsTrackingModalOpen(true);
+      if (order.tracking_code) {
+        const res = await shippingApi.getTrackingByCode(order.tracking_code);
+        setTrackingData(res);
+      } else if (token) {
+        const res = await shippingApi.getOrderTracking(order.id, token);
+        setTrackingData(res);
+      }
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to load shipment tracking data');
+    } finally {
+      setLoadingTrackingId(null);
+    }
+  };
 
   useEffect(() => {
     if (token) fetchOrders(token);
@@ -161,6 +190,12 @@ export function OrderHistory() {
                 <div>
                   <p className="text-[10px] font-mono text-zinc-400 mb-1 tracking-widest uppercase">Order ID</p>
                   <p className="font-medium text-sm text-zinc-900 font-mono">{order.id}</p>
+                  {order.tracking_code && (
+                    <div className="mt-1.5 inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-orange-50 border border-orange-200 text-orange-700 text-[11px] font-mono font-semibold">
+                      <Truck size={13} weight="bold" />
+                      <span>GHN: {order.tracking_code}</span>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-6">
                   <div>
@@ -194,59 +229,94 @@ export function OrderHistory() {
                 ))}
               </div>
 
-              {(['PENDING', 'PROCESSING'].includes(order.status)) && (
-                <div className="mt-6 pt-4 border-t border-zinc-100 flex flex-wrap items-center justify-end gap-3">
-                  {/* Pay via QR button for VietQR orders */}
-                  {order.status === 'PENDING' && (order.payment_method === 'VIETQR' || order.payment_method === 'PAYOS') && (
-                    <button 
-                      onClick={() => handleOpenVietQR(order.id)}
-                      disabled={loadingQRId === order.id}
-                      className="text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
-                    >
-                      {loadingQRId === order.id ? (
-                        <ArrowClockwise size={14} className="animate-spin" />
-                      ) : (
-                        <QrCode size={15} weight="bold" />
-                      )}
-                      Pay via VietQR
-                    </button>
-                  )}
+              <div className="mt-6 pt-4 border-t border-zinc-100 flex flex-wrap items-center justify-end gap-3">
+                {/* Track Shipment Button (GHN) */}
+                {(order.tracking_code || ['SHIPPED', 'DELIVERED', 'COMPLETED', 'PROCESSING'].includes(order.status)) && (
+                  <button
+                    onClick={() => handleOpenTracking(order)}
+                    disabled={loadingTrackingId === order.id}
+                    className="text-xs font-semibold text-orange-700 hover:text-orange-900 bg-orange-50 hover:bg-orange-100 border border-orange-200/80 px-3.5 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 shadow-sm"
+                  >
+                    {loadingTrackingId === order.id ? (
+                      <ArrowClockwise size={14} className="animate-spin" />
+                    ) : (
+                      <Truck size={15} weight="bold" />
+                    )}
+                    Track Shipment (GHN)
+                  </button>
+                )}
 
-                  {/* Pay Online button for gateway orders */}
-                  {order.status === 'PENDING' && order.payment_method !== 'COD' && order.payment_method !== 'VIETQR' && order.payment_method !== 'PAYOS' && order.payment_url && (
-                    <button 
-                      onClick={() => window.location.href = order.payment_url!}
-                      className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
-                    >
-                      <CreditCard size={15} />
-                      Pay Online
-                    </button>
-                  )}
+                {/* Write Review shortcut button for delivered products */}
+                {['DELIVERED', 'COMPLETED'].includes(order.status) && order.items.length > 0 && (
+                  <a
+                    href={`/products/${order.items[0].product_id}`}
+                    className="text-xs font-semibold text-emerald-700 hover:text-emerald-900 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200/80 px-3.5 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-1.5 shadow-sm"
+                  >
+                    <Star size={14} weight="fill" className="text-amber-500" />
+                    Review Item
+                  </a>
+                )}
 
-                  {/* Change Payment Method button for any PENDING order */}
-                  {order.status === 'PENDING' && (
-                    <button 
-                      onClick={() => handleOpenChangeMethod(order)}
-                      className="text-xs font-medium text-zinc-700 hover:text-zinc-950 bg-zinc-100 hover:bg-zinc-200 px-3.5 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-1.5"
-                    >
-                      <ArrowsLeftRight size={14} />
-                      Change Payment Method
-                    </button>
-                  )}
+                {/* Pay via QR button for VietQR orders */}
+                {order.status === 'PENDING' && (order.payment_method === 'VIETQR' || order.payment_method === 'PAYOS') && (
+                  <button 
+                    onClick={() => handleOpenVietQR(order.id)}
+                    disabled={loadingQRId === order.id}
+                    className="text-xs font-medium text-white bg-zinc-900 hover:bg-zinc-800 px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5 disabled:opacity-50"
+                  >
+                    {loadingQRId === order.id ? (
+                      <ArrowClockwise size={14} className="animate-spin" />
+                    ) : (
+                      <QrCode size={15} weight="bold" />
+                    )}
+                    Pay via VietQR
+                  </button>
+                )}
 
-                  {/* Cancel Order */}
+                {/* Pay Online button for gateway orders */}
+                {order.status === 'PENDING' && order.payment_method !== 'COD' && order.payment_method !== 'VIETQR' && order.payment_method !== 'PAYOS' && order.payment_url && (
+                  <button 
+                    onClick={() => window.location.href = order.payment_url!}
+                    className="text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 px-3.5 py-2 rounded-xl transition-all shadow-sm active:scale-95 flex items-center gap-1.5"
+                  >
+                    <CreditCard size={15} />
+                    Pay Online
+                  </button>
+                )}
+
+                {/* Change Payment Method button for any PENDING order */}
+                {order.status === 'PENDING' && (
+                  <button 
+                    onClick={() => handleOpenChangeMethod(order)}
+                    className="text-xs font-medium text-zinc-700 hover:text-zinc-950 bg-zinc-100 hover:bg-zinc-200 px-3.5 py-2 rounded-xl transition-all active:scale-95 flex items-center gap-1.5"
+                  >
+                    <ArrowsLeftRight size={14} />
+                    Change Payment Method
+                  </button>
+                )}
+
+                {/* Cancel Order */}
+                {['PENDING', 'PROCESSING'].includes(order.status) && (
                   <button 
                     onClick={() => handleCancel(order.id)}
-                    className="text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-xl transition-colors"
+                    className="text-xs font-medium text-red-500 hover:text-red-700 hover:bg-red-50 px-3 py-2 rounded-xl transition-colors cursor-pointer"
                   >
                     Cancel Order
                   </button>
-                </div>
-              )}
+                )}
+              </div>
             </motion.div>
           ))}
         </div>
       )}
+
+      {/* Reusable GHN Order Tracking Timeline Modal */}
+      <OrderTrackingTimeline
+        isOpen={isTrackingModalOpen}
+        onClose={() => setIsTrackingModalOpen(false)}
+        data={trackingData}
+        isLoading={loadingTrackingId !== null}
+      />
 
       {/* Reusable VietQR Modal for paying orders directly from history */}
       <VietQRModal

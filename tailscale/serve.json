@@ -1,0 +1,10 @@
+{
+  "TCP": {
+    "80": {
+      "TCPForward": "frontend:80"
+    },
+    "3000": {
+      "TCPForward": "grafana:3000"
+    }
+  }
+}

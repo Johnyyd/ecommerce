@@ -5,11 +5,14 @@ import {
   OrderData,
   UserData,
   CategoryData,
-  BackupFile
+  BackupFile,
+  AdminReviewItem
 } from "@/types/admin"
+import { getAdminToken } from "@/lib/auth"
+export { getAdminToken }
 
 function getAuthHeader(): Record<string, string> {
-  const token = localStorage.getItem("access_token")
+  const token = getAdminToken()
   return token ? { Authorization: `Bearer ${token}` } : {}
 }
 
@@ -285,5 +288,31 @@ export const adminApi = {
     })
     if (!res.ok) throw new Error("Restore database failed")
     return true
+  },
+
+  // --- Reviews ---
+  async getReviews(productId?: string, rating?: number): Promise<AdminReviewItem[]> {
+    const params = new URLSearchParams()
+    if (productId) params.append("product_id", productId)
+    if (rating) params.append("rating", rating.toString())
+    const queryString = params.toString() ? `?${params.toString()}` : ""
+    const res = await fetch(`/api/v1/reviews/admin/all${queryString}`, {
+      headers: getAuthHeader()
+    })
+    if (!res.ok) throw new Error("Failed to fetch reviews")
+    return res.json()
+  },
+
+  async deleteReview(reviewId: string): Promise<boolean> {
+    const res = await fetch(`/api/v1/reviews/${reviewId}`, {
+      method: "DELETE",
+      headers: getAuthHeader()
+    })
+    if (!res.ok) {
+      const err = await res.json().catch(() => ({}))
+      throw new Error(err.detail || "Failed to delete review")
+    }
+    return true
   }
 }
+

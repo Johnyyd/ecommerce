@@ -25,6 +25,11 @@ export interface Order {
   items: OrderItem[];
   payment: Payment | null;
   payment_url?: string;
+  tracking_code?: string | null;
+  shipping_provider?: string | null;
+  shipping_fee?: number | null;
+  estimated_delivery?: string | null;
+  shipping_status?: string | null;
 }
 
 export interface OrderCreate {

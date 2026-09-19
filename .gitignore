@@ -14,8 +14,12 @@ loop-run-log.md
 .env
 
 backend/venv/
+backend/.venv/
 backend/__pycache__
 backend/.pytest_cache
+backend/.coverage
+backend/coverage.xml
+*.coverage
 backend/app/__pycache__
 backend/app/core/__pycache__
 backend/app/interfaces/__pycache__
@@ -36,6 +40,7 @@ frontend/.next
 /backend/app/api/v1/endpoints/__pycache__
 /backend/alembic/versions/__pycache__
 /backend/alembic/__pycache__
+/backend/tests/integration/__pycache__
 /.superpowers
 /docs
 
@@ -43,5 +48,6 @@ backend/media/*
 !backend/media/.gitkeep
 backend/reports/*
 !backend/reports/.gitkeep
-.hermes/
-
+/.hermes
+/backend/app/services/shipping/__pycache__
+/media

@@ -15,8 +15,16 @@ class Order(Base):
     status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
     payment_method: Mapped[str] = mapped_column(String(50), nullable=False)
     
+    # Logistics / Shipping fields
+    tracking_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    shipping_provider: Mapped[str] = mapped_column(String(50), default="GHN", nullable=False)
+    shipping_fee: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0, nullable=False)
+    estimated_delivery: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    shipping_status: Mapped[str | None] = mapped_column(String(50), default="PENDING", nullable=True)
+    
     items: Mapped[list["OrderItem"]] = relationship("OrderItem", lazy="selectin", cascade="all, delete-orphan")
     payment = relationship("Payment", back_populates="order", uselist=False)
+    address = relationship("Address", lazy="selectin")
 
 class OrderItem(Base):
     __tablename__ = "order_items"

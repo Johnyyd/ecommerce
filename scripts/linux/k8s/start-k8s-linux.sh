@@ -222,5 +222,8 @@ if [ "$CLUSTER_TOOL" = "minikube" ]; then
     echo -e "3. ${YELLOW}Truy cập trực tiếp Grafana Dashboard trên Minikube:${NC}"
     echo -e "   ${CYAN}minikube service grafana${NC}"
     echo -e "   Đăng nhập mặc định: ${YELLOW}admin / admin${NC}"
+    echo ""
+    echo -e "4. ${YELLOW}Truy cập từ xa qua mạng Tailscale (điện thoại, máy tính khác):${NC}"
+    echo -e "   Chạy: ${CYAN}bash scripts/linux/tailscale/expose-tailscale.sh${NC}"
 fi
 echo ""

@@ -18,6 +18,9 @@ const memoryStorage = {
 }
 
 const cartStorage = () => {
+  if (typeof window !== 'undefined' && window.sessionStorage) {
+    return window.sessionStorage
+  }
   if (typeof window !== 'undefined' && window.localStorage) {
     return window.localStorage
   }

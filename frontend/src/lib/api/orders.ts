@@ -1,3 +1,5 @@
+import { getAuthToken } from '@/lib/auth'
+
 const API_BASE_URL = '/api/v1'
 
 export interface OrderItemCreate {
@@ -38,7 +40,7 @@ export interface OrderResponse {
 }
 
 async function fetchWithAuth(url: string, options: RequestInit = {}) {
-  const token = localStorage.getItem('access_token')
+  const token = getAuthToken()
   if (!token) {
     throw new Error('Not authenticated')
   }

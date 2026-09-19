@@ -14,7 +14,9 @@ import {
   ArrowClockwise,
   ShieldCheck,
   UserGear,
-  Lightning
+  Lightning,
+  SignOut,
+  Star
 } from "@phosphor-icons/react"
 import { useAuthStore } from "@/store/useAuthStore"
 import { adminApi } from "@/services/adminApi"
@@ -39,16 +41,17 @@ import { AdminOrders } from "./admin/AdminOrders"
 import { AdminUsers } from "./admin/AdminUsers"
 import { AdminBackups } from "./admin/AdminBackups"
 import { AdminAsyncJobs } from "./admin/AdminAsyncJobs"
+import { AdminReviews } from "./admin/AdminReviews"
 
 export function Admin() {
-  const { user, isLoading } = useAuthStore()
+  const { user, isLoading, logout } = useAuthStore()
   const [, setLocation] = useLocation()
 
   // Navigation State with URL Hash & localStorage persistence
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "") as TabType
-      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs"]
+      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs", "reviews"]
       if (validTabs.includes(hash)) return hash
       const saved = localStorage.getItem("admin_active_tab") as TabType
       if (validTabs.includes(saved)) return saved
@@ -67,7 +70,7 @@ export function Admin() {
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash.replace("#", "") as TabType
-      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs"]
+      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs", "reviews"]
       if (validTabs.includes(hash)) {
         setActiveTab(hash)
       }
@@ -87,9 +90,11 @@ export function Admin() {
 
   const [isFetching, setIsFetching] = useState(false)
 
+
+
   const isAdmin = user?.role === "admin"
 
-  // Route Guard: Allow either Admin or Manager
+  // Route Guard: Strictly allow only Admin or Manager
   useEffect(() => {
     if (!isLoading && (!user || (user.role !== "admin" && user.role !== "manager"))) {
       setLocation("/login")
@@ -150,6 +155,7 @@ export function Admin() {
     },
     { id: "users", label: "Users", icon: <Users size={16} weight="bold" />, badge: users.length },
     { id: "backups", label: "Backups", icon: <Database size={16} weight="bold" /> },
+    { id: "reviews", label: "Reviews", icon: <Star size={16} weight="bold" /> },
     { id: "async_jobs", label: "Async Jobs", icon: <Lightning size={16} weight="bold" /> }
   ]
 
@@ -194,7 +200,7 @@ export function Admin() {
               </div>
             </div>
 
-            {/* Refresh Action */}
+            {/* Actions: Refresh & Sign Out */}
             <div className="flex items-center gap-2">
               <button
                 onClick={fetchAllData}
@@ -207,6 +213,17 @@ export function Admin() {
                   className={isFetching ? "animate-spin" : ""}
                 />
                 <span>{isFetching ? "Syncing..." : "Sync Data"}</span>
+              </button>
+              <button
+                onClick={() => {
+                  logout()
+                  setLocation("/login")
+                }}
+                className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-red-50 hover:bg-red-100 dark:bg-red-950/30 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 border border-red-200/60 dark:border-red-800/40 rounded-2xl text-xs font-semibold active:scale-[0.98] transition-all cursor-pointer shadow-xs"
+                title="Sign out of Admin Portal"
+              >
+                <SignOut size={14} weight="bold" />
+                <span>Sign out</span>
               </button>
             </div>
           </div>
@@ -331,6 +348,9 @@ export function Admin() {
             )}
             {activeTab === "async_jobs" && (
               <AdminAsyncJobs />
+            )}
+            {activeTab === "reviews" && (
+              <AdminReviews products={products} onRefreshAll={fetchAllData} />
             )}
           </motion.div>
         </AnimatePresence>

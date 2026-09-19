@@ -27,3 +27,18 @@ class ProductReviewSummary(BaseModel):
     total_reviews: int
     rating_distribution: Dict[int, int]
     reviews: List[ReviewResponse] = []
+
+class AdminReviewResponse(BaseModel):
+    id: UUID
+    product_id: UUID
+    product_name: Optional[str] = None
+    user_id: UUID
+    username: Optional[str] = None
+    user_email: Optional[str] = None
+    order_id: UUID
+    rating: int
+    comment: Optional[str] = None
+    is_verified_purchase: bool
+    created_at: datetime
+
+    model_config = ConfigDict(from_attributes=True)

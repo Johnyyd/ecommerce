@@ -1,0 +1,94 @@
+name: Security Scan (Strix & SAST)
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  sast-scan:
+    name: SAST Security Scan (Bandit & Security Tests)
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ./backend
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python 3.12
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: "pip"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install bandit pytest pytest-asyncio pytest-cov
+
+      - name: Run Bandit SAST Scan
+        run: bandit -r app/ -c bandit.yaml
+
+      - name: Run OWASP & Security Pytest Suite
+        env:
+          SECRET_KEY: "ci_secret_key_test_only"
+          POSTGRES_USER: "ecommerce_user"
+          POSTGRES_PASSWORD: "ecommerce_password"
+          POSTGRES_DB: "ecommerce_db"
+        run: pytest tests/api/test_owasp_security.py tests/api/test_payments_security.py
+
+  strix-scan:
+    name: Strix AI Penetration Scan
+    runs-on: ubuntu-latest
+    env:
+      STRIX_LLM: ${{ secrets.STRIX_LLM }}
+      LLM_API_KEY: ${{ secrets.LLM_API_KEY }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # Required for diff-scope resolution
+
+      - name: Check Strix credentials
+        id: check-creds
+        run: |
+          if [ -n "$STRIX_LLM" ] && [ -n "$LLM_API_KEY" ]; then
+            echo "enabled=true" >> $GITHUB_OUTPUT
+          else
+            echo "enabled=false" >> $GITHUB_OUTPUT
+            echo "Notice: Strix AI credentials (STRIX_LLM, LLM_API_KEY) not set in repository secrets. Skipping AI pentest."
+          fi
+
+      - name: Install Strix CLI
+        if: steps.check-creds.outputs.enabled == 'true'
+        run: |
+          curl -sSL https://strix.ai/install | bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      - name: Run Strix Security Scan
+        if: steps.check-creds.outputs.enabled == 'true'
+        run: |
+          strix -n -t ./ --scan-mode quick --max-budget 10
+
+      - name: Fail unless the scan completed
+        if: steps.check-creds.outputs.enabled == 'true'
+        run: |
+          if [ -d "strix_runs" ]; then
+            run_json=$(ls -t strix_runs/*/run.json 2>/dev/null | head -1)
+            if [ -n "$run_json" ] && [ -f "$run_json" ]; then
+              status=$(jq -r .status "$run_json")
+              if [ "$status" != "completed" ]; then
+                echo "Strix run status is '$status' — the scan did not complete (likely budget exhausted). Raise --max-budget." >&2
+                exit 1
+              fi
+            fi
+          fi
+
+      - name: Upload SARIF Findings
+        if: always() && steps.check-creds.outputs.enabled == 'true'
+        uses: github/codeql-action/upload-sarif@v3
+        continue-on-error: true
+        with:
+          sarif_file: strix_runs

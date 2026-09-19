@@ -42,6 +42,13 @@ class Settings(BaseSettings):
     SMTP_PASSWORD: str | None = None
     EMAIL_FROM: str = "noreply@ecommerce.local"
 
+    # Logistics / Shipping (Giao Hàng Nhanh - GHN API v2)
+    GHN_API_URL: str = "https://dev-online-gateway.ghn.vn/shiip/public-api"
+    GHN_API_TOKEN: str = "ghn_sandbox_token_demo"
+    GHN_SHOP_ID: int = 884920
+    GHN_FROM_DISTRICT_ID: int = 1442  # e.g., District 1, Ho Chi Minh City
+    GHN_FROM_WARD_CODE: str = "20101"
+
     model_config = SettingsConfigDict(env_file=(".env", "backend/.env"), env_file_encoding="utf-8", extra="ignore")
 
 

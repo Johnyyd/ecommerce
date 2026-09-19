@@ -17,12 +17,13 @@ import {
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { QueueMetrics, SandboxEmail, MediaUploadResult } from "@/types/admin"
+import { getAdminToken } from "@/lib/auth"
 
 const API_BASE = (import.meta as any).env.VITE_API_URL || "/api/v1"
 
 export const AdminAsyncJobs: React.FC = () => {
   const getActiveToken = useCallback(() => {
-    return localStorage.getItem("access_token") || localStorage.getItem("token") || ""
+    return getAdminToken() || ""
   }, [])
   const token = getActiveToken()
 

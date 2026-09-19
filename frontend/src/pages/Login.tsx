@@ -1,6 +1,7 @@
 import { useState } from "react"
 import { useLocation, Link } from "wouter"
 import { useAuthStore } from "@/store/useAuthStore"
+import { setAuthToken } from "@/lib/auth"
 import { motion } from "motion/react"
 
 export function Login() {
@@ -27,7 +28,7 @@ export function Login() {
       }
 
       const data = await res.json()
-      localStorage.setItem("access_token", data.access_token)
+      setAuthToken(data.access_token)
 
       const meRes = await fetch("/api/v1/auth/me", {
         headers: {
