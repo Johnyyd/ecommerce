@@ -37,16 +37,17 @@ export function Cart() {
             animate={{ x: 0, opacity: 1 }}
             exit={{ x: "100%", opacity: 0 }}
             transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[480px] bg-white shadow-2xl flex flex-col border-l border-zinc-100"
+            className="fixed top-0 right-0 bottom-0 z-50 w-full md:w-[480px] bg-white dark:bg-zinc-900 shadow-2xl flex flex-col border-l border-zinc-100 dark:border-zinc-800 text-zinc-900 dark:text-zinc-50"
           >
-            <div className="flex items-center justify-between p-6 border-b border-zinc-100">
+            <div className="flex items-center justify-between p-6 border-b border-zinc-100 dark:border-zinc-800">
               <div className="flex items-center gap-2">
-                <ShoppingBag weight="bold" className="text-xl" />
-                <h2 className="text-lg font-medium tracking-tight">Your Cart</h2>
+                <ShoppingBag weight="bold" className="text-xl text-zinc-900 dark:text-zinc-100" />
+                <h2 className="text-lg font-medium tracking-tight text-zinc-900 dark:text-zinc-100">Your Cart</h2>
               </div>
               <button
                 onClick={toggleCart}
-                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-zinc-100 transition-colors"
+                className="w-10 h-10 rounded-full flex items-center justify-center hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-500 dark:text-zinc-400 transition-colors"
+                aria-label="Close Cart"
               >
                 <X weight="bold" />
               </button>
@@ -54,20 +55,20 @@ export function Cart() {
 
             <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6">
               {items.length === 0 ? (
-                <div className="h-full flex flex-col items-center justify-center text-zinc-400">
+                <div className="h-full flex flex-col items-center justify-center text-zinc-400 dark:text-zinc-500">
                   <ShoppingBag weight="light" className="text-6xl mb-4" />
                   <p>Your cart is empty.</p>
                 </div>
               ) : (
                 items.map((item) => (
                   <div key={item.id} className="flex gap-4">
-                    <div className="w-20 h-24 bg-zinc-100 rounded-2xl flex-shrink-0 flex items-center justify-center">
-                      <span className="text-xs font-mono text-zinc-400">IMG</span>
+                    <div className="w-20 h-24 bg-zinc-100 dark:bg-zinc-800 rounded-2xl flex-shrink-0 flex items-center justify-center">
+                      <span className="text-xs font-mono text-zinc-400 dark:text-zinc-500">IMG</span>
                     </div>
                     <div className="flex flex-col justify-between flex-1 py-1">
                       <div>
                         <div className="flex justify-between items-start">
-                          <h3 className="font-medium text-zinc-900">{item.name}</h3>
+                          <h3 className="font-medium text-zinc-900 dark:text-zinc-100">{item.name}</h3>
                           <button 
                             onClick={() => removeItem(item.id)}
                             className="text-zinc-400 hover:text-red-500 transition-colors"
@@ -75,19 +76,19 @@ export function Cart() {
                             <Trash weight="bold" />
                           </button>
                         </div>
-                        <p className="text-sm text-zinc-500">${item.price.toFixed(2)}</p>
+                        <p className="text-sm text-zinc-500 dark:text-zinc-400">${item.price.toFixed(2)}</p>
                       </div>
                       <div className="flex items-center gap-4">
-                        <div className="flex items-center gap-3 bg-zinc-50 rounded-full px-3 py-1 ring-1 ring-zinc-200">
+                        <div className="flex items-center gap-3 bg-zinc-50 dark:bg-zinc-800 rounded-full px-3 py-1 ring-1 ring-zinc-200 dark:ring-zinc-700">
                           <button 
-                            className="text-zinc-500 hover:text-zinc-900"
+                            className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                             onClick={() => updateQuantity(item.id, item.quantity - 1)}
                           >
                             -
                           </button>
-                          <span className="text-sm font-medium w-4 text-center">{item.quantity}</span>
+                          <span className="text-sm font-medium w-4 text-center text-zinc-900 dark:text-zinc-100">{item.quantity}</span>
                           <button 
-                            className="text-zinc-500 hover:text-zinc-900"
+                            className="text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100"
                             onClick={() => updateQuantity(item.id, item.quantity + 1)}
                           >
                             +
@@ -100,10 +101,10 @@ export function Cart() {
               )}
             </div>
 
-            <div className="p-6 border-t border-zinc-100 bg-zinc-50/50">
+            <div className="p-6 border-t border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-900/50">
               <div className="flex items-center justify-between mb-6">
-                <span className="font-medium text-zinc-500">Subtotal</span>
-                <span className="font-medium text-xl">${total.toFixed(2)}</span>
+                <span className="font-medium text-zinc-500 dark:text-zinc-400">Subtotal</span>
+                <span className="font-medium text-xl text-zinc-900 dark:text-zinc-100">${total.toFixed(2)}</span>
               </div>
               <Button 
                 className="w-full" 
