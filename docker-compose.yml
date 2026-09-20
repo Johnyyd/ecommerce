@@ -1,7 +1,7 @@
 
 services:
   postgres:
-    image: postgres:16-alpine
+    image: pgvector/pgvector:pg16
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
@@ -29,8 +29,23 @@ services:
     ports:
       - "6379:6379"
 
+  meilisearch:
+    image: getmeili/meilisearch:v1.8
+    volumes:
+      - meilisearch_data:/data.ms
+    environment:
+      MEILI_NO_ANALYTICS: "true"
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-masterKey}
+    ports:
+      - "7700:7700"
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:7700/health"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   pgbouncer:
-    image: edoburu/pgbouncer:latest
+    image: edoburu/pgbouncer:1.23.0
     environment:
       DB_HOST: postgres
       DB_USER: ${POSTGRES_USER}
@@ -53,7 +68,7 @@ services:
       retries: 5
 
   backend:
-    build: 
+    build:
       context: ./backend
     environment:
       - POSTGRES_SERVER=pgbouncer
@@ -66,6 +81,8 @@ services:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - SECRET_KEY=${SECRET_KEY}
       - WEB_CONCURRENCY=4
+      - EMBEDDING_API_URL=${EMBEDDING_API_URL:-http://host.docker.internal:3001/v1}
+      - EMBEDDING_API_KEY=${EMBEDDING_API_KEY}
     ports:
       - "8000:8000"
     depends_on:
@@ -106,8 +123,8 @@ services:
     ports:
       - "3000:3000"
     environment:
-      - GF_SECURITY_ADMIN_USER=admin
-      - GF_SECURITY_ADMIN_PASSWORD=admin
+      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
+      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-admin}
       - GF_USERS_ALLOW_SIGN_UP=false
     volumes:
       - grafana_data:/var/lib/grafana
@@ -118,7 +135,7 @@ services:
       - prometheus
 
   tailscale:
-    image: tailscale/tailscale:latest
+    image: tailscale/tailscale:v1.72.2
     container_name: tailscale
     hostname: ecommerce
     environment:
@@ -140,9 +157,41 @@ services:
     profiles:
       - tailscale
 
+  worker:
+    build:
+      context: ./backend
+    environment:
+      - APP_TYPE=worker
+      - HOME=/tmp
+      - POSTGRES_SERVER=pgbouncer
+      - POSTGRES_PORT=6432
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=${POSTGRES_DB}
+      - REDIS_HOST=redis
+      - REDIS_PORT=6379
+      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      - SECRET_KEY=${SECRET_KEY}
+      - EMBEDDING_API_URL=${EMBEDDING_API_URL:-http://host.docker.internal:3001/v1}
+      - EMBEDDING_API_KEY=${EMBEDDING_API_KEY}
+    depends_on:
+      pgbouncer:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    deploy:
+      resources:
+        limits:
+          cpus: "0.5"
+          memory: "512M"
+        reservations:
+          cpus: "0.1"
+          memory: "128M"
+
 volumes:
   postgres_data:
   redis_data:
+  meilisearch_data:
   prometheus_data:
   grafana_data:
   tailscale_data:

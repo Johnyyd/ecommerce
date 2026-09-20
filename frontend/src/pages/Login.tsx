@@ -58,7 +58,7 @@ export function Login() {
         <div className="absolute -bottom-[40%] -right-[10%] w-[70%] h-[70%] rounded-full bg-purple-100/50 blur-3xl mix-blend-multiply" />
       </div>
 
-      <motion.div 
+      <motion.div
         initial={{ opacity: 0, y: 20, scale: 0.95 }}
         animate={{ opacity: 1, y: 0, scale: 1 }}
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
@@ -73,9 +73,9 @@ export function Login() {
           <h1 className="text-3xl font-semibold text-zinc-900 tracking-tight mb-2">Welcome back</h1>
           <p className="text-zinc-500">Enter your details to sign in.</p>
         </div>
-        
+
         {error && (
-          <motion.div 
+          <motion.div
             initial={{ opacity: 0, height: 0 }}
             animate={{ opacity: 1, height: "auto" }}
             className="bg-red-50 text-red-500 p-4 rounded-xl text-sm mb-6 border border-red-100 font-medium"
@@ -92,7 +92,7 @@ export function Login() {
               value={username}
               onChange={(e) => setUsername(e.target.value)}
               className="w-full bg-white/50 border border-zinc-200 text-zinc-900 rounded-xl px-4 py-3 focus:outline-none focus:ring-4 focus:ring-blue-500/10 focus:border-blue-500 transition-all placeholder:text-zinc-400"
-              placeholder="admin"
+              placeholder="username"
               required
             />
           </div>
@@ -107,7 +107,7 @@ export function Login() {
               required
             />
           </div>
-          
+
           <button
             type="submit"
             disabled={isLoading}
