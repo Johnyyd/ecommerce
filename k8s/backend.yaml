@@ -17,7 +17,7 @@ spec:
       containers:
         - name: backend
           image: ecommerce-backend:latest
-          imagePullPolicy: Always
+          imagePullPolicy: IfNotPresent
           env:
             - name: HOME
               value: "/tmp"

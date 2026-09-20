@@ -49,6 +49,14 @@ class Settings(BaseSettings):
     GHN_FROM_DISTRICT_ID: int = 1442  # e.g., District 1, Ho Chi Minh City
     GHN_FROM_WARD_CODE: str = "20101"
 
+    # Meilisearch Configuration
+    MEILISEARCH_URL: str = "http://meilisearch:7700"
+    MEILISEARCH_MASTER_KEY: str = "masterKey123"
+
+    # Embedding API Configuration (Free LLM API)
+    EMBEDDING_API_URL: str = "http://host.docker.internal:3001/v1"
+    EMBEDDING_API_KEY: str = "freellmapi-fa22e5cba463c21104c1c19f6ec9ddda0fbb0e6acb175651"
+
     model_config = SettingsConfigDict(env_file=(".env", "backend/.env"), env_file_encoding="utf-8", extra="ignore")
 
 
