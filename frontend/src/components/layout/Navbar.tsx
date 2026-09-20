@@ -5,6 +5,7 @@ import { useCartStore } from "@/store/useCartStore"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useThemeStore } from "@/store/useThemeStore"
 import { useLocation } from "wouter"
+import { Cart } from "@/components/layout/Cart"
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false)
@@ -126,6 +127,7 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+      <Cart />
     </>
   )
 }

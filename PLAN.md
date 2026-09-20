@@ -58,13 +58,28 @@ Implement advanced search capabilities using Meilisearch for fast, typo-tolerant
   - `CREATE EXTENSION IF NOT EXISTS vector;` executes without error in PostgreSQL
   - Health check endpoints return 200 for both services
 
-### Task 2: Database Schema Enhancement
+### Task 2: Database Schema Enhancement [COMPLETED & VERIFIED]
 - **Action**: Add tsvector column for PostgreSQL Full-Text Search and vector column for embeddings to products table
 - **Mirror**: Follow existing SQLAlchemy column patterns in backend/app/models/product.py
 - **Validate**:
-  - Migration script runs successfully
-  - Products table contains new tsvector and vector columns
-  - Indexes are created for tsvector (GIN) and vector (IVFFlat) columns
+  - Migration script runs successfully (verified: Alembic revisions 011 and 012 applied, live DB at version `012`)
+  - Products table contains new tsvector and vector columns (verified: 100/100 products have materialized `search_vector`)
+  - Indexes are created for tsvector (GIN) and vector (IVFFlat) columns (verified: `idx_products_search_vector` and `idx_products_embedding` active)
+  - Extensions enabled: `vector` (0.8.6), `pg_trgm` (1.6)
+  - Embedding dimension enforced: `vector(1536)` database type
+  - DLQ table (`failed_sync_tasks`) created with partial index `ix_failed_sync_unresolved`
+  - Backfill jobs table (`backfill_jobs`) created with status CHECK constraint
+  - Search vector trigger:
+    - Hardened against CWE-426 with explicit `SET search_path = public, pg_catalog`
+    - Optimized with column filter `BEFORE INSERT OR UPDATE OF name, description, brand` to eliminate write amplification on stock/price updates
+    - Re-entrancy safeguarded with `DROP TRIGGER IF EXISTS`
+  - SQLAlchemy models `FailedSyncTask` and `BackfillJob` added to `app/models/search_sync.py` and exported in `app/models/__init__.py`
+  - Unit tests added in `tests/domain/test_product_domain.py` (all 73 backend tests passing)
+  - Bandit SAST scan: 0 security vulnerabilities identified across 3,938 lines of code
+  - **Lưu ý quan trọng về Index IVFFlat trong pgvector (Cold-Start Alert)**:
+    - Index IVFFlat xây dựng các centroid thông qua k-means dựa trên dữ liệu hiện có tại thời điểm tạo index.
+    - Do bảng hiện tại chưa có vector embeddings (sẽ được sinh ở Task 4/4b), chất lượng centroid của IVFFlat ban đầu có thể chưa tối ưu.
+    - **Khuyến nghị**: Khi hoàn thành Task 4b (Backfill toàn bộ embeddings), script backfill nên thực hiện lệnh `REINDEX INDEX idx_products_embedding;` (hoặc chuyển sang HNSW vốn không phụ thuộc vào dữ liệu có sẵn).
 
 ### Task 3: Meilisearch Service Implementation
 - **Action**: Create search_service.py with Meilisearch client initialization, index management, and search operations
@@ -111,11 +126,13 @@ Implement advanced search capabilities using Meilisearch for fast, typo-tolerant
   - **Rate limiting**: sleep 100ms between batches; pause if CPU load exceeds threshold.
   - **Progress tracking**: persist progress to a `backfill_jobs` table (or Redis key) so the script can be paused/resumed without losing state.
   - **Fallback**: if the embedding API is unavailable, backfill can still populate Meilisearch with plain text (search still works; semantic similarity is deferred).
+  - **Post-Backfill IVFFlat Reindex**: Run `REINDEX INDEX idx_products_embedding;` immediately after all embeddings are populated so pgvector k-means recalculates optimal cluster centroids from real vectors (or evaluate migrating to HNSW).
 - **Mirror**: Follow existing batch script patterns in `backend/seed_db.py` and `backend/create_admin.py`.
 - **Validate**:
   - After running backfill, `SELECT count(*) FROM products WHERE embedding IS NOT NULL` equals total product count
   - Meilisearch index document count matches PostgreSQL product count
   - Backfill can be interrupted and resumed without data corruption
+  - `REINDEX INDEX idx_products_embedding;` executes successfully, ensuring high vector recall without cold-start centroid skew
 
 ### Task 5: Advanced Search API Endpoints
 - **Action**: Enhance product search API to support Meilisearch with faceted search, typo tolerance, and Vietnamese language support

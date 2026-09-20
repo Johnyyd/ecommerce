@@ -6,7 +6,6 @@ import { useCartStore } from "@/store/useCartStore"
 import { Product } from "@/store/useProductStore"
 import { Button } from "@/components/ui/Button"
 import { Navbar } from "@/components/layout/Navbar"
-import { Cart } from "@/components/layout/Cart"
 import { ProductReviews } from "@/components/reviews/ProductReviews"
 
 export function ProductDetail({ params: propsParams }: { params?: { id: string } }) {
@@ -45,7 +44,6 @@ export function ProductDetail({ params: propsParams }: { params?: { id: string }
   return (
     <>
       <Navbar />
-      <Cart />
       
       <main className="min-h-screen pt-24 pb-16 px-4 md:px-12 bg-white selection:bg-zinc-200">
         <div className="max-w-[1200px] mx-auto">

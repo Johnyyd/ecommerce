@@ -7,6 +7,7 @@ from app.models.brand import Brand
 from app.models.voucher import Voucher
 from app.models.payment_transaction import PaymentTransaction
 from app.models.review import Review
+from app.models.search_sync import FailedSyncTask, BackfillJob
 
 __all__ = [
     "Base",
@@ -20,6 +21,8 @@ __all__ = [
     "Brand",
     "Voucher",
     "PaymentTransaction",
-    "Review"
+    "Review",
+    "FailedSyncTask",
+    "BackfillJob",
 ]
 
