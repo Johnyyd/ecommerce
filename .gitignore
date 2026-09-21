@@ -51,3 +51,4 @@ backend/reports/*
 /.hermes
 /backend/app/services/shipping/__pycache__
 /media
+tests/__pycache__
