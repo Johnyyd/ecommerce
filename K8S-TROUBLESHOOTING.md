@@ -360,3 +360,70 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
   kubectl exec postgres-0 -- psql -U ecommerce_user -d ecommerce_db -c "SELECT * FROM alembic_version;"
   ```
 
+---
+
+## 12. Lỗi Pod `worker` bị `CrashLoopBackOff` do `ModuleNotFoundError: No module named 'app.db'`
+
+**Triệu chứng:**
+- Pod `worker` bị crash liên tục với trạng thái `CrashLoopBackOff`.
+- Khi xem log bằng lệnh `kubectl logs deployment/worker`, xuất hiện lỗi:
+  ```text
+  ModuleNotFoundError: No module named 'app.db'
+  ```
+- Lỗi xảy ra tại dòng import trong `backend/app/worker.py`:
+  ```python
+  from app.db.session import get_async_session
+  ```
+
+**Nguyên nhân:**
+1. **Code local đã được cập nhật nhưng image Docker trên cluster chưa được cập nhật:** File `backend/app/worker.py` ở máy local đã được sửa đổi import từ `from app.db.session import get_async_session` sang `from app.core.db import get_db_session` (và thêm import các task gốc: `send_email_task`, `optimize_image_task`, `generate_sales_report_task`).
+2. **ImagePullPolicy `IfNotPresent`:** Manifest `k8s/worker.yaml` được cấu hình `imagePullPolicy: IfNotPresent`, khiến Kubernetes ưu tiên sử dụng image đã có sẵn trong node Minikube (`ecommerce-backend:latest`) thay vì kéo image mới.
+3. **Image `ecommerce-backend:latest` trong Minikube là phiên bản cũ** (chưa chứa code đã sửa), dẫn đến worker pod chạy code cũ và crash.
+
+**Khắc phục đã thực hiện:**
+
+1. **Sửa import trong `backend/app/worker.py`:**
+   ```python
+   # Cũ (gây lỗi)
+   from app.db.session import get_async_session
+   
+   # Mới (đã sửa)
+   from app.core.db import get_db_session
+   ```
+   Đồng thời khôi phục import các task gốc:
+   ```python
+   from app.services.media import optimize_image_task
+   from app.services.reports import generate_sales_report_task
+   from app.services.email import send_email
+   ```
+
+2. **Build lại Docker image với tag mới và nạp vào Minikube:**
+   ```bash
+   # Build image với tag mới (v2)
+   docker build -t ecommerce-backend:v2 ./backend
+   
+   # Nạp image vào Minikube (bắt buộc vì imagePullPolicy: IfNotPresent)
+   minikube image load ecommerce-backend:v2
+   
+   # Cập nhật deployment để dùng image mới
+   kubectl set image deployment/worker worker=ecommerce-backend:v2
+   ```
+
+3. **Xác minh worker pod khởi động thành công:**
+   ```bash
+   kubectl get pods -l app=worker
+   # Kết quả mong đợi: Running 1/1
+   
+   kubectl logs deployment/worker | head -20
+   # Kết quả mong đợi: "Registered tasks: send_email_task, optimize_image_task, generate_sales_report_task, generate_embeddings_task, sync_to_meilisearch_task, incremental_sync_task"
+   ```
+
+**Lưu ý quan trọng:**
+- Mỗi khi thay đổi code backend/worker, **bắt buộc** build image mới, nạp vào Minikube (`minikube image load`), và cập nhật deployment (`kubectl set image` hoặc apply lại manifest).
+- Script `scripts/linux/update-k8s-backend.sh` đã được cập nhật để tự động hóa quy trình này cho backend và worker.
+- Đảm bảo `imagePullPolicy: IfNotPresent` trong mọi manifest K8s (`backend.yaml`, `worker.yaml`, `frontend.yaml`, `migration-job.yaml`) để ưu tiên image cục bộ.
+
+**Kết quả:**
+- Worker pod chạy ổn định với 6 task đã đăng ký.
+- Tất cả 37 tests mới (embedding + meilisearch) và 75 tests backend hiện có đều pass.
+

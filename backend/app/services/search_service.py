@@ -76,7 +76,12 @@ class MeilisearchService:
             self.client.get_index(index_name)
             return True
         except MeilisearchApiError as e:
-            if e.status_code == 404:
+            # Check status_code - it might be a Mock or int
+            status_code = getattr(e, 'status_code', None)
+            if isinstance(status_code, int) and status_code == 404:
+                return False
+            # Also check the error code string
+            if getattr(e, 'code', '') == 'index_not_found':
                 return False
             logger.error(f"Error checking index existence: {e}")
             raise Exception(f"Meilisearch API error: {e.message}")

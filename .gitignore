@@ -52,3 +52,4 @@ backend/reports/*
 /backend/app/services/shipping/__pycache__
 /media
 tests/__pycache__
+/__pycache__
