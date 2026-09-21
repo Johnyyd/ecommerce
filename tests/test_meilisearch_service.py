@@ -136,7 +136,8 @@ class TestMeilisearchService:
         assert result["status"] == "succeeded"
         mock_client.create_index.assert_called_once()
         call_args = mock_client.create_index.call_args
-        assert call_args[1]['uid'] == MEILISEARCH_INDEX_NAME
+        # create_index(uid, options) - uid is first positional arg
+        assert call_args[0][0] == MEILISEARCH_INDEX_NAME
 
     @pytest.mark.asyncio
     async def test_delete_index_success(self, service_with_mocks):
@@ -166,7 +167,10 @@ class TestMeilisearchService:
         service, mock_client, mock_index, mock_task = service_with_mocks
 
         from meilisearch.errors import MeilisearchApiError
-        mock_client.get_index.side_effect = MeilisearchApiError("Index not found", Mock())
+        # Create a mock Response object with .text attribute
+        mock_response = Mock()
+        mock_response.text = '{"message": "Index not found", "code": "index_not_found", "type": "invalid_request", "link": "https://docs.meilisearch.com/errors#index_not_found"}'
+        mock_client.get_index.side_effect = MeilisearchApiError("Index not found", mock_response)
 
         result = await service.index_exists()
 
@@ -495,7 +499,7 @@ class TestSearchService:
         assert result["estimatedTotalHits"] == 2
         mock_meilisearch_service.search.assert_called_once()
         call_kwargs = mock_meilisearch_service.search.call_args.kwargs
-        assert call_kwargs['q'] == ""
+        assert call_kwargs['query'] == ""
         assert call_kwargs['limit'] == 10
 
     @pytest.mark.asyncio
