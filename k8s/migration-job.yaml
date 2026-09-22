@@ -5,7 +5,14 @@ metadata:
 spec:
   template:
     spec:
+      automountServiceAccountToken: false
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: migration
           image: ecommerce-backend:latest

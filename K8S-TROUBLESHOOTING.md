@@ -20,14 +20,16 @@ Kubernetes Manifests (như `pgbouncer.yaml`, `redis.yaml`...) được cấu hì
 ## 2. Lỗi `ErrImageNeverPull` và `ImagePullBackOff` / `ErrImagePull`
 
 **Triệu chứng:**
+
 - **Trường hợp A (`ErrImageNeverPull`):** Các Pod của `backend` và `frontend` bị kẹt ở trạng thái `ErrImageNeverPull`.
 - **Trường hợp B (`ImagePullBackOff` / `ErrImagePull`):** Khi kiểm tra `status.sh`, các Pod `backend` và `frontend` bị kẹt ở trạng thái `ImagePullBackOff`. Kiểm tra `kubectl describe pod` ghi nhận lỗi:
   ```text
-  Failed to pull image "ecommerce-backend:latest": Error response from daemon: 
+  Failed to pull image "ecommerce-backend:latest": Error response from daemon:
   pull access denied for ecommerce-backend, repository does not exist or may require 'docker login'
   ```
 
 **Nguyên nhân:**
+
 1. **Với `ErrImageNeverPull`:** K8s Manifest đặt `imagePullPolicy: Never`, nhưng image chưa được nạp vào node của Minikube/Kind.
 2. **Với `ImagePullBackOff`:** K8s Manifest vô tình đặt `imagePullPolicy: Always` (hoặc mặc định của K8s khi dùng tag `:latest` mà không chỉ định rõ policy). Khi đặt là `Always`, Kubernetes **bỏ qua hoàn toàn image đã có trong node Minikube** và luôn cố gắng kết nối ra internet để kéo từ Docker Hub (`docker.io/library/ecommerce-backend:latest`). Do image này là bản build nội bộ không tồn tại trên Docker Hub công cộng, Docker daemon trả về lỗi từ chối truy cập `pull access denied` ➔ `ErrImagePull` ➔ `ImagePullBackOff`.
 
@@ -35,13 +37,16 @@ Kubernetes Manifests (như `pgbouncer.yaml`, `redis.yaml`...) được cấu hì
 
 1. **Thiết lập chuẩn `imagePullPolicy: IfNotPresent`:**
    Trong tất cả các file manifest (`k8s/backend.yaml`, `k8s/frontend.yaml`, `k8s/worker.yaml`, `k8s/migration-job.yaml`), luôn luôn cấu hình:
+
    ```yaml
    image: ecommerce-backend:latest
    imagePullPolicy: IfNotPresent
    ```
-   *Với `IfNotPresent`, K8s sẽ ưu tiên tuyệt đối việc sử dụng image cục bộ đã được nạp sẵn vào Minikube.*
+
+   _Với `IfNotPresent`, K8s sẽ ưu tiên tuyệt đối việc sử dụng image cục bộ đã được nạp sẵn vào Minikube._
 
 2. **Nạp image vào Minikube sau mỗi lần build code mới:**
+
    ```bash
    minikube image load ecommerce-backend:latest
    minikube image load ecommerce-frontend:latest
@@ -110,6 +115,7 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
 ## 6. Lỗi Pods Backend bị kẹt ở trạng thái `Pending` (Unbound PersistentVolumeClaims)
 
 **Triệu chứng:**
+
 - Khi kiểm tra trạng thái bằng `bash scripts/linux/status.sh`, tất cả các Pod `backend` đều bị kẹt ở trạng thái `Pending` (`0/1 Pending`), Deployment `backend` báo `0/3` Ready.
 - Khi kiểm tra chi tiết bằng `kubectl describe pod backend-...` hoặc `kubectl get events`, xuất hiện lỗi cảnh báo:
   ```text
@@ -121,6 +127,7 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
   ```
 
 **Nguyên nhân:**
+
 1. **Thiếu tiến trình cấp phát lưu trữ (Storage Provisioner):** Minikube sử dụng StorageClass mặc định `standard` với provisioner `k8s.io/minikube-hostpath`. Do sự cố cụm máy chủ hoặc addon bị tắt, Pod `storage-provisioner` trong namespace `kube-system` không hoạt động. Vì vậy, K8s không thể tự động tạo PersistentVolume (PV) mới khi có yêu cầu từ `postgres-backups-pvc`.
 2. **PV cũ bị kẹt ở trạng thái `Released`:** Khi một PVC cũ bị xóa và tạo lại, PersistentVolume tương ứng không tự giải phóng mà chuyển sang trạng thái `Released` (vẫn giữ tham chiếu `claimRef` cũ), ngăn không cho PVC mới được gán (bind) vào.
 3. **Ảnh hưởng dây chuyền:** Do Pod `backend` định nghĩa volume mount tới `postgres-backups-pvc` (để lưu trữ và tải bản backup PostgreSQL), Kubernetes Scheduler từ chối lập lịch (`PodScheduled: False`) chạy Pod trên Node cho đến khi tất cả các Volume yêu cầu được Bound thành công.
@@ -128,11 +135,14 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
 **Cách khắc phục:**
 
 - **Bước 1: Kích hoạt lại addon `storage-provisioner` trên Minikube:**
+
   ```bash
   minikube addons disable storage-provisioner
   minikube addons enable storage-provisioner
   ```
+
   Kiểm tra pod đã chạy:
+
   ```bash
   kubectl get pods -n kube-system -l integration-test=storage-provisioner
   # Hoặc:
@@ -140,6 +150,7 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
   ```
 
 - **Bước 2: Xóa các PV cũ đang bị kẹt ở trạng thái `Released` (nếu có):**
+
   ```bash
   kubectl get pv
   # Nếu thấy PV có STATUS là Released, xóa nó:
@@ -147,10 +158,12 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
   ```
 
 - **Bước 3: Kiểm tra PVC đã Bound và Pods Backend khởi động:**
+
   ```bash
   kubectl get pvc postgres-backups-pvc
   # Kết quả: STATUS: Bound
   ```
+
   Ngay khi PVC ở trạng thái `Bound`, Kubernetes Scheduler sẽ tự động phân bổ Node và các Pod Backend sẽ lập tức chuyển sang trạng thái `1/1 Running`.
 
 - **Bước 4 (Tự động hóa):** Script `start-k8s-linux.sh` đã được bổ sung lệnh tự động bật addon `storage-provisioner` và dọn dẹp các PV ở trạng thái `Released` trước khi triển khai, ngăn chặn triệt để lỗi này tái diễn.
@@ -161,6 +174,7 @@ Quá trình trước đó bạn đã vô tình chạy song song cả Docker Comp
 
 **Triệu chứng:**
 Khi chạy lệnh `kubectl logs deployments/redis` hoặc `kubectl logs deployments/postgres`, K8s báo lỗi:
+
 ```text
 Error from server (NotFound): deployments.apps "redis" not found in namespace "default"
 ```
@@ -188,6 +202,7 @@ kubectl logs postgres-0
 ## 8. Hướng dẫn Giám sát & Truy cập các Dịch vụ
 
 ### Theo dõi trạng thái hệ thống:
+
 ```bash
 bash scripts/linux/status.sh
 # Hoặc theo dõi trực tiếp các Pods:
@@ -198,6 +213,7 @@ kubectl get pods -w
 
 Vì Docker Desktop cho phép expose Ingress trực tiếp ra `localhost`, bạn chỉ cần đảm bảo không có dịch vụ nào đang chiếm dụng cổng 80.
 Truy cập trực tiếp trên trình duyệt:
+
 - **Frontend**: [http://localhost](http://localhost)
 - **Backend API Docs**: [http://localhost:8000/docs](http://localhost:8000/docs) (khi ở chế độ dev) hoặc [http://localhost/api/health](http://localhost/api/health)
 - **Grafana Monitoring**: [http://localhost:3000](http://localhost:3000) (tài khoản: `admin` / `admin`)
@@ -258,7 +274,7 @@ Bạn cần chuyển đổi định dạng dòng kết thúc của các file scr
      kubectl delete pod -l app=worker
      ```
 
-- **Cách 2 (Bằng Git):** 
+- **Cách 2 (Bằng Git):**
   Thay đổi cấu hình Git để không tự động đổi Line Endings:
   ```bash
   git config --global core.autocrlf false
@@ -288,7 +304,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
    kubectl delete statefulset postgres
    kubectl delete pvc postgres-backups-pvc
    ```
-   *(Lưu ý: Nếu bạn có khai báo một PVC khác cho dữ liệu chính của postgres, hãy xóa cả PVC đó. Ví dụ `kubectl delete pvc data-postgres-0`)*
+   _(Lưu ý: Nếu bạn có khai báo một PVC khác cho dữ liệu chính của postgres, hãy xóa cả PVC đó. Ví dụ `kubectl delete pvc data-postgres-0`)_
 3. Chạy lại file khởi tạo K8s `scripts\windows\k8s\start-k8s-windows.bat` để hệ thống tự động thiết lập lại mọi thứ với một database sạch.
 
 ---
@@ -296,6 +312,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
 ## 11. Lỗi `Multiple head revisions` & Sai kiểu dữ liệu pgvector tại Pod `db-migration-job`
 
 **Triệu chứng:**
+
 - Khi chạy `status.sh`, Pod `db-migration-job-...` báo trạng thái `Error` liên tục và `job.batch/db-migration-job` báo `Failed`.
 - Xem log bằng lệnh `kubectl logs -l job-name=db-migration-job` ghi nhận:
   ```text
@@ -312,6 +329,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
   ```
 
 **Nguyên nhân:**
+
 1. **Lỗi `script_location` khi chạy trên máy Host:**
    Đường dẫn `/app/alembic.ini` là đường dẫn thư mục **bên trong container Docker/K8s**, không tồn tại trên filesystem của máy host Linux/Windows. Khi Alembic không tìm thấy file ini tại `/app`, nó load cấu hình rỗng và báo thiếu khóa `script_location`.
 2. **Lỗi rẽ nhánh Alembic (Multiple head revisions):**
@@ -325,6 +343,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
    - Cột `failed_sync_tasks.product_id` khai báo `sa.Integer()`, không khớp với kiểu khóa chính `UUID` của bảng `products`.
 
 **Khắc phục đã thực hiện:**
+
 1. **Chuẩn hóa Lineage Migration (`011_add_search_and_embedding_columns.py`):**
    Chỉnh sửa `down_revision = 'hh0c1d2e3f5b'` để toàn bộ lịch sử migration trở thành một chuỗi tuyến tính duy nhất:
    `... -> ff8a9b0c2e3f -> gg9b0c2e3f4a -> hh0c1d2e3f5b -> 011 -> 012 (head)`
@@ -346,6 +365,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
    Kết quả: `db-migration-job` hoàn thành (`Completed 1/1`), database đạt revision `012`.
 
 **Hướng dẫn kiểm tra và chạy Alembic đúng cách:**
+
 - **Trên máy Host:**
   ```bash
   cd backend
@@ -365,6 +385,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
 ## 12. Lỗi Pod `worker` bị `CrashLoopBackOff` do `ModuleNotFoundError: No module named 'app.db'`
 
 **Triệu chứng:**
+
 - Pod `worker` bị crash liên tục với trạng thái `CrashLoopBackOff`.
 - Khi xem log bằng lệnh `kubectl logs deployment/worker`, xuất hiện lỗi:
   ```text
@@ -376,6 +397,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
   ```
 
 **Nguyên nhân:**
+
 1. **Code local đã được cập nhật nhưng image Docker trên cluster chưa được cập nhật:** File `backend/app/worker.py` ở máy local đã được sửa đổi import từ `from app.db.session import get_async_session` sang `from app.core.db import get_db_session` (và thêm import các task gốc: `send_email_task`, `optimize_image_task`, `generate_sales_report_task`).
 2. **ImagePullPolicy `IfNotPresent`:** Manifest `k8s/worker.yaml` được cấu hình `imagePullPolicy: IfNotPresent`, khiến Kubernetes ưu tiên sử dụng image đã có sẵn trong node Minikube (`ecommerce-backend:latest`) thay vì kéo image mới.
 3. **Image `ecommerce-backend:latest` trong Minikube là phiên bản cũ** (chưa chứa code đã sửa), dẫn đến worker pod chạy code cũ và crash.
@@ -383,14 +405,17 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
 **Khắc phục đã thực hiện:**
 
 1. **Sửa import trong `backend/app/worker.py`:**
+
    ```python
    # Cũ (gây lỗi)
    from app.db.session import get_async_session
-   
+
    # Mới (đã sửa)
    from app.core.db import get_db_session
    ```
+
    Đồng thời khôi phục import các task gốc:
+
    ```python
    from app.services.media import optimize_image_task
    from app.services.reports import generate_sales_report_task
@@ -398,32 +423,36 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
    ```
 
 2. **Build lại Docker image với tag mới và nạp vào Minikube:**
+
    ```bash
    # Build image với tag mới (v2)
    docker build -t ecommerce-backend:v2 ./backend
-   
+
    # Nạp image vào Minikube (bắt buộc vì imagePullPolicy: IfNotPresent)
    minikube image load ecommerce-backend:v2
-   
+
    # Cập nhật deployment để dùng image mới
    kubectl set image deployment/worker worker=ecommerce-backend:v2
    ```
 
 3. **Xác minh worker pod khởi động thành công:**
+
    ```bash
    kubectl get pods -l app=worker
    # Kết quả mong đợi: Running 1/1
-   
+
    kubectl logs deployment/worker | head -20
    # Kết quả mong đợi: "Registered tasks: send_email_task, optimize_image_task, generate_sales_report_task, generate_embeddings_task, sync_to_meilisearch_task, incremental_sync_task"
    ```
 
 **Lưu ý quan trọng:**
+
 - Mỗi khi thay đổi code backend/worker, **bắt buộc** build image mới, nạp vào Minikube (`minikube image load`), và cập nhật deployment (`kubectl set image` hoặc apply lại manifest).
 - Script `scripts/linux/update-k8s-backend.sh` đã được cập nhật để tự động hóa quy trình này cho backend và worker.
 - Đảm bảo `imagePullPolicy: IfNotPresent` trong mọi manifest K8s (`backend.yaml`, `worker.yaml`, `frontend.yaml`, `migration-job.yaml`) để ưu tiên image cục bộ.
 
 **Kết quả:**
+
 - Worker pod chạy ổn định với 6 task đã đăng ký.
 - Tất cả 37 tests mới (embedding + meilisearch) và 75 tests backend hiện có đều pass.
 
@@ -432,6 +461,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
 ## 13. Lỗi `DuplicateColumnError` & `PostgresSyntaxError: cannot insert multiple commands into a prepared statement` tại Pod `db-migration-job`
 
 **Triệu chứng:**
+
 - Khi chạy script triển khai K8s hoặc kiểm tra trạng thái bằng `status.bat` / `status.sh`, `job.batch/db-migration-job` ở trạng thái `Failed` và các Pod `db-migration-job-*` bị lỗi `Error` (`0/1 Error`).
 - Khi kiểm tra log của Pod bằng lệnh:
   ```bash
@@ -440,16 +470,16 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
   Xuất hiện 2 lỗi tuần tự:
   1. **Lỗi thứ nhất (ở migration revision 011):**
      ```text
-     sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) 
+     sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError)
      <class 'asyncpg.exceptions.DuplicateColumnError'>: column "search_vector" of relation "products" already exists
      [SQL: ALTER TABLE products ADD COLUMN search_vector TSVECTOR]
      File "/app/alembic/versions/011_add_search_and_embedding_columns.py", line 29, in upgrade
      ```
   2. **Lỗi thứ hai (ở migration revision 012 sau khi sửa revision 011):**
      ```text
-     sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) 
+     sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError)
      <class 'asyncpg.exceptions.PostgresSyntaxError'>: cannot insert multiple commands into a prepared statement
-     [SQL: 
+     [SQL:
          DROP TRIGGER IF EXISTS trigger_products_search_vector ON products;
          CREATE TRIGGER trigger_products_search_vector
          BEFORE INSERT OR UPDATE OF name, description, brand ON products
@@ -477,6 +507,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
 
 1. **Chuẩn hóa Migration `011_add_search_and_embedding_columns.py` thành Idempotent (Lũy tiến):**
    - Thay thế toàn bộ DDL thông thường bằng cú pháp `IF NOT EXISTS` và gỡ bỏ hoàn toàn lệnh `COMMIT`/`BEGIN` thủ công:
+
      ```python
      # 1. Thêm cột một cách an toàn (không bị lỗi nếu cột đã tồn tại từ trước)
      op.execute('ALTER TABLE products ADD COLUMN IF NOT EXISTS search_vector TSVECTOR')
@@ -531,7 +562,7 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
      kubectl wait --for=condition=complete job/db-migration-job --timeout=60s
      kubectl logs -l job-name=db-migration-job
      ```
-     *Kết quả mong đợi:*
+     _Kết quả mong đợi:_
      ```text
      INFO  [alembic.runtime.migration] Running upgrade hh0c1d2e3f5b -> 011, add_search_and_embedding_columns
      INFO  [alembic.runtime.migration] Running upgrade 011 -> 012, add_search_vector_trigger
@@ -547,4 +578,125 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
      # Kết quả: 012
      ```
 
+---
 
+## 14. Lỗi `SyntaxError: unterminated triple-quoted string literal` tại Pod `db-migration-job`
+
+**Triệu chứng:**
+Pod `db-migration-job` bị lỗi ở trạng thái `Error` (`0/1 Error`) và liên tục thử lại đến khi Job thất bại.
+Khi kiểm tra log của Pod bằng lệnh `kubectl logs -l job-name=db-migration-job`, ghi nhận lỗi cú pháp Python:
+
+```text
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/alembic/versions/011_add_search_and_embedding_columns.py", line 159
+    ''')
+    ^
+SyntaxError: unterminated triple-quoted string literal (detected at line 177)
+```
+
+**Nguyên nhân:**
+Trong file `backend/alembic/versions/011_add_search_and_embedding_columns.py`, một đoạn code bị dán lặp (duplicate code) giữa dòng 39 và 116. Tại dòng 40, câu lệnh `op.execute('''` bị cắt ngang giữa chừng trước khi kết thúc khối chuỗi ba nháy `'''`. Khi Alembic nạp module migration bằng `pyfiles.load_module_py`, Python compiler phát hiện chuỗi ba nháy không đóng và ném ngoại lệ `SyntaxError`, ngăn cản toàn bộ quá trình `alembic upgrade head`.
+
+**Cách khắc phục:**
+
+1. **Dọn dẹp code thừa và đóng chuẩn chuỗi trong `011_add_search_and_embedding_columns.py`:**
+   Loại bỏ các khối tạo bảng/cột bị dán trùng, sử dụng các câu lệnh SQL lũy tiến (`CREATE EXTENSION IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`) với cặp dấu `'''` đóng mở chuẩn xác.
+2. **Kiểm tra cú pháp Python trước khi build image:**
+   ```bash
+   python -m py_compile backend/alembic/versions/011_add_search_and_embedding_columns.py
+   ```
+3. **Build lại image backend và cập nhật Kubernetes:**
+   ```bash
+   .\scripts\windows\update-k8s-backend.bat
+   ```
+   Job `db-migration-job` hoàn thành thành công với trạng thái `1/1 Completed`.
+
+---
+
+## 15. Pod `tailscale` bị `CrashLoopBackOff` / `Error` — Missing Auth Key & Network Egress Blocked
+
+**Triệu chứng:**
+
+- Pod `tailscale` liên tục ở trạng thái `CrashLoopBackOff` hoặc `Error` với nhiều lần restart.
+- Khi kiểm tra log bằng `kubectl logs deployment/tailscale`, ghi nhận:
+  ```text
+  Received error: fetch control key: Get "https://controlplane.tailscale.com/key?v=142": context deadline exceeded
+  boot: failed to auth tailscale: failed to auth tailscale: tailscale up failed: context deadline exceeded
+  ```
+
+**Nguyên nhân:**
+Có **2 nguyên nhân chồng chéo** khiến Pod `tailscale` không thể khởi động:
+
+1. **Thiếu `TS_AUTHKEY` trong Kubernetes Secret `app-secrets`:**
+   - File manifest `k8s/addons/tailscale.yaml` cấu hình biến `TS_AUTHKEY_FILE` trỏ đến `/var/run/secrets/tailscale/TS_AUTHKEY`, được mount từ Secret `app-secrets` với key `TS_AUTHKEY`.
+   - Tuy nhiên, Secret `app-secrets` hiện tại chỉ chứa các key: `POSTGRES_DB`, `POSTGRES_PASSWORD`, `POSTGRES_USER`, `REDIS_PASSWORD`, `SECRET_KEY`. **Không có key `TS_AUTHKEY`**.
+   - Volume mount được đặt `optional: true`, nên Pod vẫn khởi động được nhưng file auth key trống hoặc không tồn tại, khiến `tailscale up` thất bại sau khi hết timeout.
+
+2. **NetworkPolicy chặn egress ra Internet:**
+   - `tailscale-network-policy` trong `k8s/networkpolicies.yaml` cho phép egress trên port 443 và UDP 41641, nhưng chỉ cho phép traffic đến các Pod nội bộ (frontend, grafana, backend) qua `podSelector`.
+   - Khi tailscale cố gắng kết nối ra `controlplane.tailscale.com` (IP ngoài cluster), NetworkPolicy chặn kết nối vì không có rule egress cho traffic ra ngoài cluster (thiếu `namespaceSelector: {}` hoặc `ipBlock` cho external traffic).
+   - Log xác nhận: `context deadline exceeded` trên mọi request đến `https://controlplane.tailscale.com`.
+
+**Cách khắc phục:**
+
+### Bước 1: Tạo Tailscale Auth Key
+
+1. Đăng nhập vào [Tailscale Admin Console](https://login.tailscale.com/admin/settings/keys).
+2. Tạo một Auth Key mới (khuyến nghị: Reusable + Ephemeral cho K8s).
+3. Thêm key vào Secret `app-secrets`:
+
+   ```bash
+   # Lấy giá trị hiện tại của các secret keys
+   kubectl get secret app-secrets -o yaml > /tmp/app-secrets-backup.yaml
+
+   # Xóa secret cũ và tạo lại với key mới
+   kubectl delete secret app-secrets
+   kubectl create secret generic app-secrets \
+     --from-literal=POSTGRES_USER=ecommerce_user \
+     --from-literal=POSTGRES_PASSWORD=<your_password> \
+     --from-literal=POSTGRES_DB=ecommerce_db \
+     --from-literal=REDIS_PASSWORD=<your_redis_password> \
+     --from-literal=SECRET_KEY=<your_secret_key> \
+     --from-literal=TS_AUTHKEY=tskey-auth-xxxxxxxxxxxx
+   ```
+
+### Bước 2: Cập nhật NetworkPolicy cho phép egress ra Internet
+
+Sửa `tailscale-network-policy` trong `k8s/networkpolicies.yaml` — thêm rule egress cho traffic ra ngoài cluster:
+
+```yaml
+# Thêm rule egress không giới hạn destination cho tailscale VPN traffic
+- ports:
+    - protocol: UDP
+      port: 41641
+    - protocol: TCP
+      port: 443
+```
+
+Hoặc cho phép egress tự do (vì Tailscale VPN cần kết nối linh hoạt ra nhiều IP):
+
+```yaml
+egress:
+  - {} # Allow all egress for VPN connectivity
+```
+
+### Bước 3: Restart Pod tailscale
+
+```bash
+kubectl rollout restart deployment tailscale
+kubectl get pods -l app=tailscale -w
+```
+
+**Kết quả mong đợi:**
+
+```text
+pod/tailscale-xxxx   1/1     Running   0   10s
+```
+
+**Lưu ý:**
+
+- Nếu bạn không sử dụng Tailscale VPN, có thể scale deployment xuống 0 để tránh lỗi liên tục:
+  ```bash
+  kubectl scale deployment tailscale --replicas=0
+  ```
+- Trên môi trường phát triển local (Docker Desktop), Tailscale thường không cần thiết. Chỉ cần thiết khi triển khai lên cloud và muốn truy cập private network qua Tailscale.

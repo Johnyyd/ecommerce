@@ -3,7 +3,8 @@ import sys
 import os
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
-from sqlalchemy import select
+from sqlalchemy import select, insert, func
+from datetime import datetime, timezone
 
 # Ensure backend directory is in path
 sys.path.insert(0, os.path.abspath(os.path.dirname(__file__)))
@@ -21,7 +22,8 @@ import random
 DATABASE_URL = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
 
 async def seed():
-    engine = create_async_engine(DATABASE_URL, echo=True)
+    echo_mode = os.getenv("SQL_ECHO", "false").lower() == "true"
+    engine = create_async_engine(DATABASE_URL, echo=echo_mode)
     async_session = sessionmaker(
         engine, class_=AsyncSession, expire_on_commit=False
     )
@@ -112,19 +114,20 @@ async def seed():
             print("Vouchers already seeded.")
 
         # 5. Seed Products
-        result_products = await session.execute(select(Product))
-        products = result_products.scalars().all()
-        if len(products) < 100:
-            print("Seeding products...")
+        count_products = (await session.execute(select(func.count(Product.id)))).scalar_one()
+        
+        target_count = int(sys.argv[1]) if len(sys.argv) > 1 else int(os.getenv("SEED_PRODUCTS_COUNT", "1000000"))
+        
+        if count_products < target_count:
+            print(f"Seeding products to reach target {target_count:,} (currently {count_products:,})...")
             brands = ["Acme", "Pace", "Hide", "Vision", "Nova", "Zenith", "Apex", "Vortex"]
             
             cat_apparel_id = next((c.id for c in categories if c.slug == "apparel"), categories[0].id)
             cat_footwear_id = next((c.id for c in categories if c.slug == "footwear"), categories[0].id)
             cat_accessories_id = next((c.id for c in categories if c.slug == "accessories"), categories[0].id)
-            
-            product_data = []
-            
-            if len(products) == 0:
+            cat_home_id = next((c.id for c in categories if c.slug == "home"), categories[0].id)
+
+            if count_products == 0:
                 specific_products = [
                     Product(
                         id=generate_uuidv7(), name="Minimalist T-Shirt", description="Premium cotton t-shirt", 
@@ -145,26 +148,51 @@ async def seed():
                     Product(
                         id=generate_uuidv7(), name="Polarized Sunglasses", description="Classic aviator style", 
                         price=95.0, stock_quantity=40, category_id=cat_accessories_id, brand="Vision", rating=4.1
+                    ),
+                    Product(
+                        id=generate_uuidv7(), name="Yoga Mat", description="Non-slip yoga mat", 
+                        price=30.0, stock_quantity=150, category_id=cat_home_id, brand="Zenith", rating=4.4
                     )
                 ]
-                product_data.extend(specific_products)
-                
-            for i in range(len(product_data) + 1, 101):
-                cat = random.choice(categories)
-                brand = random.choice(brands)
-                product_data.append(Product(
-                    name=f"Premium Product {i}",
-                    description=f"This is a high quality premium product {i} with excellent features and durability.",
-                    price=25.0 + (i % 20) * 5,
-                    stock_quantity=50 + (i % 10),
-                    category_id=cat.id,
-                    brand=brand,
-                    rating=round(random.uniform(3.5, 5.0), 1)
-                ))
-                
-            session.add_all(product_data)
+                session.add_all(specific_products)
+                await session.commit()
+                count_products = len(specific_products)
+
+            BATCH_SIZE = 5000
+            total_to_insert = target_count - count_products
+            print(f"Bulk inserting {total_to_insert:,} products in batches of {BATCH_SIZE:,}...")
+            
+            category_ids = [c.id for c in categories]
+            now = datetime.now(timezone.utc)
+            
+            current = count_products
+            while current < target_count:
+                batch_limit = min(BATCH_SIZE, target_count - current)
+                batch_data = []
+                for i in range(current + 1, current + batch_limit + 1):
+                    cat_id = random.choice(category_ids)
+                    brand = random.choice(brands)
+                    batch_data.append({
+                        "id": generate_uuidv7(),
+                        "name": f"Premium Product {i}",
+                        "description": f"This is a high quality premium product {i} with excellent features and durability.",
+                        "price": round(25.0 + (i % 20) * 5 + (i % 7) * 0.5, 2),
+                        "stock_quantity": 50 + (i % 100),
+                        "version": 1,
+                        "category_id": cat_id,
+                        "brand": brand,
+                        "rating": round(3.5 + (i % 16) * 0.1, 1),
+                        "image_url": None,
+                        "created_at": now,
+                        "updated_at": now,
+                    })
+                await session.execute(insert(Product), batch_data)
+                await session.commit()
+                current += batch_limit
+                if current % 20000 == 0 or current >= target_count:
+                    print(f"Progress: {current:,}/{target_count:,} products seeded ({(current / target_count) * 100:.1f}%)")
         else:
-            print("Products already seeded.")
+            print(f"Products already seeded ({count_products:,} existing).")
             
         await session.commit()
         print("Seed completed successfully!")

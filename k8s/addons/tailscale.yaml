@@ -29,27 +29,42 @@ spec:
       labels:
         app: tailscale
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: tailscale
           image: tailscale/tailscale:latest
           imagePullPolicy: IfNotPresent
           env:
-            - name: TS_AUTHKEY
-              valueFrom:
-                secretKeyRef:
-                  name: app-secrets
-                  key: TS_AUTHKEY
-                  optional: true
+            - name: TS_AUTHKEY_FILE
+              value: /var/run/secrets/tailscale/TS_AUTHKEY
             - name: TS_HOSTNAME
               value: ecommerce-k8s
             - name: TS_USERSPACE
               value: "true"
             - name: TS_SERVE_CONFIG
               value: /config/serve.json
+            - name: TS_KUBE_SECRET
+              value: ""
+            - name: TS_STATE_DIR
+              value: /tmp
           volumeMounts:
             - name: config
               mountPath: /config
+              readOnly: true
+            - name: tailscale-auth
+              mountPath: /var/run/secrets/tailscale
+              readOnly: true
       volumes:
         - name: config
           configMap:
             name: tailscale-serve-config
+        - name: tailscale-auth
+          secret:
+            secretName: app-secrets
+            optional: true
+            items:
+              - key: TS_AUTHKEY
+                path: TS_AUTHKEY

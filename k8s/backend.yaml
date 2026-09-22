@@ -13,7 +13,15 @@ spec:
       labels:
         app: backend
     spec:
+      automountServiceAccountToken: false
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 102
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: backend
           image: ecommerce-backend:latest
@@ -53,8 +61,6 @@ spec:
                 command: ["sleep", "5"] # Graceful shutdown mandate
           ports:
             - containerPort: 8000
-      securityContext:
-        fsGroup: 102
       volumes:
         - name: backup-storage
           persistentVolumeClaim:

@@ -13,6 +13,13 @@ spec:
       labels:
         app: pgbouncer
     spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 70
+        runAsGroup: 70
+        seccompProfile:
+          type: RuntimeDefault
       containers:
       - name: pgbouncer
         image: edoburu/pgbouncer:latest

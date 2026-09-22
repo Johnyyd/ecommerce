@@ -2,8 +2,15 @@ apiVersion: v1
 kind: Pod
 metadata:
   name: image-cleaner
+  annotations:
+    checkov.io/skip1: CKV_K8S_17=Image cleaner requires hostPID to enter host namespace and clear containerd cache
+    checkov.io/skip2: CKV_K8S_16=Image cleaner requires privileged mode to enter host mount and PID namespace
+    checkov.io/skip3: CKV_K8S_31=Ephemeral maintenance pod
+    checkov.io/skip4: CKV_K8S_38=Ephemeral maintenance pod requires nsenter
 spec:
+  #checkov:skip=CKV_K8S_17:Image cleaner requires hostPID to access containerd on the node
   hostPID: true
+  automountServiceAccountToken: false
   containers:
     - name: cleaner
       image: alpine
