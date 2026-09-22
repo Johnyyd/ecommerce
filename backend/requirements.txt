@@ -21,4 +21,7 @@ openpyxl>=3.1.5
 python-multipart>=0.0.9
 aiosmtplib>=3.0.1
 logging>=0.4.9.6
+meilisearch>=0.43.0
+pgvector>=0.2.5
+openai>=1.30.0
 

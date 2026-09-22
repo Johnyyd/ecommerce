@@ -15,7 +15,8 @@ import {
   ShieldCheck,
   UserGear,
   Lightning,
-  SignOut
+  SignOut,
+  Star
 } from "@phosphor-icons/react"
 import { useAuthStore } from "@/store/useAuthStore"
 import { adminApi } from "@/services/adminApi"
@@ -40,6 +41,7 @@ import { AdminOrders } from "./admin/AdminOrders"
 import { AdminUsers } from "./admin/AdminUsers"
 import { AdminBackups } from "./admin/AdminBackups"
 import { AdminAsyncJobs } from "./admin/AdminAsyncJobs"
+import { AdminReviews } from "./admin/AdminReviews"
 
 export function Admin() {
   const { user, isLoading, logout } = useAuthStore()
@@ -49,7 +51,7 @@ export function Admin() {
   const [activeTab, setActiveTab] = useState<TabType>(() => {
     if (typeof window !== "undefined") {
       const hash = window.location.hash.replace("#", "") as TabType
-      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs"]
+      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs", "reviews"]
       if (validTabs.includes(hash)) return hash
       const saved = localStorage.getItem("admin_active_tab") as TabType
       if (validTabs.includes(saved)) return saved
@@ -68,7 +70,7 @@ export function Admin() {
   useEffect(() => {
     const onHashChange = () => {
       const hash = window.location.hash.replace("#", "") as TabType
-      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs"]
+      const validTabs: TabType[] = ["overview", "products", "categories", "brands", "vouchers", "orders", "users", "backups", "async_jobs", "reviews"]
       if (validTabs.includes(hash)) {
         setActiveTab(hash)
       }
@@ -153,6 +155,7 @@ export function Admin() {
     },
     { id: "users", label: "Users", icon: <Users size={16} weight="bold" />, badge: users.length },
     { id: "backups", label: "Backups", icon: <Database size={16} weight="bold" /> },
+    { id: "reviews", label: "Reviews", icon: <Star size={16} weight="bold" /> },
     { id: "async_jobs", label: "Async Jobs", icon: <Lightning size={16} weight="bold" /> }
   ]
 
@@ -345,6 +348,9 @@ export function Admin() {
             )}
             {activeTab === "async_jobs" && (
               <AdminAsyncJobs />
+            )}
+            {activeTab === "reviews" && (
+              <AdminReviews products={products} onRefreshAll={fetchAllData} />
             )}
           </motion.div>
         </AnimatePresence>

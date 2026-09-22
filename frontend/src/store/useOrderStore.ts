@@ -4,6 +4,7 @@ export interface OrderItem {
   id: string;
   order_id: string;
   product_id: string;
+  product_name?: string;
   quantity: number;
   unit_price: number;
 }
@@ -25,6 +26,13 @@ export interface Order {
   items: OrderItem[];
   payment: Payment | null;
   payment_url?: string;
+  tracking_code?: string | null;
+  shipping_provider?: string | null;
+  shipping_fee?: number | null;
+  estimated_delivery?: string | null;
+  shipping_status?: string | null;
+  created_at?: string;
+  completed_at?: string | null;
 }
 
 export interface OrderCreate {

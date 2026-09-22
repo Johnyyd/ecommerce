@@ -1,10 +1,14 @@
 import { useState, useMemo } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { ShoppingBag, Eye, X, CaretDown, CheckCircle, Clock, Truck, XCircle, Package } from "@phosphor-icons/react"
+import { ShoppingBag, Eye, X, CaretDown, CheckCircle, Clock, Truck, XCircle, Package, ArrowClockwise } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { OrderData } from "@/types/admin"
 import { adminApi } from "@/services/adminApi"
 import { Skeleton } from "@/components/ui/Skeleton"
+import { OrderTrackingTimeline } from "@/components/shipping/OrderTrackingTimeline"
+import { shippingApi } from "@/services/shippingApi"
+import { ShippingTimelineResponse } from "@/types/shipping"
+import { getAuthToken } from "@/lib/auth"
 
 interface AdminOrdersProps {
   orders: OrderData[]
@@ -19,6 +23,49 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("ALL")
   const [selectedOrder, setSelectedOrder] = useState<OrderData | null>(null)
   const [updatingId, setUpdatingId] = useState<string | null>(null)
+  const [fulfillingId, setFulfillingId] = useState<string | null>(null)
+  const [trackingData, setTrackingData] = useState<ShippingTimelineResponse | null>(null)
+  const [isTrackingModalOpen, setIsTrackingModalOpen] = useState(false)
+  const [loadingTracking, setLoadingTracking] = useState(false)
+
+  const handleFulfillShipping = async (orderId: string) => {
+    const token = getAuthToken()
+    if (!token) return
+    setFulfillingId(orderId)
+    try {
+      const res = await shippingApi.fulfillOrder(orderId, token)
+      toast.success(`GHN Shipment created! Tracking Code: ${res.tracking_code}`)
+      await onRefresh()
+      if (selectedOrder && selectedOrder.id === orderId) {
+        setSelectedOrder({ ...selectedOrder, ...res })
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to create GHN shipment"
+      toast.error(msg)
+    } finally {
+      setFulfillingId(null)
+    }
+  }
+
+  const handleOpenTracking = async (order: OrderData) => {
+    const token = getAuthToken()
+    setLoadingTracking(true)
+    setIsTrackingModalOpen(true)
+    try {
+      if (order.tracking_code) {
+        const res = await shippingApi.getTrackingByCode(order.tracking_code)
+        setTrackingData(res)
+      } else if (token) {
+        const res = await shippingApi.getOrderTracking(order.id, token)
+        setTrackingData(res)
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load tracking data"
+      toast.error(msg)
+    } finally {
+      setLoadingTracking(false)
+    }
+  }
 
   const filteredOrders = useMemo(() => {
     if (statusFilter === "ALL") return orders
@@ -139,6 +186,7 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
               <thead className="bg-zinc-50/75 dark:bg-zinc-800/50 text-zinc-500 dark:text-zinc-400 border-b border-zinc-200/60 dark:border-zinc-800 font-medium">
                 <tr>
                   <th className="px-6 py-4">Order ID</th>
+                  <th className="px-6 py-4">Timeline / Date</th>
                   <th className="px-6 py-4">Customer</th>
                   <th className="px-6 py-4">Amount</th>
                   <th className="px-6 py-4">Payment</th>
@@ -152,6 +200,24 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
                     {/* Order ID */}
                     <td className="px-6 py-4 font-mono font-medium text-zinc-900 dark:text-zinc-100">
                       #{o.id.substring(0, 8)}
+                      {o.tracking_code && (
+                        <div className="mt-1 flex items-center gap-1 text-[11px] font-mono text-orange-600 dark:text-orange-400 font-semibold">
+                          <Truck size={12} weight="bold" />
+                          <span>GHN: {o.tracking_code}</span>
+                        </div>
+                      )}
+                    </td>
+
+                    {/* Timeline / Date */}
+                    <td className="px-6 py-4 text-[11px] text-zinc-600 dark:text-zinc-300">
+                      <div className="font-medium">
+                        {o.created_at ? new Date(o.created_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' }) : '—'}
+                      </div>
+                      {o.completed_at && (
+                        <div className="text-[10px] text-emerald-600 dark:text-emerald-400 mt-0.5">
+                          Completed: {new Date(o.completed_at).toLocaleDateString('en-US', { day: '2-digit', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                        </div>
+                      )}
                     </td>
 
                     {/* Customer */}
@@ -209,13 +275,43 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
 
                     {/* Actions */}
                     <td className="px-6 py-4 text-right">
-                      <button
-                        onClick={() => setSelectedOrder(o)}
-                        className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold rounded-xl text-xs active:scale-[0.97] transition-all cursor-pointer"
-                      >
-                        <Eye size={14} />
-                        Items ({o.items?.length || 0})
-                      </button>
+                      <div className="flex items-center justify-end gap-2">
+                        {/* Ship GHN button for PENDING or PROCESSING orders without tracking */}
+                        {!o.tracking_code && ["PENDING", "PROCESSING"].includes(o.status) && (
+                          <button
+                            onClick={() => handleFulfillShipping(o.id)}
+                            disabled={fulfillingId === o.id}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-500 hover:bg-orange-600 text-white font-semibold rounded-xl text-xs active:scale-[0.97] transition-all cursor-pointer disabled:opacity-50 shadow-sm"
+                            title="Create GHN shipment"
+                          >
+                            {fulfillingId === o.id ? (
+                              <ArrowClockwise size={13} className="animate-spin" />
+                            ) : (
+                              <Truck size={13} weight="bold" />
+                            )}
+                            Ship GHN
+                          </button>
+                        )}
+
+                        {/* Track GHN button */}
+                        {(o.tracking_code || ["SHIPPED", "COMPLETED"].includes(o.status)) && (
+                          <button
+                            onClick={() => handleOpenTracking(o)}
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-orange-50 dark:bg-orange-950/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 text-orange-700 dark:text-orange-300 font-semibold rounded-xl text-xs active:scale-[0.97] transition-all cursor-pointer border border-orange-200/60 dark:border-orange-800/40 shadow-sm"
+                          >
+                            <Truck size={13} weight="bold" />
+                            Track
+                          </button>
+                        )}
+
+                        <button
+                          onClick={() => setSelectedOrder(o)}
+                          className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 font-semibold rounded-xl text-xs active:scale-[0.97] transition-all cursor-pointer"
+                        >
+                          <Eye size={14} />
+                          Items ({o.items?.length || 0})
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -254,6 +350,14 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
                     </span>
                   </div>
                   <p className="text-xs text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">#{selectedOrder.id}</p>
+                  <div className="flex flex-wrap items-center gap-2 text-xs text-zinc-500 dark:text-zinc-400 mt-1.5">
+                    <span>Created: {selectedOrder.created_at ? new Date(selectedOrder.created_at).toLocaleString('en-US') : '—'}</span>
+                    {selectedOrder.completed_at && (
+                      <span className="text-emerald-600 dark:text-emerald-400 font-medium">
+                        • Completed: {new Date(selectedOrder.completed_at).toLocaleString('en-US')}
+                      </span>
+                    )}
+                  </div>
                 </div>
                 <button
                   onClick={() => setSelectedOrder(null)}
@@ -268,8 +372,8 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
                 {selectedOrder.items?.map(item => (
                   <div key={item.id} className="py-3.5 flex justify-between items-center text-xs">
                     <div>
-                      <span className="font-mono font-medium text-zinc-800 dark:text-zinc-200 block">
-                        Item: {item.product_id ? `${item.product_id.substring(0, 12)}...` : "Standard SKU"}
+                      <span className="font-medium text-zinc-800 dark:text-zinc-200 block">
+                        {item.product_name || (item.product_id ? `Product #${item.product_id.substring(0, 8)}` : "Standard SKU")}
                       </span>
                       <span className="text-zinc-400 dark:text-zinc-500 text-[11px]">Qty: {item.quantity} × ${Number(item.unit_price).toFixed(2)}</span>
                     </div>
@@ -281,6 +385,40 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
                 {(!selectedOrder.items || selectedOrder.items.length === 0) && (
                   <p className="text-xs text-zinc-400 dark:text-zinc-500 py-6 text-center">No items listed for this order.</p>
                 )}
+              </div>
+
+              {/* GHN Shipping section in Modal */}
+              <div className="p-4 mb-6 rounded-2xl bg-orange-50/60 dark:bg-orange-950/20 border border-orange-200/80 dark:border-orange-900/40">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Truck size={18} className="text-orange-600" weight="bold" />
+                    <span className="text-xs font-bold text-orange-950 dark:text-orange-200">
+                      GHN Express Logistics
+                    </span>
+                  </div>
+                  {selectedOrder.tracking_code ? (
+                    <button
+                      onClick={() => handleOpenTracking(selectedOrder)}
+                      className="text-[11px] font-semibold text-orange-700 dark:text-orange-300 hover:underline cursor-pointer flex items-center gap-1"
+                    >
+                      <span>Live Timeline</span>
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => handleFulfillShipping(selectedOrder.id)}
+                      disabled={fulfillingId === selectedOrder.id}
+                      className="text-[11px] font-bold text-white bg-orange-600 hover:bg-orange-700 px-3 py-1 rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {fulfillingId === selectedOrder.id ? "Creating..." : "Create GHN Waybill"}
+                    </button>
+                  )}
+                </div>
+                <div className="text-xs text-zinc-600 dark:text-zinc-300 flex justify-between">
+                  <span>Tracking Code:</span>
+                  <span className="font-mono font-bold text-zinc-900 dark:text-zinc-100">
+                    {selectedOrder.tracking_code || "Not generated yet"}
+                  </span>
+                </div>
               </div>
 
               {/* Summary Footer */}
@@ -300,6 +438,14 @@ export function AdminOrders({ orders, isFetching, onRefresh }: AdminOrdersProps)
           </div>
         )}
       </AnimatePresence>
+
+      {/* Reusable GHN Order Tracking Timeline Modal */}
+      <OrderTrackingTimeline
+        isOpen={isTrackingModalOpen}
+        onClose={() => setIsTrackingModalOpen(false)}
+        data={trackingData}
+        isLoading={loadingTracking}
+      />
     </div>
   )
 }

@@ -40,6 +40,7 @@ frontend/.next
 /backend/app/api/v1/endpoints/__pycache__
 /backend/alembic/versions/__pycache__
 /backend/alembic/__pycache__
+/backend/tests/integration/__pycache__
 /.superpowers
 /docs
 
@@ -51,3 +52,8 @@ backend/reports/*
 
 /backend/tests/integration/__pycache__
 /backend/app/services/shipping/__pycache__
+/.hermes
+/backend/app/services/shipping/__pycache__
+/media
+tests/__pycache__
+/__pycache__

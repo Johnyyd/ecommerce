@@ -1,5 +1,6 @@
 from uuid import UUID
 from typing import List, Optional
+from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -15,7 +16,7 @@ class OrderRepository:
     async def get_multi_by_user(self, user_id: UUID, skip: int = 0, limit: int = 100) -> List[Order]:
         stmt = (
             select(Order)
-            .options(selectinload(Order.items), selectinload(Order.payment))
+            .options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment))
             .where(Order.user_id == user_id)
             .order_by(Order.created_at.desc())
             .offset(skip)
@@ -96,7 +97,7 @@ class OrderRepository:
         await invalidate_product_caches(affected_product_ids)
         
         # Refresh and eager load relationships
-        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == db_order.id)
+        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).where(Order.id == db_order.id)
         result = await self.session.execute(stmt)
         final_order = result.scalars().first()
         
@@ -106,12 +107,12 @@ class OrderRepository:
         return final_order
 
     async def get_by_id(self, order_id: UUID, user_id: UUID) -> Optional[Order]:
-        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == order_id, Order.user_id == user_id)
+        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).where(Order.id == order_id, Order.user_id == user_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
     async def cancel_order(self, order_id: UUID, user_id: UUID) -> Order:
-        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == order_id, Order.user_id == user_id).with_for_update()
+        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).where(Order.id == order_id, Order.user_id == user_id).with_for_update()
         result = await self.session.execute(stmt)
         order = result.scalars().first()
         
@@ -131,6 +132,7 @@ class OrderRepository:
                 affected_product_ids.append(item.product_id)
         
         order.status = "CANCELLED"
+        order.completed_at = datetime.now(timezone.utc)
         if order.payment:
             order.payment.status = "REFUNDED" if order.payment.status == "SUCCESS" else "CANCELLED"
         
@@ -183,14 +185,14 @@ class OrderRepository:
         return order
 
     async def get_all_orders(self, skip: int = 0, limit: int = 100, status: Optional[str] = None) -> List[Order]:
-        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).order_by(Order.created_at.desc()).offset(skip).limit(limit)
+        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).order_by(Order.created_at.desc()).offset(skip).limit(limit)
         if status:
             stmt = stmt.where(Order.status == status)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def admin_update_status(self, order_id: UUID, new_status: str) -> Order:
-        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).where(Order.id == order_id).with_for_update()
+        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).where(Order.id == order_id).with_for_update()
         result = await self.session.execute(stmt)
         order = result.scalars().first()
         if not order:
@@ -199,6 +201,11 @@ class OrderRepository:
         old_status = order.status
         order.status = new_status
         affected_product_ids = []
+
+        if new_status in ["COMPLETED", "DELIVERED", "CANCELLED"]:
+            order.completed_at = datetime.now(timezone.utc)
+        elif new_status in ["PENDING", "PROCESSING", "SHIPPED"]:
+            order.completed_at = None
 
         if new_status == "COMPLETED" and order.payment:
             order.payment.status = "SUCCESS"

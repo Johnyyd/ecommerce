@@ -16,6 +16,7 @@ class OrderItemResponse(BaseModel):
     id: UUID
     order_id: UUID
     product_id: UUID
+    product_name: Optional[str] = None
     quantity: int
     unit_price: float
 
@@ -39,6 +40,13 @@ class OrderResponse(BaseModel):
     items: List[OrderItemResponse] = []
     payment: Optional[PaymentResponse] = None
     payment_url: Optional[str] = None
+    tracking_code: Optional[str] = None
+    shipping_provider: Optional[str] = "GHN"
+    shipping_fee: Optional[float] = 0.0
+    estimated_delivery: Optional[str] = None
+    shipping_status: Optional[str] = "PENDING"
+    created_at: Optional[datetime] = None
+    completed_at: Optional[datetime] = None
 
     model_config = ConfigDict(from_attributes=True)
 

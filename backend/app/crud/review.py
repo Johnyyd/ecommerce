@@ -1,6 +1,6 @@
 from uuid import UUID
 from datetime import datetime, timezone
-from typing import List, Dict
+from typing import List, Dict, Optional
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func
 from sqlalchemy.orm import selectinload
@@ -9,7 +9,7 @@ from app.models.product import Product
 from app.models.order import Order
 from app.models.user import User
 from app.core.utils import generate_uuidv7
-from app.schemas.review import ReviewCreate, ReviewResponse, ProductReviewSummary
+from app.schemas.review import ReviewCreate, ReviewResponse, ProductReviewSummary, AdminReviewResponse
 
 class ReviewRepository:
     def __init__(self, session: AsyncSession):
@@ -158,3 +158,41 @@ class ReviewRepository:
 
         await self.session.commit()
         return True
+
+    async def get_all_admin(
+        self,
+        product_id: Optional[UUID] = None,
+        rating: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 100
+    ) -> List[AdminReviewResponse]:
+        stmt = (
+            select(Review)
+            .options(selectinload(Review.user), selectinload(Review.product))
+            .where(Review.deleted_at.is_(None))
+        )
+        if product_id:
+            stmt = stmt.where(Review.product_id == product_id)
+        if rating:
+            stmt = stmt.where(Review.rating == rating)
+        stmt = stmt.order_by(Review.created_at.desc()).offset(skip).limit(limit)
+        res = await self.session.execute(stmt)
+        reviews = list(res.scalars().all())
+
+        return [
+            AdminReviewResponse(
+                id=r.id,
+                product_id=r.product_id,
+                product_name=r.product.name if r.product else "Unknown Product",
+                user_id=r.user_id,
+                username=r.user.username if r.user else "Anonymous",
+                user_email=r.user.email if r.user else None,
+                order_id=r.order_id,
+                rating=r.rating,
+                comment=r.comment,
+                is_verified_purchase=r.is_verified_purchase,
+                created_at=r.created_at
+            )
+            for r in reviews
+        ]
+

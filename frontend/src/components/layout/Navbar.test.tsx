@@ -2,12 +2,15 @@ import { render, screen, fireEvent } from '@testing-library/react';
 import { Navbar } from './Navbar';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAuthStore } from '@/store/useAuthStore';
+import { useCartStore } from '@/store/useCartStore';
 
 describe('Navbar', () => {
   beforeEach(() => {
     localStorage.clear();
     sessionStorage.clear();
     useAuthStore.getState().setUser(null);
+    useCartStore.getState().clearCart();
+    useCartStore.getState().setCartOpen(false);
   });
 
   it('renders floating navbar', () => {
@@ -50,5 +53,32 @@ describe('Navbar', () => {
     fireEvent.click(menuBtn);
 
     expect(screen.getByText('Admin Portal')).toBeInTheDocument();
+  });
+
+  it('opens cart drawer when clicking Toggle Cart button', () => {
+    render(<Navbar />);
+    
+    const cartBtn = screen.getByLabelText('Toggle Cart');
+    fireEvent.click(cartBtn);
+    
+    expect(screen.getByText('Your Cart')).toBeInTheDocument();
+    expect(screen.getByText('Your cart is empty.')).toBeInTheDocument();
+  });
+
+  it('displays items and Checkout button when cart has items', () => {
+    useCartStore.getState().addItem({
+      id: 'p1',
+      name: 'Premium Leather Shoes',
+      price: 150,
+      quantity: 1,
+    });
+
+    render(<Navbar />);
+    const cartBtn = screen.getByLabelText('Toggle Cart');
+    fireEvent.click(cartBtn);
+
+    expect(screen.getByText('Your Cart')).toBeInTheDocument();
+    expect(screen.getByText('Premium Leather Shoes')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /checkout/i })).toBeInTheDocument();
   });
 });

@@ -18,6 +18,11 @@ else
     kubectl wait --for=condition=Ready pod/image-cleaner --timeout=15s &>/dev/null || true
 fi
 
+echo "Running Database Migration Job..."
+kubectl delete job db-migration-job --ignore-not-found=true
+kubectl apply -f k8s/migration-job.yaml
+kubectl wait --for=condition=complete job/db-migration-job --timeout=60s 2>/dev/null || echo "Migration job in progress or completed."
+
 echo "Rolling out restart for backend and worker deployment in K8s..."
 kubectl apply -f k8s/worker.yaml
 kubectl rollout restart deployment backend

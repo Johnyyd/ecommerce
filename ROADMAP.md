@@ -107,7 +107,7 @@ flowchart LR
 ## 5. Trụ cột 4: Tìm kiếm Nâng cao & Cá nhân hóa (Search & AI Recommendation)
 
 ### 5.1. Nâng cấp Công cụ Tìm kiếm Sản phẩm
-- **Hạn chế hiện tại**: Truy vấn SQL `ILIKE '%query%'` chậm khi dữ liệu lớn, dễ gây full-table scan và không hỗ trợ gõ không dấu/sai chính tả tiếng Việt.
+- **Hạn chế hiện tại**: Truy vấn SQL `ILIKE '%query%'` chậm khi dữ liệu lớn, dễ gây full-table scan và không hỗ trợ gõ không dấu/sai chính tả.
 - **Giải pháp**:
   - **Tùy chọn A (Nhẹ, tận dụng Postgres)**: Dùng PostgreSQL `pg_trgm` (trigram) và `tsvector` cho Full-Text Search.
   - **Tùy chọn B (Chuyên dụng, chuẩn E-Commerce)**: Tích hợp **Meilisearch** làm search engine:

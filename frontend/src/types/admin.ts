@@ -35,6 +35,7 @@ export interface VoucherItem {
 export interface OrderItemDetail {
   id: string
   product_id: string
+  product_name?: string
   quantity: number
   unit_price: number
 }
@@ -56,6 +57,12 @@ export interface OrderData {
   items: OrderItemDetail[]
   payment?: OrderPayment | null
   created_at?: string
+  tracking_code?: string | null
+  shipping_provider?: string | null
+  shipping_fee?: number | null
+  estimated_delivery?: string | null
+  shipping_status?: string | null
+  completed_at?: string | null
 }
 
 export interface UserData {
@@ -124,6 +131,21 @@ export type TabType =
   | "categories"
   | "backups"
   | "async_jobs"
+  | "reviews"
+
+export interface AdminReviewItem {
+  id: string
+  product_id: string
+  product_name?: string
+  user_id: string
+  username?: string
+  user_email?: string
+  order_id: string
+  rating: number
+  comment?: string | null
+  is_verified_purchase: boolean
+  created_at: string
+}
 
 export interface AdminOverviewStats {
   totalRevenue: number

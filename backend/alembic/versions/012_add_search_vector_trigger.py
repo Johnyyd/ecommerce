@@ -33,11 +33,17 @@ def upgrade() -> None:
     ''')
 
     # Drop trigger if exists and recreate with column filter (only recalculate when text changes)
+
     op.execute('DROP TRIGGER IF EXISTS trigger_products_search_vector ON products')
     op.execute('''
         CREATE TRIGGER trigger_products_search_vector
         BEFORE INSERT OR UPDATE OF name, description, brand ON products
         FOR EACH ROW EXECUTE FUNCTION products_search_vector_update()
+    op.execute('''
+        DROP TRIGGER IF EXISTS trigger_products_search_vector ON products;
+        CREATE TRIGGER trigger_products_search_vector
+        BEFORE INSERT OR UPDATE OF name, description, brand ON products
+        FOR EACH ROW EXECUTE FUNCTION products_search_vector_update();
     ''')
 
     # Re-populate search_vector for existing rows using the new function logic
