@@ -427,3 +427,124 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
 - Worker pod chạy ổn định với 6 task đã đăng ký.
 - Tất cả 37 tests mới (embedding + meilisearch) và 75 tests backend hiện có đều pass.
 
+---
+
+## 13. Lỗi `DuplicateColumnError` & `PostgresSyntaxError: cannot insert multiple commands into a prepared statement` tại Pod `db-migration-job`
+
+**Triệu chứng:**
+- Khi chạy script triển khai K8s hoặc kiểm tra trạng thái bằng `status.bat` / `status.sh`, `job.batch/db-migration-job` ở trạng thái `Failed` và các Pod `db-migration-job-*` bị lỗi `Error` (`0/1 Error`).
+- Khi kiểm tra log của Pod bằng lệnh:
+  ```bash
+  kubectl logs -l job-name=db-migration-job --tail=100
+  ```
+  Xuất hiện 2 lỗi tuần tự:
+  1. **Lỗi thứ nhất (ở migration revision 011):**
+     ```text
+     sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) 
+     <class 'asyncpg.exceptions.DuplicateColumnError'>: column "search_vector" of relation "products" already exists
+     [SQL: ALTER TABLE products ADD COLUMN search_vector TSVECTOR]
+     File "/app/alembic/versions/011_add_search_and_embedding_columns.py", line 29, in upgrade
+     ```
+  2. **Lỗi thứ hai (ở migration revision 012 sau khi sửa revision 011):**
+     ```text
+     sqlalchemy.exc.ProgrammingError: (sqlalchemy.dialects.postgresql.asyncpg.ProgrammingError) 
+     <class 'asyncpg.exceptions.PostgresSyntaxError'>: cannot insert multiple commands into a prepared statement
+     [SQL: 
+         DROP TRIGGER IF EXISTS trigger_products_search_vector ON products;
+         CREATE TRIGGER trigger_products_search_vector
+         BEFORE INSERT OR UPDATE OF name, description, brand ON products
+         FOR EACH ROW EXECUTE FUNCTION products_search_vector_update();
+     ]
+     File "/app/alembic/versions/012_add_search_vector_trigger.py", line 36, in upgrade
+     ```
+
+**Nguyên nhân chi tiết:**
+
+1. **Lỗi DDL không có tính Lũy tiến (Non-Idempotent DDL) và lệnh `COMMIT` thủ công (ở file `011`):**
+   - Trong `011_add_search_and_embedding_columns.py`, trước đây có chứa lệnh `op.execute('COMMIT')` (nhằm mục đích tạo index CONCURRENTLY). Tuy nhiên, việc tự ý `COMMIT` đã phá vỡ cơ chế quản lý transaction của Alembic (`with context.begin_transaction()`).
+   - Khi transaction bị commit giữa chừng, câu lệnh `ALTER TABLE products ADD COLUMN search_vector ...` đã được ghi nhận vĩnh viễn vào PostgreSQL. Nếu bước tiếp theo gặp lỗi hoặc Pod bị restart, transaction tổng của Alembic bị rollback và bảng `alembic_version` **chưa được ghi nhận lên revision 011** (vẫn lưu phiên bản cũ `hh0c1d2e3f5b`).
+   - Khi K8s tự động thử lại (retry `backoffLimit: 4`), Alembic chạy lại file `011` từ đầu. Phương thức `op.add_column('products', ...)` sinh ra câu lệnh DDL thô không có điều kiện kiểm tra tồn tại. Do cột `search_vector` đã tồn tại trong database từ lần chạy trước, PostgreSQL từ chối thực thi và báo lỗi `DuplicateColumnError`.
+
+2. **Lỗi Trình điều khiển `asyncpg` không hỗ trợ nhiều lệnh SQL trong một Prepared Statement (ở file `012`):**
+   - Thư viện `asyncpg` (driver bất đồng bộ cho SQLAlchemy) tuân thủ chặt chẽ chuẩn PostgreSQL protocol: **mỗi prepared statement chỉ được phép thực thi một câu lệnh SQL duy nhất**.
+   - Trong `012_add_search_vector_trigger.py`, hai câu lệnh SQL (`DROP TRIGGER IF EXISTS ...;` và `CREATE TRIGGER ...;`) bị gộp chung trong một lời gọi `op.execute(...)`. Khi `asyncpg` biên dịch câu lệnh, nó ném ngoại lệ `cannot insert multiple commands into a prepared statement`.
+
+3. **Lỗi Cache Image trong Containerd của Docker Desktop / Kubernetes (`k8s.io` namespace):**
+   - Trên môi trường Docker Desktop (Windows/Mac) sử dụng containerd runtime, Kubernetes lưu cache image riêng biệt trong namespace `k8s.io`.
+   - Với chính sách `imagePullPolicy: IfNotPresent`, sau khi bạn sửa code và chạy `docker build -t ecommerce-backend:latest`, containerd của K8s vẫn có thể tái sử dụng image cũ đã nạp sẵn trong cache của node nếu không được xóa trước. Do đó, Pod migration vẫn tiếp tục chạy code cũ bị lỗi.
+
+**Cách khắc phục triệt để:**
+
+1. **Chuẩn hóa Migration `011_add_search_and_embedding_columns.py` thành Idempotent (Lũy tiến):**
+   - Thay thế toàn bộ DDL thông thường bằng cú pháp `IF NOT EXISTS` và gỡ bỏ hoàn toàn lệnh `COMMIT`/`BEGIN` thủ công:
+     ```python
+     # 1. Thêm cột một cách an toàn (không bị lỗi nếu cột đã tồn tại từ trước)
+     op.execute('ALTER TABLE products ADD COLUMN IF NOT EXISTS search_vector TSVECTOR')
+     op.execute('ALTER TABLE products ADD COLUMN IF NOT EXISTS embedding vector(1536)')
+
+     # 2. Tạo index an toàn
+     op.execute('CREATE INDEX IF NOT EXISTS idx_products_search_vector ON products USING GIN (search_vector)')
+     op.execute('''
+         CREATE INDEX IF NOT EXISTS idx_products_embedding
+         ON products USING ivfflat (embedding vector_l2_ops)
+         WITH (lists = 100)
+     ''')
+
+     # 3. Tạo các bảng Dead Letter Queue & Backfill an toàn
+     op.execute('CREATE TABLE IF NOT EXISTS failed_sync_tasks (...)')
+     op.execute('CREATE TABLE IF NOT EXISTS backfill_jobs (...)')
+     ```
+
+2. **Tách các câu lệnh SQL độc lập trong `012_add_search_vector_trigger.py`:**
+   - Tách thành 2 lời gọi `op.execute` riêng biệt để tương thích hoàn toàn với `asyncpg`:
+     ```python
+     # Tách DROP TRIGGER và CREATE TRIGGER riêng biệt
+     op.execute('DROP TRIGGER IF EXISTS trigger_products_search_vector ON products')
+     op.execute('''
+         CREATE TRIGGER trigger_products_search_vector
+         BEFORE INSERT OR UPDATE OF name, description, brand ON products
+         FOR EACH ROW EXECUTE FUNCTION products_search_vector_update()
+     ''')
+     ```
+
+3. **Tự động hóa dọn dẹp Cache Image containerd trước khi chạy Migration Job:**
+   - Trong script `scripts/windows/update-k8s-backend.bat` và `scripts/linux/update-k8s-backend.sh`, bổ sung tiến trình chạy Pod `image-cleaner` (chạy `ctr -n k8s.io images rm ...`) để xóa bỏ cache image cũ trước khi tạo `db-migration-job`.
+
+4. **Các bước thủ công để chạy lại Migration khi gặp lỗi:**
+   - **Bước 1: Build lại image backend mới nhất:**
+     ```bash
+     docker build -t ecommerce-backend:latest ./backend
+     ```
+   - **Bước 2: Xóa image cũ trong containerd cache (nếu dùng Docker Desktop):**
+     ```bash
+     kubectl delete pod image-cleaner --ignore-not-found=true
+     kubectl apply -f k8s/cleaner.yaml
+     kubectl wait --for=condition=Ready pod/image-cleaner --timeout=15s
+     ```
+   - **Bước 3: Xóa Job migration cũ bị lỗi và áp dụng lại:**
+     ```bash
+     kubectl delete job db-migration-job --ignore-not-found=true
+     kubectl apply -f k8s/migration-job.yaml
+     ```
+   - **Bước 4: Theo dõi kết quả migration:**
+     ```bash
+     kubectl wait --for=condition=complete job/db-migration-job --timeout=60s
+     kubectl logs -l job-name=db-migration-job
+     ```
+     *Kết quả mong đợi:*
+     ```text
+     INFO  [alembic.runtime.migration] Running upgrade hh0c1d2e3f5b -> 011, add_search_and_embedding_columns
+     INFO  [alembic.runtime.migration] Running upgrade 011 -> 012, add_search_vector_trigger
+     ```
+   - **Bước 5: Khởi động lại backend & worker để nhận cấu trúc DB mới:**
+     ```bash
+     kubectl rollout restart deployment backend
+     kubectl rollout restart deployment worker
+     ```
+   - **Bước 6: Kiểm tra version hiện tại của DB trong PostgreSQL:**
+     ```bash
+     kubectl exec postgres-0 -- psql -U ecommerce_user -d ecommerce_db -c "SELECT * FROM alembic_version;"
+     # Kết quả: 012
+     ```
+
+
