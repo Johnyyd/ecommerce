@@ -13,6 +13,11 @@ IF %ERRORLEVEL% EQU 0 (
     IF %ERRORLEVEL% EQU 0 (
         echo Loading image into Kind...
         kind load docker-image ecommerce-frontend:latest
+    ) ELSE (
+        echo Refreshing image cache in containerd...
+        kubectl delete pod image-cleaner --ignore-not-found=true >nul 2>&1
+        kubectl apply -f k8s/cleaner.yaml >nul 2>&1
+        kubectl wait --for=condition=Ready pod/image-cleaner --timeout=15s >nul 2>&1
     )
 )
 

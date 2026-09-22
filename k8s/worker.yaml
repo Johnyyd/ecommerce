@@ -15,7 +15,15 @@ spec:
       labels:
         app: worker
     spec:
+      automountServiceAccountToken: false
       enableServiceLinks: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 102
+        seccompProfile:
+          type: RuntimeDefault
       containers:
         - name: worker
           image: ecommerce-backend:latest
@@ -51,5 +59,3 @@ spec:
             preStop:
               exec:
                 command: ["sleep", "5"]
-      securityContext:
-        fsGroup: 102

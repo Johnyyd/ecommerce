@@ -114,14 +114,15 @@ async def seed():
         # 5. Seed Products
         result_products = await session.execute(select(Product))
         products = result_products.scalars().all()
-        if len(products) < 100:
+        if len(products) < 1000000:
             print("Seeding products...")
             brands = ["Acme", "Pace", "Hide", "Vision", "Nova", "Zenith", "Apex", "Vortex"]
             
             cat_apparel_id = next((c.id for c in categories if c.slug == "apparel"), categories[0].id)
             cat_footwear_id = next((c.id for c in categories if c.slug == "footwear"), categories[0].id)
             cat_accessories_id = next((c.id for c in categories if c.slug == "accessories"), categories[0].id)
-            
+            cat_home_id = next((c.id for c in categories if c.slug == "home"), categories[0].id)
+
             product_data = []
             
             if len(products) == 0:
@@ -145,6 +146,10 @@ async def seed():
                     Product(
                         id=generate_uuidv7(), name="Polarized Sunglasses", description="Classic aviator style", 
                         price=95.0, stock_quantity=40, category_id=cat_accessories_id, brand="Vision", rating=4.1
+                    ),
+                    Product(
+                        id=generate_uuidv7(), name="Yoga Mat", description="Non-slip yoga mat", 
+                        price=30.0, stock_quantity=150, category_id=cat_home_id, brand="Zenith", rating=4.4
                     )
                 ]
                 product_data.extend(specific_products)

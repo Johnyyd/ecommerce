@@ -70,6 +70,7 @@ app.include_router(shipping.router, prefix="/api/v1/shipping", tags=["shipping"]
 app.include_router(async_jobs.router, prefix="/api/v1", tags=["async-jobs"])
 
 @app.get("/api/health")
+@app.get("/health")
 async def health_check():
     return {"status": "ok"}
 

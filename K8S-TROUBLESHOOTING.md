@@ -547,4 +547,33 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
      # Kết quả: 012
      ```
 
+---
 
+## 14. Lỗi `SyntaxError: unterminated triple-quoted string literal` tại Pod `db-migration-job`
+
+**Triệu chứng:**
+Pod `db-migration-job` bị lỗi ở trạng thái `Error` (`0/1 Error`) và liên tục thử lại đến khi Job thất bại.
+Khi kiểm tra log của Pod bằng lệnh `kubectl logs -l job-name=db-migration-job`, ghi nhận lỗi cú pháp Python:
+```text
+  File "<frozen importlib._bootstrap>", line 488, in _call_with_frames_removed
+  File "/app/alembic/versions/011_add_search_and_embedding_columns.py", line 159
+    ''')
+    ^
+SyntaxError: unterminated triple-quoted string literal (detected at line 177)
+```
+
+**Nguyên nhân:**
+Trong file `backend/alembic/versions/011_add_search_and_embedding_columns.py`, một đoạn code bị dán lặp (duplicate code) giữa dòng 39 và 116. Tại dòng 40, câu lệnh `op.execute('''` bị cắt ngang giữa chừng trước khi kết thúc khối chuỗi ba nháy `'''`. Khi Alembic nạp module migration bằng `pyfiles.load_module_py`, Python compiler phát hiện chuỗi ba nháy không đóng và ném ngoại lệ `SyntaxError`, ngăn cản toàn bộ quá trình `alembic upgrade head`.
+
+**Cách khắc phục:**
+1. **Dọn dẹp code thừa và đóng chuẩn chuỗi trong `011_add_search_and_embedding_columns.py`:**
+   Loại bỏ các khối tạo bảng/cột bị dán trùng, sử dụng các câu lệnh SQL lũy tiến (`CREATE EXTENSION IF NOT EXISTS`, `ALTER TABLE ... ADD COLUMN IF NOT EXISTS`, `CREATE INDEX IF NOT EXISTS`) với cặp dấu `'''` đóng mở chuẩn xác.
+2. **Kiểm tra cú pháp Python trước khi build image:**
+   ```bash
+   python -m py_compile backend/alembic/versions/011_add_search_and_embedding_columns.py
+   ```
+3. **Build lại image backend và cập nhật Kubernetes:**
+   ```bash
+   .\scripts\windows\update-k8s-backend.bat
+   ```
+   Job `db-migration-job` hoàn thành thành công với trạng thái `1/1 Completed`.

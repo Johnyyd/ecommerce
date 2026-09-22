@@ -24,6 +24,10 @@ spec:
       template:
         spec:
           restartPolicy: OnFailure
+          automountServiceAccountToken: false
+          securityContext:
+            seccompProfile:
+              type: RuntimeDefault
           containers:
             - name: postgres-backup-worker
               image: postgres:16-alpine
