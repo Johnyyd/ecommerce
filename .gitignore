@@ -48,6 +48,10 @@ backend/media/*
 !backend/media/.gitkeep
 backend/reports/*
 !backend/reports/.gitkeep
+.hermes/
+
+/backend/tests/integration/__pycache__
+/backend/app/services/shipping/__pycache__
 /.hermes
 /backend/app/services/shipping/__pycache__
 /media

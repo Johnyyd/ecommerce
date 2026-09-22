@@ -11,6 +11,11 @@ if command -v minikube &> /dev/null && minikube status &> /dev/null; then
 elif command -v kind &> /dev/null && kind get clusters 2>/dev/null | grep -q 'kind'; then
     echo "Loading image into Kind..."
     kind load docker-image ecommerce-backend:latest
+else
+    echo "Refreshing image cache in containerd..."
+    kubectl delete pod image-cleaner --ignore-not-found=true &>/dev/null || true
+    kubectl apply -f k8s/cleaner.yaml &>/dev/null || true
+    kubectl wait --for=condition=Ready pod/image-cleaner --timeout=15s &>/dev/null || true
 fi
 
 echo "Running Database Migration Job..."

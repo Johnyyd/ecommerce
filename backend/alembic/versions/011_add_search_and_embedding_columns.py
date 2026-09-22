@@ -25,6 +25,20 @@ def upgrade() -> None:
     op.execute('CREATE EXTENSION IF NOT EXISTS vector')
     op.execute('CREATE EXTENSION IF NOT EXISTS pg_trgm')
 
+    # 1. Add tsvector and vector columns to products table idempotently
+    op.execute('ALTER TABLE products ADD COLUMN IF NOT EXISTS search_vector TSVECTOR')
+    op.execute('ALTER TABLE products ADD COLUMN IF NOT EXISTS embedding vector(1536)')
+
+    # 2. Create GIN index on search_vector
+    op.execute(
+        'CREATE INDEX IF NOT EXISTS idx_products_search_vector '
+        'ON products USING GIN (search_vector)'
+    )
+
+    # 3. Create IVFFlat index on embedding (for vector similarity search)
+    op.execute(
+        '''
+        CREATE INDEX IF NOT EXISTS idx_products_embedding
     # 1. Add tsvector and vector columns to products table (nullable for zero-downtime)
     op.add_column(
         'products',
@@ -64,6 +78,41 @@ def upgrade() -> None:
         WITH (lists = 100)
         '''
     )
+
+
+    # 4. Create failed_sync_tasks table (Dead Letter Queue for sync operations)
+    op.execute('''
+        CREATE TABLE IF NOT EXISTS failed_sync_tasks (
+            id SERIAL PRIMARY KEY,
+            product_id UUID NOT NULL,
+            attempt INTEGER NOT NULL DEFAULT 1,
+            max_attempts INTEGER NOT NULL DEFAULT 3,
+            error TEXT NOT NULL,
+            error_type VARCHAR(100) NOT NULL,
+            occurred_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            resolved_at TIMESTAMPTZ,
+            resolved_by VARCHAR(100),
+            details JSON
+        )
+    ''')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_failed_sync_product_attempt ON failed_sync_tasks (product_id, attempt)')
+    op.execute('CREATE INDEX IF NOT EXISTS ix_failed_sync_unresolved ON failed_sync_tasks (product_id) WHERE resolved_at IS NULL')
+
+    # 5. Create backfill_jobs table (progress tracking for data migration)
+    op.execute('''
+        CREATE TABLE IF NOT EXISTS backfill_jobs (
+            id SERIAL PRIMARY KEY,
+            job_name VARCHAR(100) NOT NULL UNIQUE,
+            status VARCHAR(20) NOT NULL DEFAULT 'pending',
+            total_items INTEGER,
+            processed_items INTEGER NOT NULL DEFAULT 0,
+            failed_items INTEGER NOT NULL DEFAULT 0,
+            started_at TIMESTAMPTZ NOT NULL DEFAULT now(),
+            completed_at TIMESTAMPTZ,
+            progress_json JSON,
+            CONSTRAINT ck_backfill_status CHECK (status IN ('pending', 'running', 'completed', 'failed'))
+        )
+    ''')
     op.execute('BEGIN')
 
     # 4. Create failed_sync_tasks table (Dead Letter Queue for sync operations)
