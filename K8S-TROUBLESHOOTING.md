@@ -290,3 +290,140 @@ Vì đây là môi trường phát triển (Dev), cách nhanh nhất là xóa b�
    ```
    *(Lưu ý: Nếu bạn có khai báo một PVC khác cho dữ liệu chính của postgres, hãy xóa cả PVC đó. Ví dụ `kubectl delete pvc data-postgres-0`)*
 3. Chạy lại file khởi tạo K8s `scripts\windows\k8s\start-k8s-windows.bat` để hệ thống tự động thiết lập lại mọi thứ với một database sạch.
+
+---
+
+## 11. Lỗi `Multiple head revisions` & Sai kiểu dữ liệu pgvector tại Pod `db-migration-job`
+
+**Triệu chứng:**
+- Khi chạy `status.sh`, Pod `db-migration-job-...` báo trạng thái `Error` liên tục và `job.batch/db-migration-job` báo `Failed`.
+- Xem log bằng lệnh `kubectl logs -l job-name=db-migration-job` ghi nhận:
+  ```text
+  ERROR [alembic.util.messaging] Multiple head revisions are present for given argument 'head'; please specify a specific target revision, '<branchname>@head' to narrow to a specific head, or 'heads' for all heads
+  FAILED: Multiple head revisions are present for given argument 'head'; please specify a specific target revision, '<branchname>@head' to narrow to a specific head, or 'heads' for all heads
+  ```
+- Khi debug thủ công trên terminal máy host bằng lệnh:
+  ```bash
+  alembic -c /app/alembic.ini upgrade head
+  ```
+  Nhận thông báo lỗi:
+  ```text
+  FAILED: No 'script_location' key found in configuration.
+  ```
+
+**Nguyên nhân:**
+1. **Lỗi `script_location` khi chạy trên máy Host:**
+   Đường dẫn `/app/alembic.ini` là đường dẫn thư mục **bên trong container Docker/K8s**, không tồn tại trên filesystem của máy host Linux/Windows. Khi Alembic không tìm thấy file ini tại `/app`, nó load cấu hình rỗng và báo thiếu khóa `script_location`.
+2. **Lỗi rẽ nhánh Alembic (Multiple head revisions):**
+   Database hiện tại đã được nâng cấp lên revision `hh0c1d2e3f5b` (các trường shipping/completion của đơn hàng). Tuy nhiên, file migration tìm kiếm & AI mới `011_add_search_and_embedding_columns.py` lại đặt `down_revision = 'ff8a9b0c2e3f'` thay vì kế thừa `hh0c1d2e3f5b`. Điều này tạo ra 2 nhánh migration song song (`012` và `hh0c1d2e3f5b`), khiến Alembic không thể xác định đâu là `head` duy nhất khi K8s chạy `alembic upgrade head`.
+3. **Lỗi không tương thích kiểu dữ liệu `pgvector`:**
+   Cột `embedding` được khai báo kiểu `sa.ARRAY(sa.Float)` (`double precision[]`), nhưng câu lệnh tạo chỉ mục lại dùng `USING ivfflat (embedding vector_l2_ops)`. PostgreSQL từ chối thực thi và báo lỗi:
+   `operator class "vector_l2_ops" does not accept data type double precision[]` (bắt buộc phải là kiểu `vector(1536)` của extension `pgvector`).
+4. **Lỗi hàm PostgreSQL không tồn tại & cú pháp Python trong SQL:**
+   - Ràng buộc `CheckConstraint("embedding IS NULL OR array_length(embedding, 1) = 1536")`: Hàm `array_length` của Postgres không chấp nhận tham số kiểu `vector`. Kiểu `vector(1536)` đã tự động đảm bảo độ dài 1536 ở cấp độ database.
+   - Cú pháp `ARRAY[0.0] * 1533` trong câu lệnh cập nhật dữ liệu là cú pháp nhân mảng của Python, gây lỗi cú pháp trong PostgreSQL (`operator does not exist: numeric[] * integer`).
+   - Cột `failed_sync_tasks.product_id` khai báo `sa.Integer()`, không khớp với kiểu khóa chính `UUID` của bảng `products`.
+
+**Khắc phục đã thực hiện:**
+1. **Chuẩn hóa Lineage Migration (`011_add_search_and_embedding_columns.py`):**
+   Chỉnh sửa `down_revision = 'hh0c1d2e3f5b'` để toàn bộ lịch sử migration trở thành một chuỗi tuyến tính duy nhất:
+   `... -> ff8a9b0c2e3f -> gg9b0c2e3f4a -> hh0c1d2e3f5b -> 011 -> 012 (head)`
+2. **Sử dụng đúng kiểu `Vector(1536)`:**
+   Import `from pgvector.sqlalchemy import Vector` trong cả file migration `011` và model `backend/app/models/product.py`:
+   ```python
+   embedding: Mapped[list[float]] = mapped_column(Vector(1536), nullable=True)
+   ```
+   Loại bỏ check constraint `ck_products_embedding_dim` do kiểu `Vector(1536)` đã tự động kiểm tra số chiều.
+3. **Sửa kiểu dữ liệu `failed_sync_tasks.product_id`:**
+   Chuyển thành `PGUUID(as_uuid=True)` khớp với `products.id`.
+4. **Hỗ trợ `pgvector` trong PostgreSQL Pod (`k8s/postgres.yaml`):**
+   Sử dụng image `pgvector/pgvector:pg16` thay vì `postgres:16-alpine` tiêu chuẩn để có sẵn extension `vector`.
+5. **Cập nhật Backend & Chạy lại Job Migration:**
+   Chạy script cập nhật để build image mới, nạp vào Minikube và chạy lại migration job:
+   ```bash
+   bash scripts/linux/update-k8s-backend.sh
+   ```
+   Kết quả: `db-migration-job` hoàn thành (`Completed 1/1`), database đạt revision `012`.
+
+**Hướng dẫn kiểm tra và chạy Alembic đúng cách:**
+- **Trên máy Host:**
+  ```bash
+  cd backend
+  .venv/bin/alembic upgrade head
+  ```
+- **Bên trong Pod K8s:**
+  ```bash
+  kubectl exec -it deployment/backend -- alembic upgrade head
+  ```
+- **Kiểm tra trạng thái migration hiện tại của Database:**
+  ```bash
+  kubectl exec postgres-0 -- psql -U ecommerce_user -d ecommerce_db -c "SELECT * FROM alembic_version;"
+  ```
+
+---
+
+## 12. Lỗi Pod `worker` bị `CrashLoopBackOff` do `ModuleNotFoundError: No module named 'app.db'`
+
+**Triệu chứng:**
+- Pod `worker` bị crash liên tục với trạng thái `CrashLoopBackOff`.
+- Khi xem log bằng lệnh `kubectl logs deployment/worker`, xuất hiện lỗi:
+  ```text
+  ModuleNotFoundError: No module named 'app.db'
+  ```
+- Lỗi xảy ra tại dòng import trong `backend/app/worker.py`:
+  ```python
+  from app.db.session import get_async_session
+  ```
+
+**Nguyên nhân:**
+1. **Code local đã được cập nhật nhưng image Docker trên cluster chưa được cập nhật:** File `backend/app/worker.py` ở máy local đã được sửa đổi import từ `from app.db.session import get_async_session` sang `from app.core.db import get_db_session` (và thêm import các task gốc: `send_email_task`, `optimize_image_task`, `generate_sales_report_task`).
+2. **ImagePullPolicy `IfNotPresent`:** Manifest `k8s/worker.yaml` được cấu hình `imagePullPolicy: IfNotPresent`, khiến Kubernetes ưu tiên sử dụng image đã có sẵn trong node Minikube (`ecommerce-backend:latest`) thay vì kéo image mới.
+3. **Image `ecommerce-backend:latest` trong Minikube là phiên bản cũ** (chưa chứa code đã sửa), dẫn đến worker pod chạy code cũ và crash.
+
+**Khắc phục đã thực hiện:**
+
+1. **Sửa import trong `backend/app/worker.py`:**
+   ```python
+   # Cũ (gây lỗi)
+   from app.db.session import get_async_session
+   
+   # Mới (đã sửa)
+   from app.core.db import get_db_session
+   ```
+   Đồng thời khôi phục import các task gốc:
+   ```python
+   from app.services.media import optimize_image_task
+   from app.services.reports import generate_sales_report_task
+   from app.services.email import send_email
+   ```
+
+2. **Build lại Docker image với tag mới và nạp vào Minikube:**
+   ```bash
+   # Build image với tag mới (v2)
+   docker build -t ecommerce-backend:v2 ./backend
+   
+   # Nạp image vào Minikube (bắt buộc vì imagePullPolicy: IfNotPresent)
+   minikube image load ecommerce-backend:v2
+   
+   # Cập nhật deployment để dùng image mới
+   kubectl set image deployment/worker worker=ecommerce-backend:v2
+   ```
+
+3. **Xác minh worker pod khởi động thành công:**
+   ```bash
+   kubectl get pods -l app=worker
+   # Kết quả mong đợi: Running 1/1
+   
+   kubectl logs deployment/worker | head -20
+   # Kết quả mong đợi: "Registered tasks: send_email_task, optimize_image_task, generate_sales_report_task, generate_embeddings_task, sync_to_meilisearch_task, incremental_sync_task"
+   ```
+
+**Lưu ý quan trọng:**
+- Mỗi khi thay đổi code backend/worker, **bắt buộc** build image mới, nạp vào Minikube (`minikube image load`), và cập nhật deployment (`kubectl set image` hoặc apply lại manifest).
+- Script `scripts/linux/update-k8s-backend.sh` đã được cập nhật để tự động hóa quy trình này cho backend và worker.
+- Đảm bảo `imagePullPolicy: IfNotPresent` trong mọi manifest K8s (`backend.yaml`, `worker.yaml`, `frontend.yaml`, `migration-job.yaml`) để ưu tiên image cục bộ.
+
+**Kết quả:**
+- Worker pod chạy ổn định với 6 task đã đăng ký.
+- Tất cả 37 tests mới (embedding + meilisearch) và 75 tests backend hiện có đều pass.
+
