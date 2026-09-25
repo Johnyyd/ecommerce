@@ -81,6 +81,7 @@ export function Admin() {
 
   // Data States
   const [products, setProducts] = useState<ProductItem[]>([])
+  const [productsTotal, setProductsTotal] = useState<number>(0)
   const [brands, setBrands] = useState<BrandItem[]>([])
   const [vouchers, setVouchers] = useState<VoucherItem[]>([])
   const [orders, setOrders] = useState<OrderData[]>([])
@@ -123,7 +124,13 @@ export function Admin() {
         adminApi.getBackups()
       ])
 
-      if (prodsRes.status === "fulfilled") setProducts(prodsRes.value)
+      if (prodsRes.status === "fulfilled") {
+        const val = prodsRes.value
+        const items = Array.isArray(val) ? val : (val as any).items || []
+        const total = typeof (val as any).total === "number" ? (val as any).total : items.length
+        setProducts(items)
+        setProductsTotal(total)
+      }
       if (brandsRes.status === "fulfilled") setBrands(brandsRes.value)
       if (vouchersRes.status === "fulfilled") setVouchers(vouchersRes.value)
       if (ordersRes.status === "fulfilled") setOrders(ordersRes.value)
@@ -143,7 +150,7 @@ export function Admin() {
 
   const tabs: { id: TabType; label: string; icon: React.ReactNode; badge?: number }[] = [
     { id: "overview", label: "Overview", icon: <ChartLineUp size={16} weight="bold" /> },
-    { id: "products", label: "Products", icon: <Package size={16} weight="bold" />, badge: products.length },
+    { id: "products", label: "Products", icon: <Package size={16} weight="bold" />, badge: productsTotal || products.length },
     { id: "categories", label: "Categories", icon: <Tag size={16} weight="bold" />, badge: categories.length },
     { id: "brands", label: "Brands", icon: <Buildings size={16} weight="bold" />, badge: brands.length },
     { id: "vouchers", label: "Vouchers", icon: <Ticket size={16} weight="bold" />, badge: vouchers.length },
@@ -300,6 +307,7 @@ export function Admin() {
                 categories={categories}
                 isFetching={isFetching}
                 onRefresh={fetchAllData}
+                totalCount={productsTotal || products.length}
               />
             )}
             {activeTab === "categories" && (

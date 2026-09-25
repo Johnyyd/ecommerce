@@ -41,7 +41,7 @@ jobs:
           POSTGRES_USER: "ecommerce_user"
           POSTGRES_PASSWORD: "ecommerce_password"
           POSTGRES_DB: "ecommerce_db"
-        run: pytest tests/api/test_owasp_security.py tests/api/test_payments_security.py
+        run: pytest tests/api/test_owasp_security.py tests/api/test_payments_security.py tests/api/test_admin_endpoints.py
 
   strix-scan:
     name: Strix AI Penetration Scan

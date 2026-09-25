@@ -32,6 +32,7 @@ async def get_presigned_url(
     presigned_url = f"https://my-ecommerce-bucket.s3.amazonaws.com/{filename}?AWSAccessKeyId=MOCK&Signature=MOCK&Expires=3600"
     return {"url": presigned_url, "method": "PUT"}
 
+@router.get("", response_model=PaginatedProductResponse, include_in_schema=False)
 @router.get("/", response_model=PaginatedProductResponse)
 async def list_products(
     skip: int = 0,

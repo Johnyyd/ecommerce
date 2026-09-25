@@ -10,6 +10,11 @@ export interface ProductItem {
   image_url?: string | null
 }
 
+export interface PaginatedProducts {
+  items: ProductItem[]
+  total: number
+}
+
 export interface BrandItem {
   id: string
   name: string

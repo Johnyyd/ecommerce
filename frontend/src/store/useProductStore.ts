@@ -67,12 +67,17 @@ export const useProductStore = create<ProductState>((set, get) => ({
       if (filters.min_price !== undefined) queryParams.append('min_price', filters.min_price.toString());
       if (filters.max_price !== undefined) queryParams.append('max_price', filters.max_price.toString());
 
-      const response = await fetch(`/api/v1/products?${queryParams.toString()}`)
+      const response = await fetch(`/api/v1/products/?${queryParams.toString()}`)
       if (!response.ok) {
         throw new Error('Failed to fetch products')
       }
       const data = await response.json()
-      set({ products: data.items, total: data.total, isLoading: false, page })
+      set({ 
+        products: Array.isArray(data) ? data : data.items || [], 
+        total: typeof data?.total === 'number' ? data.total : (Array.isArray(data) ? data.length : 0), 
+        isLoading: false, 
+        page 
+      })
     } catch (error: any) {
       set({ error: error.message || 'An error occurred', isLoading: false })
     }
