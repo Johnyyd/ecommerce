@@ -18,11 +18,36 @@ function getAuthHeader(): Record<string, string> {
 
 export const adminApi = {
   // --- Products ---
-  async getProducts(): Promise<ProductItem[]> {
-    const res = await fetch("/api/v1/products/?limit=100")
+  async getProducts(params?: {
+    skip?: number
+    limit?: number
+    page?: number
+    q?: string
+    category_id?: string
+    brand?: string
+  }): Promise<ProductItem[] & { items: ProductItem[]; total: number }> {
+    const limit = params?.limit ?? 100
+    const query = new URLSearchParams()
+    query.set("limit", limit.toString())
+
+    const skip = params?.skip ?? (params?.page ? (params.page - 1) * limit : 0)
+    if (skip > 0) query.set("skip", skip.toString())
+    if (params?.q) query.set("q", params.q)
+    if (params?.category_id) query.set("category_id", params.category_id)
+    if (params?.brand) query.set("brand", params.brand)
+
+    const res = await fetch(`/api/v1/products/?${query.toString()}`)
     if (!res.ok) throw new Error("Failed to fetch products")
     const data = await res.json()
-    return Array.isArray(data) ? data : data.items || []
+    const items: ProductItem[] = Array.isArray(data) ? data : data.items || []
+    const total: number = typeof data?.total === "number" ? data.total : items.length
+
+    const result = [...items] as ProductItem[] & { items: ProductItem[]; total: number }
+    Object.defineProperties(result, {
+      items: { value: items, writable: true, configurable: true, enumerable: false },
+      total: { value: total, writable: true, configurable: true, enumerable: false }
+    })
+    return result
   },
 
   async createProduct(payload: Record<string, unknown>): Promise<ProductItem> {

@@ -19,6 +19,23 @@ describe("adminApi Service Layer", () => {
     expect(result).toEqual(mockProducts)
   })
 
+  it("getProducts should handle pagination, search query, and total count", async () => {
+    const mockData = {
+      items: [{ id: "2", name: "Laptop Pro", price: 1200, stock_quantity: 5 }],
+      total: 1000000
+    }
+    global.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      json: async () => mockData
+    })
+
+    const result = await adminApi.getProducts({ page: 2, limit: 100, q: "Laptop" })
+    expect(global.fetch).toHaveBeenCalledWith("/api/v1/products/?limit=100&skip=100&q=Laptop")
+    expect(result.items).toEqual(mockData.items)
+    expect(result.total).toBe(1000000)
+    expect(result.length).toBe(1)
+  })
+
   it("createProduct should pass token in Authorization header and payload in body", async () => {
     localStorage.setItem("access_token", "fake-token-123")
     const payload = { name: "New Prod", price: 200 }

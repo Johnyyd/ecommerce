@@ -12,6 +12,7 @@ from app.api.deps import get_current_staff
 
 router = APIRouter()
 
+@router.get("", response_model=List[CategoryResponse], include_in_schema=False)
 @router.get("/", response_model=List[CategoryResponse])
 async def list_categories(session: AsyncSession = Depends(get_db_session)):
     stmt = select(Category).order_by(Category.name.asc())

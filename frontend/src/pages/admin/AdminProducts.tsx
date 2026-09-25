@@ -1,25 +1,48 @@
-import { useState, useMemo } from "react"
+import { useState, useMemo, useEffect, useRef, useCallback } from "react"
 import { motion, AnimatePresence } from "motion/react"
-import { MagnifyingGlass, Plus, PencilSimple, Trash, X, Package } from "@phosphor-icons/react"
+import {
+  MagnifyingGlass,
+  Plus,
+  PencilSimple,
+  Trash,
+  X,
+  Package,
+  CaretLeft,
+  CaretRight,
+  CaretDoubleLeft,
+  CaretDoubleRight,
+  ArrowClockwise
+} from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { ProductItem, CategoryData, ProductFormData } from "@/types/admin"
 import { adminApi } from "@/services/adminApi"
 import { Skeleton } from "@/components/ui/Skeleton"
+
+const PAGE_SIZE = 100
 
 interface AdminProductsProps {
   products: ProductItem[]
   categories: CategoryData[]
   isFetching: boolean
   onRefresh: () => Promise<void>
+  totalCount?: number
 }
 
 export function AdminProducts({
   products,
   categories,
   isFetching,
-  onRefresh
+  onRefresh,
+  totalCount
 }: AdminProductsProps) {
+  const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
+  const [debouncedSearch, setDebouncedSearch] = useState("")
+  const [items, setItems] = useState<ProductItem[]>(products)
+  const [total, setTotal] = useState<number>(totalCount ?? products.length)
+  const [isLoadingPage, setIsLoadingPage] = useState(false)
+  const [jumpPageInput, setJumpPageInput] = useState("")
+
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
@@ -34,13 +57,93 @@ export function AdminProducts({
     image_url: ""
   })
 
-  const filteredProducts = useMemo(() => {
-    const q = search.toLowerCase().trim()
-    if (!q) return products
-    return products.filter(
-      p => p.name.toLowerCase().includes(q) || (p.brand && p.brand.toLowerCase().includes(q))
-    )
-  }, [products, search])
+  // Debounce search query changes
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(search.trim())
+      setPage(1)
+    }, 350)
+    return () => clearTimeout(timer)
+  }, [search])
+
+  // Fetch page data from server
+  const fetchPageData = useCallback(async (targetPage: number, query: string) => {
+    setIsLoadingPage(true)
+    try {
+      const res = await adminApi.getProducts({
+        page: targetPage,
+        limit: PAGE_SIZE,
+        q: query || undefined
+      })
+      const prods = Array.isArray(res) ? (res as ProductItem[]) : ((res as any).items || [])
+      const count = typeof (res as any).total === "number" ? (res as any).total : prods.length
+      setItems(prods)
+      setTotal(count)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Failed to load products"
+      toast.error(msg)
+    } finally {
+      setIsLoadingPage(false)
+    }
+  }, [])
+
+  // Avoid refetching on mount if initial products are already provided
+  const isInitialMount = useRef(true)
+
+  useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false
+      if (products && products.length > 0) {
+        setItems(products)
+        setTotal(totalCount ?? products.length)
+        return
+      }
+    }
+    fetchPageData(page, debouncedSearch)
+  }, [page, debouncedSearch, fetchPageData])
+
+  // Keep in sync with parent when page is 1 and no search query active
+  useEffect(() => {
+    if (page === 1 && !debouncedSearch && products.length > 0) {
+      setItems(products)
+      setTotal(totalCount ?? products.length)
+    }
+  }, [products, totalCount, page, debouncedSearch])
+
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
+  const startItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
+  const endItem = Math.min(page * PAGE_SIZE, total)
+
+  // Smart pagination button list
+  const paginationRange = useMemo(() => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1)
+    }
+
+    if (page <= 4) {
+      return [1, 2, 3, 4, 5, "...", totalPages]
+    }
+
+    if (page >= totalPages - 3) {
+      return [1, "...", totalPages - 4, totalPages - 3, totalPages - 2, totalPages - 1, totalPages]
+    }
+
+    return [1, "...", page - 1, page, page + 1, "...", totalPages]
+  }, [page, totalPages])
+
+  const handlePageChange = (newPage: number) => {
+    if (newPage < 1 || newPage > totalPages || newPage === page) return
+    setPage(newPage)
+  }
+
+  const handleJumpSubmit = (e: React.FormEvent) => {
+    e.preventDefault()
+    const target = parseInt(jumpPageInput, 10)
+    if (!isNaN(target) && target >= 1 && target <= totalPages) {
+      setPage(target)
+      setJumpPageInput("")
+    }
+  }
 
   const handleOpenAdd = () => {
     setEditingProduct(null)
@@ -89,6 +192,7 @@ export function AdminProducts({
         toast.success("Product created successfully")
       }
       setIsModalOpen(false)
+      await fetchPageData(page, debouncedSearch)
       await onRefresh()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error saving product"
@@ -103,11 +207,14 @@ export function AdminProducts({
     try {
       await adminApi.deleteProduct(id)
       toast.success("Product deleted successfully")
+      await fetchPageData(page, debouncedSearch)
       await onRefresh()
     } catch {
       toast.error("Failed to delete product")
     }
   }
+
+  const isTableLoading = (isFetching && items.length === 0) || isLoadingPage
 
   return (
     <div className="space-y-6">
@@ -116,12 +223,12 @@ export function AdminProducts({
         <div>
           <h3 className="font-bold text-lg text-zinc-900 dark:text-zinc-50">Store Catalog</h3>
           <p className="text-xs text-zinc-500 dark:text-zinc-400">
-            Manage product inventory, pricing, and merchandising ({products.length} items)
+            Manage product inventory, pricing, and merchandising ({total.toLocaleString()} total items • {PAGE_SIZE} per page)
           </p>
         </div>
 
         <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-64">
+          <div className="relative flex-1 sm:w-72">
             <MagnifyingGlass
               size={16}
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
@@ -131,8 +238,18 @@ export function AdminProducts({
               placeholder="Search products..."
               value={search}
               onChange={e => setSearch(e.target.value)}
-              className="w-full pl-9 pr-4 py-2 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl text-xs placeholder-zinc-400 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 transition-all shadow-xs"
+              className="w-full pl-9 pr-8 py-2 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-xl text-xs placeholder-zinc-400 text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-zinc-900/10 dark:focus:ring-zinc-100/10 transition-all shadow-xs"
             />
+            {search && (
+              <button
+                type="button"
+                onClick={() => setSearch("")}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 p-0.5"
+                title="Clear search"
+              >
+                <X size={14} />
+              </button>
+            )}
           </div>
 
           <button
@@ -145,21 +262,34 @@ export function AdminProducts({
         </div>
       </div>
 
-      {/* Products Table */}
+      {/* Products Table Card */}
       <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl overflow-hidden shadow-xs">
-        {isFetching && products.length === 0 ? (
+        {isTableLoading && items.length === 0 ? (
           <div className="p-6 space-y-4">
             {[1, 2, 3, 4, 5].map(i => (
               <Skeleton key={i} className="h-12 w-full rounded-xl" />
             ))}
           </div>
-        ) : filteredProducts.length === 0 ? (
+        ) : items.length === 0 ? (
           <div className="p-16 text-center text-zinc-400 dark:text-zinc-500">
             <Package size={36} className="mx-auto mb-2 opacity-50" />
             <p className="text-sm font-medium">No products found</p>
+            {debouncedSearch && (
+              <button
+                onClick={() => setSearch("")}
+                className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+              >
+                Clear search filter
+              </button>
+            )}
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto relative">
+            {isLoadingPage && (
+              <div className="absolute inset-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-[1px] flex items-center justify-center z-10">
+                <ArrowClockwise size={24} className="animate-spin text-zinc-600 dark:text-zinc-300" />
+              </div>
+            )}
             <table className="w-full text-left text-sm">
               <thead className="bg-zinc-50/70 dark:bg-zinc-800/40 text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider border-b border-zinc-100 dark:border-zinc-800">
                 <tr>
@@ -171,7 +301,7 @@ export function AdminProducts({
                 </tr>
               </thead>
               <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800/70 text-zinc-700 dark:text-zinc-300">
-                {filteredProducts.map(prod => (
+                {items.map(prod => (
                   <tr key={prod.id} className="hover:bg-zinc-50/50 dark:hover:bg-zinc-800/30 transition-colors">
                     <td className="py-3.5 px-5">
                       <div className="flex items-center gap-3">
@@ -237,6 +367,119 @@ export function AdminProducts({
                 ))}
               </tbody>
             </table>
+          </div>
+        )}
+
+        {/* Pagination Bar */}
+        {total > 0 && (
+          <div className="border-t border-zinc-100 dark:border-zinc-800/80 px-5 py-3.5 flex flex-col md:flex-row items-center justify-between gap-4 bg-zinc-50/50 dark:bg-zinc-800/20 text-xs">
+            <div className="text-zinc-500 dark:text-zinc-400">
+              Showing <span className="font-semibold text-zinc-900 dark:text-zinc-100">{startItem.toLocaleString()}</span> to{" "}
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{endItem.toLocaleString()}</span> of{" "}
+              <span className="font-semibold text-zinc-900 dark:text-zinc-100">{total.toLocaleString()}</span> products
+              {totalPages > 1 && (
+                <span className="ml-2 text-zinc-400">
+                  (Page {page} of {totalPages.toLocaleString()})
+                </span>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-1.5">
+              {/* First Page */}
+              <button
+                onClick={() => handlePageChange(1)}
+                disabled={page === 1 || isLoadingPage}
+                className="p-1.5 rounded-lg border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                title="First Page"
+              >
+                <CaretDoubleLeft size={14} weight="bold" />
+              </button>
+
+              {/* Previous Page */}
+              <button
+                onClick={() => handlePageChange(page - 1)}
+                disabled={page === 1 || isLoadingPage}
+                className="p-1.5 rounded-lg border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                title="Previous Page"
+              >
+                <CaretLeft size={14} weight="bold" />
+              </button>
+
+              {/* Number Buttons */}
+              <div className="flex items-center gap-1 mx-1">
+                {paginationRange.map((num, idx) => {
+                  if (num === "...") {
+                    return (
+                      <span key={`dots-${idx}`} className="px-1.5 text-zinc-400 select-none">
+                        ...
+                      </span>
+                    )
+                  }
+                  const pageNum = num as number
+                  const isCurrent = pageNum === page
+                  return (
+                    <button
+                      key={pageNum}
+                      onClick={() => handlePageChange(pageNum)}
+                      disabled={isLoadingPage}
+                      className={`min-w-8 h-8 px-2 rounded-lg text-xs font-semibold transition-all ${
+                        isCurrent
+                          ? "bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900 shadow-xs"
+                          : "text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 border border-transparent hover:border-zinc-200 dark:hover:border-zinc-700"
+                      }`}
+                    >
+                      {pageNum.toLocaleString()}
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Next Page */}
+              <button
+                onClick={() => handlePageChange(page + 1)}
+                disabled={page === totalPages || isLoadingPage}
+                className="p-1.5 rounded-lg border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                title="Next Page"
+              >
+                <CaretRight size={14} weight="bold" />
+              </button>
+
+              {/* Last Page */}
+              <button
+                onClick={() => handlePageChange(totalPages)}
+                disabled={page === totalPages || isLoadingPage}
+                className="p-1.5 rounded-lg border border-zinc-200/80 dark:border-zinc-700/80 text-zinc-600 dark:text-zinc-300 hover:bg-white dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+                title="Last Page"
+              >
+                <CaretDoubleRight size={14} weight="bold" />
+              </button>
+
+              {/* Jump to Page Form */}
+              {totalPages > 1 && (
+                <form
+                  onSubmit={handleJumpSubmit}
+                  className="flex items-center gap-1.5 ml-2 pl-2 border-l border-zinc-200 dark:border-zinc-700/80"
+                >
+                  <span className="text-zinc-400">Page:</span>
+                  <input
+                    type="number"
+                    min={1}
+                    max={totalPages}
+                    placeholder={page.toString()}
+                    value={jumpPageInput}
+                    onChange={e => setJumpPageInput(e.target.value)}
+                    className="w-16 px-2 py-1 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg text-xs text-center text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-1 focus:ring-zinc-900 dark:focus:ring-zinc-100"
+                  />
+                  <button
+                    type="submit"
+                    disabled={!jumpPageInput || parseInt(jumpPageInput, 10) < 1 || parseInt(jumpPageInput, 10) > totalPages || parseInt(jumpPageInput, 10) === page}
+                    className="px-2.5 py-1 bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:hover:bg-zinc-200 text-white dark:text-zinc-900 rounded-lg text-xs font-semibold disabled:opacity-40 disabled:cursor-not-allowed transition-all"
+                  >
+                    Go
+                  </button>
+                </form>
+              )}
+            </div>
           </div>
         )}
       </div>

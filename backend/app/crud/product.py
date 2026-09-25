@@ -1,6 +1,6 @@
 from uuid import UUID
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, delete
+from sqlalchemy import select, delete, or_
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate
 from typing import Optional, List
@@ -40,8 +40,9 @@ class ProductRepository:
         if max_price is not None:
             stmt = stmt.where(Product.price <= max_price)
         if q:
-            stmt = stmt.where(Product.name.ilike(f"%{q}%"))
+            stmt = stmt.where(or_(Product.name.ilike(f"%{q}%"), Product.brand.ilike(f"%{q}%")))
             
+        stmt = stmt.order_by(Product.created_at.desc(), Product.id.desc())
         stmt = stmt.offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
@@ -65,7 +66,7 @@ class ProductRepository:
         if max_price is not None:
             stmt = stmt.where(Product.price <= max_price)
         if q:
-            stmt = stmt.where(Product.name.ilike(f"%{q}%"))
+            stmt = stmt.where(or_(Product.name.ilike(f"%{q}%"), Product.brand.ilike(f"%{q}%")))
             
         result = await self.session.execute(stmt)
         return result.scalar() or 0
