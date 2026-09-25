@@ -1,4 +1,5 @@
 import os
+import re
 import csv
 import json
 import base64
@@ -79,12 +80,19 @@ async def build_sales_report(
     total_revenue = sum(float(o.total_amount) for o in orders if o.status != "CANCELLED")
     paid_orders = sum(1 for o in orders if o.payment and o.payment.status in ["PAID", "SUCCESS"])
     aov = (total_revenue / total_orders) if total_orders > 0 else 0.0
+    rep_dir = get_reports_dir().resolve()
+    safe_format = "xlsx" if str(format_type).lower() == "xlsx" else "csv"
+    safe_job_id = re.sub(r"[^a-zA-Z0-9_\-]", "", str(job_id))
+    if not safe_job_id:
+        safe_job_id = "report"
 
     now_utc = datetime.now(timezone.utc)
-    filename = f"{job_id}_{now_utc.strftime('%Y%m%d_%H%M%S')}.{format_type.lower()}"
-    file_path = rep_dir / filename
+    filename = f"{safe_job_id}_{now_utc.strftime('%Y%m%d_%H%M%S')}.{safe_format}"
+    file_path = (rep_dir / filename).resolve()
+    if os.path.commonpath([str(file_path), str(rep_dir)]) != str(rep_dir):
+        raise ValueError("Invalid file path: path traversal detected")
 
-    if format_type.lower() == "xlsx":
+    if safe_format == "xlsx":
         wb = openpyxl.Workbook()
         ws = wb.active
         ws.title = "Executive Sales Report"

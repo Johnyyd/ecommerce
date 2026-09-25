@@ -48,7 +48,9 @@ async def test_create_vietqr_payment_link():
     assert res.status_code == 200
     data = res.json()
     assert data["order_id"] == str(order_id)
-    assert "img.vietqr.io" in data["qr_code_url"]
+    from urllib.parse import urlparse
+    parsed_qr_url = urlparse(data["qr_code_url"])
+    assert parsed_qr_url.netloc == "img.vietqr.io"
     assert data["amount"] == 250000.0
     assert data["currency"] == "VND"
     assert "DH" in data["description"]
