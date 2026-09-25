@@ -4,7 +4,7 @@ import subprocess  # nosec B404
 import tempfile
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import List
+from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel
 
@@ -124,19 +124,17 @@ async def restore_backup(
         raise HTTPException(status_code=400, detail="Invalid backup filename format")
 
     backup_dir = get_backup_dir().resolve()
-    filepath = (backup_dir / safe_filename).resolve()
 
-    # CodeQL canonical sanitizer: verify commonpath is strictly within backup_dir
-    if os.path.commonpath([str(filepath), str(backup_dir)]) != str(backup_dir):
-        raise HTTPException(status_code=400, detail="Invalid backup filename format")
+    # Match strictly against trusted existing backup files from directory glob (no path concatenation with user input)
+    trusted_file: Optional[Path] = None
+    for existing_file in backup_dir.glob("*.dump"):
+        if existing_file.is_file() and existing_file.name == safe_filename:
+            candidate = existing_file.resolve()
+            if os.path.commonpath([str(candidate), str(backup_dir)]) == str(backup_dir):
+                trusted_file = candidate
+                break
 
-    # Whitelist check: verify file exists in allowed dump files
-    allowed_files = {f.name: f for f in backup_dir.glob("*.dump") if f.is_file()}
-    if safe_filename not in allowed_files:
-        raise HTTPException(status_code=404, detail="Backup file not found")
-
-    trusted_filepath = allowed_files[safe_filename].resolve()
-    if not trusted_filepath.is_file() or os.path.commonpath([str(trusted_filepath), str(backup_dir)]) != str(backup_dir):
+    if not trusted_file:
         raise HTTPException(status_code=404, detail="Backup file not found")
 
     env = os.environ.copy()
@@ -151,7 +149,7 @@ async def restore_backup(
         "--clean",
         "--if-exists",
         "--",
-        str(trusted_filepath)
+        str(trusted_file)
     ]
 
     try:
