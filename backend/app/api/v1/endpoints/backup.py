@@ -114,14 +114,29 @@ async def restore_backup(
     current_admin: User = Depends(get_current_admin)
 ):
     """Only Admin can restore the database from a backup file."""
-    # Prevent directory traversal by extracting filename basename only
-    safe_filename = Path(req.filename).name
-    if not re.match(r"^[\w\-\.]+\.dump$", safe_filename):
+    # Prevent directory traversal: reject path separators and traversal tokens
+    raw_filename = req.filename.strip()
+    if "/" in raw_filename or "\\" in raw_filename or ".." in raw_filename:
         raise HTTPException(status_code=400, detail="Invalid backup filename format")
 
-    backup_dir = get_backup_dir()
-    filepath = backup_dir / safe_filename
-    if not filepath.exists() or not filepath.is_file():
+    safe_filename = os.path.basename(raw_filename)
+    if not re.fullmatch(r"^[a-zA-Z0-9_\-]+\.dump$", safe_filename) or safe_filename != raw_filename:
+        raise HTTPException(status_code=400, detail="Invalid backup filename format")
+
+    backup_dir = get_backup_dir().resolve()
+    filepath = (backup_dir / safe_filename).resolve()
+
+    # CodeQL canonical sanitizer: verify commonpath is strictly within backup_dir
+    if os.path.commonpath([str(filepath), str(backup_dir)]) != str(backup_dir):
+        raise HTTPException(status_code=400, detail="Invalid backup filename format")
+
+    # Whitelist check: verify file exists in allowed dump files
+    allowed_files = {f.name: f for f in backup_dir.glob("*.dump") if f.is_file()}
+    if safe_filename not in allowed_files:
+        raise HTTPException(status_code=404, detail="Backup file not found")
+
+    trusted_filepath = allowed_files[safe_filename].resolve()
+    if not trusted_filepath.is_file() or os.path.commonpath([str(trusted_filepath), str(backup_dir)]) != str(backup_dir):
         raise HTTPException(status_code=404, detail="Backup file not found")
 
     env = os.environ.copy()
@@ -135,7 +150,8 @@ async def restore_backup(
         "-d", settings.POSTGRES_DB,
         "--clean",
         "--if-exists",
-        str(filepath)
+        "--",
+        str(trusted_filepath)
     ]
 
     try:
