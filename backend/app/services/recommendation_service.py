@@ -1,6 +1,9 @@
 from typing import List, Dict, Any, Optional
 from uuid import UUID
+from sqlalchemy import select
 from app.core.config import settings
+from app.core.db import AsyncSessionLocal
+from app.models.product import Product
 from app.services.search_service import SearchService, MEILISEARCH_INDEX_NAME
 
 
@@ -68,17 +71,10 @@ class RecommendationService:
     async def _get_semantic_recommendations(
         self, embedding: List[float], limit: int
     ) -> List[Dict[str, Any]]:
-        """Get recommendations based on vector similarity using pgvector."""
-        from sqlalchemy import select, text
-        from app.models.product import Product
-
-        # Use pgvector cosine similarity for semantic search
         stmt = select(Product).order_by(
             Product.embedding.cosine_distance(embedding)
         ).limit(limit)
-
-        from app.core.database import get_async_session
-        async with get_async_session() as session:
+        async with AsyncSessionLocal() as session:
             result = await session.execute(stmt)
             products = result.scalars().all()
 
@@ -125,11 +121,7 @@ class RecommendationService:
 
     async def _get_product_embedding(self, product_id: str) -> Optional[List[float]]:
         """Get embedding for a product by ID."""
-        from sqlalchemy.ext.asyncio import AsyncSession
-        from app.models.product import Product
-        from app.core.database import get_async_session
-
-        async with get_async_session() as session:
+        async with AsyncSessionLocal() as session:
             result = await session.execute(
                 select(Product.embedding).where(Product.id == product_id)
             )
@@ -159,11 +151,7 @@ class RecommendationService:
 
     async def get_new_arrivals(self, limit: int = 10) -> List[Dict[str, Any]]:
         """Get newest products as recommendations."""
-        from sqlalchemy import select
-        from app.models.product import Product
-        from app.core.database import get_async_session
-
-        async with get_async_session() as session:
+        async with AsyncSessionLocal() as session:
             stmt = select(Product).order_by(Product.created_at.desc()).limit(limit)
             result = await session.execute(stmt)
             products = result.scalars().all()

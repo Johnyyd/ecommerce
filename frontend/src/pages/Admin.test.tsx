@@ -47,6 +47,7 @@ vi.mock("@/services/adminApi", () => ({
 describe("Admin Layout & Sub-components", () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    window.location.hash = "overview"
     useAuthStore.getState().setUser({
       id: "admin-1",
       username: "master_admin",
@@ -156,5 +157,18 @@ describe("Admin Layout & Sub-components", () => {
     render(<Admin />)
     // Operations portal header shouldn't be rendered for customer
     // The component redirects to /login immediately
+  })
+
+  it("routes to products tab with low stock filter when low stock KPI card is clicked", async () => {
+    render(<Admin />)
+
+    const lowStockCard = await screen.findByTestId("overview-low-stock-card")
+    expect(lowStockCard).toBeInTheDocument()
+    fireEvent.click(lowStockCard)
+
+    await waitFor(() => {
+      expect(screen.getByText("Store Catalog")).toBeInTheDocument()
+      expect(screen.getByTestId("filter-low-stock-products")).toBeInTheDocument()
+    })
   })
 })

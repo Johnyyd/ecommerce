@@ -19,10 +19,11 @@ class ProductService:
         brand: Optional[str] = None,
         min_price: Optional[float] = None,
         max_price: Optional[float] = None,
-        q: Optional[str] = None
+        q: Optional[str] = None,
+        low_stock: Optional[bool] = None
     ) -> List[Product]:
         return await self.repository.get_multi(
-            skip=skip, limit=limit, category_id=category_id, brand=brand, min_price=min_price, max_price=max_price, q=q
+            skip=skip, limit=limit, category_id=category_id, brand=brand, min_price=min_price, max_price=max_price, q=q, low_stock=low_stock
         )
 
     async def get_products_count(
@@ -31,10 +32,11 @@ class ProductService:
         brand: Optional[str] = None,
         min_price: Optional[float] = None,
         max_price: Optional[float] = None,
-        q: Optional[str] = None
+        q: Optional[str] = None,
+        low_stock: Optional[bool] = None
     ) -> int:
         return await self.repository.get_count(
-            category_id=category_id, brand=brand, min_price=min_price, max_price=max_price, q=q
+            category_id=category_id, brand=brand, min_price=min_price, max_price=max_price, q=q, low_stock=low_stock
         )
 
     async def create_product(self, product_in: ProductCreate) -> Product:

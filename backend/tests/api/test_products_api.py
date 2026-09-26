@@ -101,3 +101,36 @@ async def test_list_products_api(mock_redis):
     mock_redis.setex.assert_called_once()
     
     app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_list_products_low_stock_api(mock_redis):
+    mock_service = AsyncMock()
+    mock_product = Product(
+        id=generate_uuidv7(),
+        name="Low Stock Item",
+        description="Only few left",
+        price=15.00,
+        stock_quantity=2,
+        version=1
+    )
+    mock_service.get_products.return_value = [mock_product]
+    mock_service.get_products_count.return_value = 1
+
+    app.dependency_overrides[get_product_service] = lambda: mock_service
+    app.dependency_overrides[get_redis_client] = lambda: mock_redis
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/v1/products/?low_stock=true")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert len(data["items"]) == 1
+    assert data["items"][0]["stock_quantity"] == 2
+    mock_service.get_products.assert_called_with(
+        skip=0, limit=100, category_id=None, brand=None, min_price=None, max_price=None, q=None, low_stock=True
+    )
+
+    app.dependency_overrides.clear()
+

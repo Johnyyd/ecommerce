@@ -59,8 +59,13 @@ export function Admin() {
     return "overview"
   })
 
-  const handleTabChange = useCallback((tabId: TabType) => {
+  const [productStockFilter, setProductStockFilter] = useState<"all" | "low_stock">("all")
+
+  const handleTabChange = useCallback((tabId: TabType, options?: { filter?: "all" | "low_stock" }) => {
     setActiveTab(tabId)
+    if (tabId === "products" && options?.filter) {
+      setProductStockFilter(options.filter)
+    }
     if (typeof window !== "undefined") {
       localStorage.setItem("admin_active_tab", tabId)
       window.location.hash = tabId
@@ -308,6 +313,8 @@ export function Admin() {
                 isFetching={isFetching}
                 onRefresh={fetchAllData}
                 totalCount={productsTotal || products.length}
+                stockFilter={productStockFilter}
+                onStockFilterChange={setProductStockFilter}
               />
             )}
             {activeTab === "categories" && (

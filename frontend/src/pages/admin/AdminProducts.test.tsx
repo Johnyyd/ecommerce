@@ -114,4 +114,64 @@ describe("AdminProducts Pagination Component", () => {
       )
     })
   })
+
+  it("calls adminApi.getProducts with low_stock: true when low stock filter button is clicked", async () => {
+    const lowStockProducts = [
+      { id: "prod-low-1", name: "Low Stock Item 1", price: 25, stock_quantity: 3, category_id: "c1", brand: "Acme" }
+    ]
+    const lowStockResult = Object.assign([...lowStockProducts], {
+      items: lowStockProducts,
+      total: 1
+    })
+
+    vi.mocked(adminApi.getProducts).mockResolvedValue(lowStockResult as any)
+
+    render(
+      <AdminProducts
+        products={mockProducts}
+        categories={mockCategories}
+        isFetching={false}
+        onRefresh={vi.fn()}
+        totalCount={1000000}
+      />
+    )
+
+    const lowStockBtn = screen.getByTestId("filter-low-stock-products")
+    fireEvent.click(lowStockBtn)
+
+    await waitFor(() => {
+      expect(adminApi.getProducts).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, limit: 100, low_stock: true })
+      )
+    })
+  })
+
+  it("automatically queries low stock products on mount when stockFilter prop is 'low_stock'", async () => {
+    const lowStockProducts = [
+      { id: "prod-low-1", name: "Low Stock Item 1", price: 25, stock_quantity: 2, category_id: "c1", brand: "Acme" }
+    ]
+    const lowStockResult = Object.assign([...lowStockProducts], {
+      items: lowStockProducts,
+      total: 1
+    })
+
+    vi.mocked(adminApi.getProducts).mockResolvedValue(lowStockResult as any)
+
+    render(
+      <AdminProducts
+        products={mockProducts}
+        categories={mockCategories}
+        isFetching={false}
+        onRefresh={vi.fn()}
+        totalCount={1000000}
+        stockFilter="low_stock"
+      />
+    )
+
+    await waitFor(() => {
+      expect(adminApi.getProducts).toHaveBeenCalledWith(
+        expect.objectContaining({ page: 1, limit: 100, low_stock: true })
+      )
+    })
+  })
 })

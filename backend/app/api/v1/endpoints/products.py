@@ -42,11 +42,14 @@ async def list_products(
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
     q: Optional[str] = None,
+    low_stock: Optional[bool] = None,
     service: ProductService = Depends(get_product_service),
     redis: Redis = Depends(get_redis_client)
 ) -> Any:
     # Build cache key carefully including all params
     params = f"{skip}:{limit}:{category_id}:{brand}:{min_price}:{max_price}:{q}"
+    if low_stock is not None:
+        params += f":{low_stock}"
     cache_key = f"products:list:{params}"
     
     # Try to get from cache
@@ -56,11 +59,11 @@ async def list_products(
         
     products = await service.get_products(
         skip=skip, limit=limit, category_id=category_id, brand=brand, 
-        min_price=min_price, max_price=max_price, q=q
+        min_price=min_price, max_price=max_price, q=q, low_stock=low_stock
     )
     total_count = await service.get_products_count(
         category_id=category_id, brand=brand, 
-        min_price=min_price, max_price=max_price, q=q
+        min_price=min_price, max_price=max_price, q=q, low_stock=low_stock
     )
     
     # Serialize and cache for 5 minutes

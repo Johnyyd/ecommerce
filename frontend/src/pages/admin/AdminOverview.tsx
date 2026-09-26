@@ -19,7 +19,7 @@ interface AdminOverviewProps {
   products: ProductItem[]
   users: UserData[]
   isFetching: boolean
-  onNavigateTab: (tab: TabType) => void
+  onNavigateTab: (tab: TabType, options?: { filter?: "all" | "low_stock" }) => void
 }
 
 export function AdminOverview({
@@ -99,15 +99,32 @@ export function AdminOverview({
         </div>
 
         {/* Orders */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-xs transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
+        <div
+          data-testid="overview-orders-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigateTab("orders")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              onNavigateTab("orders")
+            }
+          }}
+          className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-xs transition-all hover:border-blue-400 dark:hover:border-blue-600/80 hover:shadow-md cursor-pointer active:scale-[0.98] group"
+        >
           <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Total Orders</span>
-            <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400">
+            <span className="text-xs font-semibold uppercase tracking-wider group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors">
+              Total Orders
+            </span>
+            <div className="w-8 h-8 rounded-full bg-blue-50 dark:bg-blue-950/50 flex items-center justify-center text-blue-600 dark:text-blue-400 group-hover:scale-110 transition-transform">
               <ShoppingBag size={18} weight="bold" />
             </div>
           </div>
-          <div className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            {stats.totalOrders}
+          <div className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-baseline justify-between">
+            <span>{stats.totalOrders}</span>
+            <span className="text-xs font-medium text-blue-600 dark:text-blue-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
+              View orders <ArrowRight size={12} weight="bold" />
+            </span>
           </div>
           <div className="mt-1 text-xs text-amber-600 dark:text-amber-400 font-medium">
             {stats.pendingOrders} pending verification
@@ -115,15 +132,32 @@ export function AdminOverview({
         </div>
 
         {/* Low Stock */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-xs transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
+        <div
+          data-testid="overview-low-stock-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigateTab("products", { filter: "low_stock" })}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              onNavigateTab("products", { filter: "low_stock" })
+            }
+          }}
+          className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-xs transition-all hover:border-amber-400 dark:hover:border-amber-600/80 hover:shadow-md cursor-pointer active:scale-[0.98] group"
+        >
           <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Low Stock Items</span>
-            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400">
+            <span className="text-xs font-semibold uppercase tracking-wider group-hover:text-amber-600 dark:group-hover:text-amber-400 transition-colors">
+              Low Stock Items
+            </span>
+            <div className="w-8 h-8 rounded-full bg-amber-50 dark:bg-amber-950/50 flex items-center justify-center text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
               <WarningCircle size={18} weight="bold" />
             </div>
           </div>
-          <div className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            {stats.lowStock}
+          <div className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-baseline justify-between">
+            <span>{stats.lowStock}</span>
+            <span className="text-xs font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1 opacity-80 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
+              Filter products <ArrowRight size={12} weight="bold" />
+            </span>
           </div>
           <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Total {products.length} products cataloged
@@ -131,15 +165,32 @@ export function AdminOverview({
         </div>
 
         {/* Customers */}
-        <div className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-xs transition-all hover:border-zinc-300 dark:hover:border-zinc-700">
+        <div
+          data-testid="overview-customers-card"
+          role="button"
+          tabIndex={0}
+          onClick={() => onNavigateTab("users")}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") {
+              e.preventDefault()
+              onNavigateTab("users")
+            }
+          }}
+          className="bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl p-5 shadow-xs transition-all hover:border-purple-400 dark:hover:border-purple-600/80 hover:shadow-md cursor-pointer active:scale-[0.98] group"
+        >
           <div className="flex items-center justify-between text-zinc-500 dark:text-zinc-400">
-            <span className="text-xs font-semibold uppercase tracking-wider">Customers</span>
-            <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 dark:text-purple-400">
+            <span className="text-xs font-semibold uppercase tracking-wider group-hover:text-purple-600 dark:group-hover:text-purple-400 transition-colors">
+              Customers
+            </span>
+            <div className="w-8 h-8 rounded-full bg-purple-50 dark:bg-purple-950/50 flex items-center justify-center text-purple-600 dark:text-purple-400 group-hover:scale-110 transition-transform">
               <Users size={18} weight="bold" />
             </div>
           </div>
-          <div className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50">
-            {stats.totalCustomers}
+          <div className="mt-3 text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-50 flex items-baseline justify-between">
+            <span>{stats.totalCustomers}</span>
+            <span className="text-xs font-medium text-purple-600 dark:text-purple-400 flex items-center gap-1 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 transition-all">
+              View users <ArrowRight size={12} weight="bold" />
+            </span>
           </div>
           <div className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
             Registered customer accounts

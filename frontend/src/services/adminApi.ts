@@ -25,6 +25,7 @@ export const adminApi = {
     q?: string
     category_id?: string
     brand?: string
+    low_stock?: boolean
   }): Promise<ProductItem[] & { items: ProductItem[]; total: number }> {
     const limit = params?.limit ?? 100
     const query = new URLSearchParams()
@@ -35,6 +36,7 @@ export const adminApi = {
     if (params?.q) query.set("q", params.q)
     if (params?.category_id) query.set("category_id", params.category_id)
     if (params?.brand) query.set("brand", params.brand)
+    if (params?.low_stock) query.set("low_stock", "true")
 
     const res = await fetch(`/api/v1/products/?${query.toString()}`)
     if (!res.ok) throw new Error("Failed to fetch products")
