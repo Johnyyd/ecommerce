@@ -11,7 +11,8 @@ import {
   CaretRight,
   CaretDoubleLeft,
   CaretDoubleRight,
-  ArrowClockwise
+  ArrowClockwise,
+  WarningCircle
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { ProductItem, CategoryData, ProductFormData } from "@/types/admin"
@@ -26,6 +27,8 @@ interface AdminProductsProps {
   isFetching: boolean
   onRefresh: () => Promise<void>
   totalCount?: number
+  stockFilter?: "all" | "low_stock"
+  onStockFilterChange?: (filter: "all" | "low_stock") => void
 }
 
 export function AdminProducts({
@@ -33,7 +36,9 @@ export function AdminProducts({
   categories,
   isFetching,
   onRefresh,
-  totalCount
+  totalCount,
+  stockFilter,
+  onStockFilterChange
 }: AdminProductsProps) {
   const [page, setPage] = useState(1)
   const [search, setSearch] = useState("")
@@ -42,6 +47,21 @@ export function AdminProducts({
   const [total, setTotal] = useState<number>(totalCount ?? products.length)
   const [isLoadingPage, setIsLoadingPage] = useState(false)
   const [jumpPageInput, setJumpPageInput] = useState("")
+
+  const [currentStockFilter, setCurrentStockFilter] = useState<"all" | "low_stock">(stockFilter || "all")
+
+  useEffect(() => {
+    if (stockFilter !== undefined) {
+      setCurrentStockFilter(stockFilter)
+      setPage(1)
+    }
+  }, [stockFilter])
+
+  const handleStockFilterChange = (filter: "all" | "low_stock") => {
+    setCurrentStockFilter(filter)
+    onStockFilterChange?.(filter)
+    setPage(1)
+  }
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingProduct, setEditingProduct] = useState<ProductItem | null>(null)
@@ -67,13 +87,14 @@ export function AdminProducts({
   }, [search])
 
   // Fetch page data from server
-  const fetchPageData = useCallback(async (targetPage: number, query: string) => {
+  const fetchPageData = useCallback(async (targetPage: number, query: string, isLowStock?: boolean) => {
     setIsLoadingPage(true)
     try {
       const res = await adminApi.getProducts({
         page: targetPage,
         limit: PAGE_SIZE,
-        q: query || undefined
+        q: query || undefined,
+        low_stock: isLowStock ? true : undefined
       })
       const prods = Array.isArray(res) ? (res as ProductItem[]) : ((res as any).items || [])
       const count = typeof (res as any).total === "number" ? (res as any).total : prods.length
@@ -93,22 +114,22 @@ export function AdminProducts({
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false
-      if (products && products.length > 0) {
+      if (currentStockFilter === "all" && products && products.length > 0) {
         setItems(products)
         setTotal(totalCount ?? products.length)
         return
       }
     }
-    fetchPageData(page, debouncedSearch)
-  }, [page, debouncedSearch, fetchPageData])
+    fetchPageData(page, debouncedSearch, currentStockFilter === "low_stock")
+  }, [page, debouncedSearch, currentStockFilter, fetchPageData])
 
-  // Keep in sync with parent when page is 1 and no search query active
+  // Keep in sync with parent when page is 1, no search query active, and filter is "all"
   useEffect(() => {
-    if (page === 1 && !debouncedSearch && products.length > 0) {
+    if (page === 1 && !debouncedSearch && currentStockFilter === "all" && products.length > 0) {
       setItems(products)
       setTotal(totalCount ?? products.length)
     }
-  }, [products, totalCount, page, debouncedSearch])
+  }, [products, totalCount, page, debouncedSearch, currentStockFilter])
 
   const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE))
   const startItem = total === 0 ? 0 : (page - 1) * PAGE_SIZE + 1
@@ -192,7 +213,7 @@ export function AdminProducts({
         toast.success("Product created successfully")
       }
       setIsModalOpen(false)
-      await fetchPageData(page, debouncedSearch)
+      await fetchPageData(page, debouncedSearch, currentStockFilter === "low_stock")
       await onRefresh()
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Error saving product"
@@ -207,7 +228,7 @@ export function AdminProducts({
     try {
       await adminApi.deleteProduct(id)
       toast.success("Product deleted successfully")
-      await fetchPageData(page, debouncedSearch)
+      await fetchPageData(page, debouncedSearch, currentStockFilter === "low_stock")
       await onRefresh()
     } catch {
       toast.error("Failed to delete product")
@@ -227,8 +248,37 @@ export function AdminProducts({
           </p>
         </div>
 
-        <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:w-72">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          {/* Stock Filter Pills */}
+          <div className="flex items-center gap-1 p-1 bg-zinc-100 dark:bg-zinc-800/80 rounded-xl border border-zinc-200/60 dark:border-zinc-700/60">
+            <button
+              type="button"
+              data-testid="filter-all-products"
+              onClick={() => handleStockFilterChange("all")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                currentStockFilter === "all"
+                  ? "bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-50 shadow-xs"
+                  : "text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
+              }`}
+            >
+              All Items
+            </button>
+            <button
+              type="button"
+              data-testid="filter-low-stock-products"
+              onClick={() => handleStockFilterChange("low_stock")}
+              className={`px-3 py-1.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer ${
+                currentStockFilter === "low_stock"
+                  ? "bg-amber-500 text-white shadow-xs"
+                  : "text-amber-600 dark:text-amber-400 hover:bg-amber-50 dark:hover:bg-amber-950/40"
+              }`}
+            >
+              <WarningCircle size={14} weight="bold" />
+              Low Stock (≤ 5)
+            </button>
+          </div>
+
+          <div className="relative flex-1 sm:w-64">
             <MagnifyingGlass
               size={16}
               className="absolute left-3.5 top-1/2 -translate-y-1/2 text-zinc-400"
@@ -273,15 +323,28 @@ export function AdminProducts({
         ) : items.length === 0 ? (
           <div className="p-16 text-center text-zinc-400 dark:text-zinc-500">
             <Package size={36} className="mx-auto mb-2 opacity-50" />
-            <p className="text-sm font-medium">No products found</p>
-            {debouncedSearch && (
+            <p className="text-sm font-medium">
+              {currentStockFilter === "low_stock"
+                ? "No low stock products found (stock ≤ 5)"
+                : "No products found"}
+            </p>
+            {currentStockFilter === "low_stock" ? (
               <button
+                type="button"
+                onClick={() => handleStockFilterChange("all")}
+                className="mt-2 text-xs text-amber-600 dark:text-amber-400 hover:underline cursor-pointer font-medium"
+              >
+                Show all products
+              </button>
+            ) : debouncedSearch ? (
+              <button
+                type="button"
                 onClick={() => setSearch("")}
-                className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+                className="mt-2 text-xs text-blue-600 dark:text-blue-400 hover:underline cursor-pointer font-medium"
               >
                 Clear search filter
               </button>
-            )}
+            ) : null}
           </div>
         ) : (
           <div className="overflow-x-auto relative">

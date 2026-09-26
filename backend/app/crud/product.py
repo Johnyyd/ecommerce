@@ -28,7 +28,8 @@ class ProductRepository:
         brand: Optional[str] = None,
         min_price: Optional[float] = None,
         max_price: Optional[float] = None,
-        q: Optional[str] = None
+        q: Optional[str] = None,
+        low_stock: Optional[bool] = None
     ) -> List[Product]:
         stmt = select(Product)
         if category_id:
@@ -39,6 +40,8 @@ class ProductRepository:
             stmt = stmt.where(Product.price >= min_price)
         if max_price is not None:
             stmt = stmt.where(Product.price <= max_price)
+        if low_stock:
+            stmt = stmt.where(Product.stock_quantity <= 5)
         if q:
             stmt = stmt.where(or_(Product.name.ilike(f"%{q}%"), Product.brand.ilike(f"%{q}%")))
             
@@ -53,7 +56,8 @@ class ProductRepository:
         brand: Optional[str] = None,
         min_price: Optional[float] = None,
         max_price: Optional[float] = None,
-        q: Optional[str] = None
+        q: Optional[str] = None,
+        low_stock: Optional[bool] = None
     ) -> int:
         from sqlalchemy import func
         stmt = select(func.count()).select_from(Product)
@@ -65,6 +69,8 @@ class ProductRepository:
             stmt = stmt.where(Product.price >= min_price)
         if max_price is not None:
             stmt = stmt.where(Product.price <= max_price)
+        if low_stock:
+            stmt = stmt.where(Product.stock_quantity <= 5)
         if q:
             stmt = stmt.where(or_(Product.name.ilike(f"%{q}%"), Product.brand.ilike(f"%{q}%")))
             
