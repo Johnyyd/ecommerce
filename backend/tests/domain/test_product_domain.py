@@ -51,3 +51,34 @@ def test_search_sync_and_backfill_models():
     assert hasattr(BackfillJob, "processed_items")
     assert hasattr(BackfillJob, "failed_items")
 
+
+@pytest.mark.asyncio
+async def test_recommendation_service_get_product_embedding():
+    """Verify RecommendationService._get_product_embedding executes select correctly without error."""
+    from app.services.recommendation_service import RecommendationService
+    from unittest.mock import patch, AsyncMock, MagicMock
+    from uuid import uuid4
+
+    service = RecommendationService(search_service=MagicMock())
+    fake_pid = str(uuid4())
+    fake_embedding = [0.1, 0.2, 0.3]
+
+    mock_result = MagicMock()
+    mock_result.scalar_one_or_none.return_value = fake_embedding
+
+    mock_session = AsyncMock()
+    mock_session.execute = AsyncMock(return_value=mock_result)
+
+    class MockAsyncSessionContext:
+        async def __aenter__(self):
+            return mock_session
+
+        async def __aexit__(self, exc_type, exc_val, exc_tb):
+            pass
+
+    with patch("app.services.recommendation_service.AsyncSessionLocal", return_value=MockAsyncSessionContext()):
+        res = await service._get_product_embedding(fake_pid)
+        assert res == fake_embedding
+        mock_session.execute.assert_called_once()
+
+
