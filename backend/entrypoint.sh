@@ -6,13 +6,14 @@ if [ "$APP_TYPE" = "worker" ]; then
     exec python -m arq app.worker.WorkerSettings
 fi
 
-# Calculate workers based on CPU limits
-# If CPU_LIMIT is not set, default to 1
-if [ -z "$CPU_LIMIT" ]; then
-    CPU_LIMIT=1
+# Calculate workers based on WEB_CONCURRENCY or CPU limits
+if [ -n "$WEB_CONCURRENCY" ]; then
+    WORKERS="$WEB_CONCURRENCY"
+elif [ -n "$CPU_LIMIT" ]; then
+    WORKERS=$(($CPU_LIMIT * 4 + 1))
+else
+    WORKERS=5
 fi
-
-WORKERS=$(($CPU_LIMIT * 4 + 1))
 echo "Starting Gunicorn with $WORKERS workers..."
 
 # Set DATABASE_URL for Alembic to connect directly to Postgres

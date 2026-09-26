@@ -700,3 +700,39 @@ pod/tailscale-xxxx   1/1     Running   0   10s
   kubectl scale deployment tailscale --replicas=0
   ```
 - Trên môi trường phát triển local (Docker Desktop), Tailscale thường không cần thiết. Chỉ cần thiết khi triển khai lên cloud và muốn truy cập private network qua Tailscale.
+
+---
+
+## 16. Lỗi `502 Bad Gateway` khi Đăng nhập (Login) — Backend Pod bị `OOMKilled` do Argon2 Hashing
+
+**Triệu chứng:**
+- Người dùng duyệt web, xem danh sách sản phẩm (`GET /api/v1/products`) vẫn diễn ra bình thường và tải dữ liệu nhanh chóng.
+- Tuy nhiên, khi gửi yêu cầu đăng nhập (`POST /api/v1/auth/login`), hệ thống phản hồi lỗi `502 Bad Gateway`.
+- Kiểm tra log của Nginx tại Frontend Pod ghi nhận:
+  ```text
+  [error] upstream prematurely closed connection while reading response header from upstream, request: "POST /api/v1/auth/login HTTP/1.1", upstream: "http://<backend-ip>:8000/api/v1/auth/login"
+  ```
+- Kiểm tra trạng thái các Pod backend bằng lệnh `kubectl get pods -l app=backend`:
+  ```text
+  backend-xxxx-xxxx   0/1   OOMKilled   1   ...
+  ```
+  Pod bị kernel hủy với `Exit Code: 137` (`OOMKilled`).
+
+**Nguyên nhân:**
+1. **Mức tiêu thụ RAM nền của Gunicorn:**
+   - Trong `k8s/backend.yaml`, số worker được chỉ định là `WEB_CONCURRENCY=5` (hoặc tính toán mặc định theo CPU). Mỗi worker Python Uvicorn nạp FastAPI, Pydantic, SQLAlchemy chiếm trung bình ~85MB RAM. 
+   - Với 5 worker cùng tiến trình master, mức RAM nền (baseline) của Pod khi khởi động đã chạm ngưỡng ~450MB - 480MB.
+2. **Thuật toán băm mật khẩu Argon2:**
+   - Hệ thống sử dụng Argon2id (`m=65536, t=3, p=4`) để bảo mật mật khẩu. Khi thực hiện xác thực (`verify_password`), thuật toán cần cấp phát một bộ đệm tối thiểu 64MB RAM.
+3. **Giới hạn bộ nhớ bị vượt ngưỡng:**
+   - File cấu hình `k8s/backend.yaml` đặt `limits.memory: 512Mi`.
+   - Khi Pod nhận request login, mức RAM tăng từ 480MB + 64MB = 544MB, vượt quá giới hạn 512MiB (536MB). Cgroup OOM Killer của Linux lập tức gửi tín hiệu `SIGKILL (137)` kết liễu container khiến kết nối HTTP tới Nginx bị đứt gãy đột ngột, sinh ra lỗi 502. Các request duyệt sản phẩm không chạy hàm băm Argon2 nên mức RAM không vượt ngưỡng và không bị crash.
+
+**Cách khắc phục:**
+1. **Nâng mức giới hạn bộ nhớ trong `k8s/backend.yaml`:**
+   - Tăng `limits.memory` từ `512Mi` lên `1Gi` (1024MiB) và `requests.memory` lên `256Mi` để đảm bảo đủ không gian cho 5 worker cùng lúc xử lý tác vụ băm Argon2 an toàn.
+2. **Cập nhật script khởi động `backend/entrypoint.sh`:**
+   - Ưu tiên đọc biến môi trường `WEB_CONCURRENCY` nếu được thiết lập từ Kubernetes deployment thay vì chỉ tự động tính toán.
+3. **Build lại image với tag `latest` và cập nhật Pods:**
+   - Thực thi script `.\scripts\windows\update-k8s-backend.bat` để build image `ecommerce-backend:latest`, dọn cache containerd và rollout restart deployment backend.
+
