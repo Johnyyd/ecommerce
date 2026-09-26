@@ -87,10 +87,10 @@ Trong file [`k8s/backend.yaml`](k8s/backend.yaml), container `backend` được 
 resources:
   requests:
     cpu: "200m"       # Ngưỡng tính toán HPA: 50% tương đương 100m CPU
-    memory: "128Mi"
+    memory: "256Mi"
   limits:
     cpu: "1"          # Cho phép burst tối đa 1 Core khi xử lý cao điểm
-    memory: "512Mi"
+    memory: "1Gi"
 ```
 
 ### 2.4. Cấu hình Kubernetes Horizontal Pod Autoscaler (HPA)
