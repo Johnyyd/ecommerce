@@ -57,3 +57,7 @@ backend/reports/*
 /media
 tests/__pycache__
 /__pycache__
+/.codex
+/.openrig
+/agents
+/openrig-specs
