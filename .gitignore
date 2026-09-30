@@ -58,4 +58,3 @@ backend/reports/*
 tests/__pycache__
 /__pycache__
 /.codex
-/.openrig
