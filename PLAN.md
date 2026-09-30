@@ -251,3 +251,36 @@ python backend/scripts/backfill_search.py --dry-run
 | Search relevance tuning | Medium | Implement A/B testing framework, collect user feedback, tune ranking rules periodically |
 | Database migration downtime | Low | Use online schema migrations where possible, test migrations on staging first |
 | Frontend bundle size increase | Low | Code-split new components, lazy-load recommendation modules, monitor bundle analytics |
+
+
+**Kết luận: Trụ cột 4 chưa đạt.** Repo có nền tảng ban đầu như migration pgvector, service Meilisearch và một số UI filter, nhưng các luồng tìm kiếm, đồng bộ và recommendation chưa nối thành tính năng end-to-end. Các ghi chú “verified” trong PLAN chưa đủ để xác nhận trạng thái runtime hiện tại.
+
+**Các vấn đề chính**
+
+1. **P1: Advanced Search chưa được expose hoặc dùng từ UI.** Route hiện có là CRUD/list sản phẩm; `list_products` vẫn gọi `ProductService`/Postgres, không gọi Meilisearch. Frontend tiếp tục gọi list endpoint hiện tại và trang chi tiết chỉ tải sản phẩm, không tải recommendations. Chưa thấy nơi khởi tạo index hoặc cấu hình filterable/facetable attributes. `products.py:36`, `useProductStore.ts:70`, `ProductDetail.tsx:30`, `search_service.py:216`
+
+2. **P1: Luồng sync Meilisearch có lỗi hợp đồng dữ liệu.** Worker truyền danh sách `dict` vào `sync_products_to_meilisearch`, nhưng service xử lý từng phần tử như object và đọc `product.id`; vì vậy batch sync sẽ lỗi thay vì lập chỉ mục. Worker cũng không có lịch chạy/trigger incremental sync được tìm thấy. `worker.py:224`, `search_service.py:260`, `worker.py:351`
+
+3. **P1: Recommendation còn là placeholder và có thể lỗi ở fallback.** Collaborative filtering luôn trả danh sách rỗng; nhánh fallback nhận `dict` từ `get_popular_products` rồi cắt như một list. “Popular” hiện được sắp theo giá giảm dần, không phải độ phổ biến. Không có endpoint hoặc UI recommendation. `recommendation_service.py:61`, `recommendation_service.py:63`, `search_service.py:320`
+
+4. **P1: Có embedding API key hard-code trong cấu hình.** Cần thu hồi/rotate key nếu còn hiệu lực, rồi chỉ nạp từ secret manager hoặc environment; tránh giữ credential trong source và plan. `config.py:58`
+
+5. **P1: DLQ, reconciliation và resumable backfill chưa được triển khai.** Model cho `FailedSyncTask`/`BackfillJob` và migration đã có, nhưng không thấy code ghi DLQ, script reconcile/backfill hay test tương ứng. Worker bắt lỗi và trả stats thay vì để job thất bại, nên cơ chế retry/DLQ không được chứng minh. `search_sync.py:10`, `worker.py:247`, `worker.py:254`
+
+6. **P2: Cấu hình Meilisearch mặc định không khớp.** Compose dùng `masterKey` làm fallback, còn backend dùng `masterKey123`; backend cũng không nhận `MEILISEARCH_MASTER_KEY` trong biến môi trường service. Nếu chạy với fallback mặc định, client sẽ không xác thực được. `docker-compose.yml:38`, `config.py:54`
+
+**Đối chiếu nhanh với PLAN**
+- Infrastructure và migration: có phần khung; chưa xác nhận trạng thái live database/Meilisearch.
+- Advanced Search, facets, API, Recommendations và UI recommendations: chưa đạt.
+- Embedding sync: có worker nhưng chưa hoạt động đúng; không có backfill/reconciliation/DLQ thực thi.
+- Cache: hiện là cache cho API CRUD/list cơ bản, chưa có cache search/recommendation.
+- Kiểm thử: thiếu test theo các luồng Search/Recommendation/Backfill/Reconciliation nêu trong PLAN.
+
+**Kiểm tra đã chạy**
+- Frontend build: thành công, nhưng bundle JS khoảng `786 kB` và có cảnh báo chunk lớn.
+- Backend domain tests: `4 passed`.
+- Backend API tests: không thu thập được vì môi trường thiếu `aiosmtplib`.
+- Frontend tests: không chạy được vì thiếu `happy-dom`; mình không cài thêm dependency.
+- GitNexus không chạy được do `mise` thiếu shim `gitnexus`; đã trace trực tiếp bằng source và call sites.
+
+Lưu ý worktree: lệnh build đã tạo thay đổi trong `dist`; thao tác khôi phục riêng các artifact đó đã bị bỏ qua, nên hiện chúng vẫn còn thay đổi. Các thay đổi có sẵn trong `.gitignore` và `.openrig` được giữ nguyên.
