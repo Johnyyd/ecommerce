@@ -1,202 +1,153 @@
-# Plan: Trụ cột 4: Tìm kiếm Nâng cao & Cá nhân hóa (Search & AI Recommendation)
+# Plan: Trụ cột 5: DevOps, Bảo mật & Khả năng Quan sát Nâng cao (Observability & GitOps)
 
-**Source PRD**: /home/tringuyen/Documents/GitHub/ecommerce/ROADMAP.md
-**Selected Milestone**: Trụ cột 4: Tìm kiếm Nâng cao & Cá nhân hóa (Search & AI Recommendation)
-**Complexity**: Large
+**Source PRD**: `ROADMAP.md` (Mục 6: Trụ cột 5)  
+**Selected Milestone**: Trụ cột 5: DevOps, Bảo mật & Khả năng Quan sát Nâng cao (Observability & GitOps)  
+**Complexity**: Large  
+**Trạng thái**: READY FOR IMPLEMENTATION
 
-## Summary
-Implement advanced search capabilities using Meilisearch for fast, typo-tolerant Vietnamese search with faceted filtering, and AI-powered product recommendations using pgvector for semantic similarity and collaborative filtering. This plan covers backend infrastructure, API endpoints, frontend integration, data synchronization pipelines, and deployment configurations.
+---
 
-**Embedding Strategy**: Use the local **Free LLM API** (OpenAI-compatible) at `http://localhost:3001/v1` with API key `freellmapi-fa22e5cba463c21104c1c19f6ec9ddda0fbb0e6acb175651` for generating product embeddings. This avoids running heavy NLP models in-process while keeping all inference local and free.
+## 1. Tóm tắt Mục tiêu (Summary)
 
-## Patterns to Mirror
-| Category | Source | Pattern |
-|---|---|---|
-| Naming | `backend/app/models/product.py:1` | Snake_case for database models, PascalCase for classes |
-| Errors | `backend/app/api/v1/endpoints/products.py:84-86` | HTTPException with status codes and detail messages |
-| Data Access | `backend/app/crud/product.py:23-47` | Repository pattern with async SQLAlchemy 2.0 queries |
-| Services | `backend/app/services/product.py` (implied) | Service layer encapsulating business logic |
-| Worker Tasks | `backend/app/worker.py:10-15` | ARQ task pattern with ctx parameter and logging |
-| Configuration | `backend/app/core/config.py:5-55` | Pydantic BaseSettings with environment variable support |
-| API Responses | `backend/app/api/v1/endpoints/products.py:66-68` | JSON serialization using Pydantic model_dump(mode='json') |
-| Caching | `backend/app/api/v1/endpoints/products.py:51-55` | Redis caching with cache key construction and setex |
-| Database Migrations | Alembic structure (implied) | SQLAlchemy Alembic for schema migrations |
-| Frontend State | `frontend/src/store/useProductStore.ts:37-80` | Zustand store with async actions and immutable updates |
+Xây dựng nền tảng vận hành chuẩn Cloud-Native cho hệ thống E-Commerce, chuyển dịch từ quản trị thủ công sang kiến trúc tự động hóa hoàn toàn (**GitOps**) và quan sát đa chiều (**Full-Stack Observability**):
 
-## Files to Change
-| `backend/app/core/config.py` | UPDATE | Add Meilisearch and pgvector configuration settings; embedding API endpoint/key (Free LLM API local) |
-|---|---|---|
-| `backend/app/models/product.py` | UPDATE | Add tsvector column for PostgreSQL FTS and vector embedding column |
-| `backend/app/models/failed_sync_task.py` | CREATE | New model for Dead Letter Queue (failed sync tasks) |
-| `backend/app/models/backfill_job.py` | CREATE | New model for backfill progress tracking |
-| `backend/app/crud/product.py` | UPDATE | Enhance search queries to support Meilisearch and PostgreSQL FTS |
-| `backend/app/api/v1/endpoints/products.py` | UPDATE | Add new search parameters and recommendation endpoints |
-| `backend/app/services/product.py` | CREATE | Implement search service layer with Meilisearch/pgvector integration |
-| `backend/app/services/search_service.py` | CREATE | New service for Meilisearch operations and vector search |
-| `backend/app/services/recommendation_service.py` | CREATE | New service for AI-powered product recommendations with cold-start handling |
-| `backend/app/worker.py` | UPDATE | Add background tasks for embedding generation and sync (with retries) |
-| `backend/app/core/queue.py` | UPDATE | Add Meilisearch connection settings if needed |
-| `alembic/versions/*_add_search_columns.py` | CREATE | Database migration for tsvector, vector columns, failed_sync_tasks, backfill_jobs tables |
-| `docker-compose.yml` | UPDATE | Add Meilisearch service configuration; add resource limits on worker service |
-| `backend/Dockerfile` | UPDATE | Add Meilisearch and pgvector dependencies; add OpenAI client for embedding API |
-| `backend/scripts/reconcile_search.py` | CREATE | Periodic reconciliation script to sync Postgres ↔ Meilisearch |
-| `backend/scripts/backfill_search.py` | CREATE | Standalone backfill script for initial data migration |
-| `frontend/src/lib/api/products.ts` | CREATE/UPDATE | Add API client methods for advanced search and recommendations |
-| `frontend/src/store/useProductStore.ts` | UPDATE | Enhance store to handle faceted search and recommendations |
-| `frontend/src/pages/ProductsPage.tsx` | UPDATE | Implement faceted search UI and recommendation display |
-| `frontend/src/components/ui/FacetFilters.tsx` | CREATE | New component for faceted search filters |
-| `frontend/src/components/ProductRecommendations.tsx` | CREATE | New component for displaying AI recommendations |
-| `frontend/src/types/product.ts` | UPDATE | Extend Product type with search metadata and recommendation fields |
-| `requirements.txt` | UPDATE | Add meilisearch-python, pgvector, and openai (for embedding API client) dependencies |
+1. **Thu thập & Quản lý Log tập trung (Centralized Logging)**: Triển khai **Grafana Loki** kết hợp **Promtail DaemonSet** để thu thập, phân tích và lọc toàn bộ logs từ Backend Pods, Nginx Ingress, Postgres, PgBouncer và Redis ngay trên giao diện Grafana mà không cần `kubectl logs` hay SSH.
+2. **Distributed Tracing (OpenTelemetry + Grafana Tempo)**: Tích hợp OpenTelemetry SDK vào FastAPI backend, tự động tạo trace span xuyên suốt từ Ingress ➔ FastAPI Controller ➔ SQLAlchemy Query ➔ Redis Cache ➔ PgBouncer ➔ PostgreSQL, giúp định vị chính xác điểm nghẽn hiệu năng (bottleneck).
+3. **Chuẩn hóa Đóng gói Helm Charts & Đa môi trường**: Chuyển đổi toàn bộ thư mục `k8s/` thành **Helm Chart** chuẩn hóa (`helm/ecommerce`), tách biệt cấu hình linh hoạt cho các môi trường: `values-dev.yaml`, `values-staging.yaml`, `values-prod.yaml`.
+4. **Tự động hóa CI/CD & Triển khai GitOps (ArgoCD)**: Xây dựng pipeline GitHub Actions kiểm thử tự động (Unit test, Security SAST, Container scan) và đồng bộ trạng thái cụm K8s theo thời gian thực qua ArgoCD.
+5. **Hạ tầng Tự phục hồi & Mở rộng (Autoscaling & SRE)**: Thiết lập Horizontal Pod Autoscaler (HPA) cho Backend/Frontend, NetworkPolicies siết chặt bảo mật nội bộ, và K8s CronJob tự động chạy đối soát dữ liệu tìm kiếm (`reconcile_search.py`).
 
-## Tasks
-### Task 1: Infrastructure Setup - Meilisearch & pgvector
-- **Action**: Add Meilisearch service to docker-compose, install dependencies, configure pgvector extension
-- **Mirror**: Follow existing Redis and PostgreSQL service patterns in docker-compose.yml
-- **Validate**: 
-  - `docker compose up -d meilisearch` starts successfully
-  - `CREATE EXTENSION IF NOT EXISTS vector;` executes without error in PostgreSQL
-  - Health check endpoints return 200 for both services
+---
 
-### Task 2: Database Schema Enhancement [COMPLETED & VERIFIED]
-- **Action**: Add tsvector column for PostgreSQL Full-Text Search and vector column for embeddings to products table
-- **Mirror**: Follow existing SQLAlchemy column patterns in backend/app/models/product.py
-- **Validate**:
-  - Migration script runs successfully (verified: Alembic revisions 011 and 012 applied, live DB at version `012`)
-  - Products table contains new tsvector and vector columns (verified: 100/100 products have materialized `search_vector`)
-  - Indexes are created for tsvector (GIN) and vector (IVFFlat) columns (verified: `idx_products_search_vector` and `idx_products_embedding` active)
-  - Extensions enabled: `vector` (0.8.6), `pg_trgm` (1.6)
-  - Embedding dimension enforced: `vector(1536)` database type
-  - DLQ table (`failed_sync_tasks`) created with partial index `ix_failed_sync_unresolved`
-  - Backfill jobs table (`backfill_jobs`) created with status CHECK constraint
-  - Search vector trigger:
-    - Hardened against CWE-426 with explicit `SET search_path = public, pg_catalog`
-    - Optimized with column filter `BEFORE INSERT OR UPDATE OF name, description, brand` to eliminate write amplification on stock/price updates
-    - Re-entrancy safeguarded with `DROP TRIGGER IF EXISTS`
-  - SQLAlchemy models `FailedSyncTask` and `BackfillJob` added to `app/models/search_sync.py` and exported in `app/models/__init__.py`
-  - Unit tests added in `tests/domain/test_product_domain.py` (all 73 backend tests passing)
-  - Bandit SAST scan: 0 security vulnerabilities identified across 3,938 lines of code
-  - **Lưu ý quan trọng về Index IVFFlat trong pgvector (Cold-Start Alert)**:
-    - Index IVFFlat xây dựng các centroid thông qua k-means dựa trên dữ liệu hiện có tại thời điểm tạo index.
-    - Do bảng hiện tại chưa có vector embeddings (sẽ được sinh ở Task 4/4b), chất lượng centroid của IVFFlat ban đầu có thể chưa tối ưu.
-    - **Khuyến nghị**: Khi hoàn thành Task 4b (Backfill toàn bộ embeddings), script backfill nên thực hiện lệnh `REINDEX INDEX idx_products_embedding;` (hoặc chuyển sang HNSW vốn không phụ thuộc vào dữ liệu có sẵn).
+## 2. Patterns to Mirror (Quy ước Kỹ thuật Cần Tuân Thủ)
 
-### Task 3: Meilisearch Service Implementation
-- **Action**: Create search_service.py with Meilisearch client initialization, index management, and search operations
-- **Mirror**: Follow existing service patterns like backend/app/services/email.py
-- **Validate**:
-  - Service can connect to Meilisearch instance
-  - Index creation and configuration works correctly
-  - Basic search, filter, and facet operations return expected results
+| Hạng mục                 | Nguồn tham chiếu              | Quy ước / Mẫu thiết kế                                                                          |
+| ------------------------ | ----------------------------- | ----------------------------------------------------------------------------------------------- |
+| **K8s Security**         | `k8s/backend.yaml:18-24`      | `runAsNonRoot: true`, `readOnlyRootFilesystem`, `drop: [ALL]`, `seccompProfile: RuntimeDefault` |
+| **K8s Secret Injection** | `k8s/backend.yaml:17`         | `enableServiceLinks: false` tránh ghi đè biến môi trường dạng link lỗi thời                     |
+| **Log Format & PII**     | `backend/app/core/logging.py` | Structured JSON log, tự động mask thông tin nhạy cảm (passwords, tokens, card info)             |
+| **Metrics Exposition**   | `backend/app/core/metrics.py` | Prometheus standard metrics (`http_requests_total`, `request_duration_seconds`)                 |
+| **Helm Architecture**    | `helm/ecommerce/`             | Phân tách `templates/`, `values.yaml`, helpers `_helpers.tpl` chuẩn Helm v3                     |
+| **Tracing Context**      | W3C Trace Context standard    | Truyền `traceparent` qua HTTP headers giữa frontend, backend và worker                          |
 
-### Task 4: Embedding Generation & Synchronization
-- **Action**: Implement background worker tasks for generating product embeddings and syncing with Meilisearch
-- **Mirror**: Follow existing ARQ task patterns in backend/app/worker.py
-- **Design Decision**: Use the **local Free LLM API** (OpenAI-compatible) running at `http://localhost:3001/v1` with API key `freellmapi-fa22e5cba463c21104c1c19f6ec9ddda0fbb0e6acb175651` for generating embeddings. This avoids:
-  - Running heavy sentence-transformers models locally (CPU starvation)
-  - External API costs and latency
-  - Additional container orchestration complexity
-- **Configuration**: Add `EMBEDDING_API_URL` and `EMBEDDING_API_KEY` to `backend/app/core/config.py` (sourced from environment variables)
-- **Embedding Model**: Use the API's default embedding model (typically `text-embedding-3-small` equivalent, 1536 dimensions) — verify dimension matches pgvector column definition
-- **Batch Processing**: Process embeddings in batches of 50 products per task with a short sleep between batches to avoid overwhelming the local embedding service
-- **Validate**:
-  - Worker tasks can generate embeddings via the local API without exceeding CPU/memory limits
-  - Embeddings are stored in PostgreSQL vector column (1536 dimensions)
-  - Product data is synchronized to Meilisearch index
-  - Incremental sync works for product updates/creates/deletes
-  - Worker resource usage stays within configured limits (verify via `docker stats`)
+---
 
-### Task 4a: Dead Letter Queue & Reconciliation (Source-of-Truth Resilience)
-- **Problem**: Three data stores (PostgreSQL, Meilisearch, Redis) are kept in sync by background workers. If a worker crashes mid-sync, data becomes inconsistent. This task adds resilience against silent divergence.
-- **Action**:
-  - Configure ARQ's built-in retry with `max_retries` and `job_timeout`; failed tasks are pushed to a Dead Letter Queue (DLQ) table `failed_sync_tasks` for manual or automated re-run.
-  - Create a **Reconciliation Script** (`backend/scripts/reconcile_search.py`) that runs on a schedule (e.g., every 6 hours) and compares `updated_at` between PostgreSQL and Meilisearch. Any product missing or stale in Meilisearch is re-synced.
-  - All sync tasks must be **idempotent**: they check the product's `version` or `updated_at` before writing, so re-running a failed task does not corrupt data.
-- **Mirror**: Follow existing ARQ worker patterns in `backend/app/worker.py` and existing script patterns in `backend/seed_db.py`.
-- **Validate**:
-  - A failed sync task appears in `failed_sync_tasks` table with error details
-  - Reconciliation script detects and fixes at least 3 injected inconsistencies
-  - Re-running an already-synced task does not create duplicate Meilisearch documents
+## 3. Danh mục Files Cần Tạo Mới & Chỉnh Sửa (Files to Change)
 
-### Task 4b: Initial Backfill (Cold-Start Data Migration)
-- **Problem**: Task 2 and 4 only handle new/updated products. On first deploy, thousands of existing products have no embeddings and no Meilisearch index entries. A naive backfill would block the database or exhaust worker resources.
-- **Action**:
-  - Create a **Backfill Task** (`backend/scripts/backfill_search.py`) that scans the entire `products` table in batches of 100, generates embeddings, and pushes to Meilisearch.
-  - Run as a standalone CLI command (not in the request path) so it can be triggered manually after deploy.
-  - **Rate limiting**: sleep 100ms between batches; pause if CPU load exceeds threshold.
-  - **Progress tracking**: persist progress to a `backfill_jobs` table (or Redis key) so the script can be paused/resumed without losing state.
-  - **Fallback**: if the embedding API is unavailable, backfill can still populate Meilisearch with plain text (search still works; semantic similarity is deferred).
-  - **Post-Backfill IVFFlat Reindex**: Run `REINDEX INDEX idx_products_embedding;` immediately after all embeddings are populated so pgvector k-means recalculates optimal cluster centroids from real vectors (or evaluate migrating to HNSW).
-- **Mirror**: Follow existing batch script patterns in `backend/seed_db.py` and `backend/create_admin.py`.
-- **Validate**:
-  - After running backfill, `SELECT count(*) FROM products WHERE embedding IS NOT NULL` equals total product count
-  - Meilisearch index document count matches PostgreSQL product count
-  - Backfill can be interrupted and resumed without data corruption
-  - `REINDEX INDEX idx_products_embedding;` executes successfully, ensuring high vector recall without cold-start centroid skew
+| File                                         | Hành động | Mục đích                                                                                                                 |
+| -------------------------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------------ |
+| `helm/ecommerce/Chart.yaml`                  | CREATE    | Khai báo metadata Helm Chart v2 cho toàn bộ hệ thống                                                                     |
+| `helm/ecommerce/values.yaml`                 | CREATE    | Giá trị cấu hình mặc định (base configuration)                                                                           |
+| `helm/ecommerce/values-dev.yaml`             | CREATE    | Cấu hình tinh gọn cho môi trường local/dev                                                                               |
+| `helm/ecommerce/values-prod.yaml`            | CREATE    | Cấu hình HA, tài nguyên cao, ingress TLS cho production                                                                  |
+| `helm/ecommerce/templates/*`                 | CREATE    | Chuyển đổi các manifest `k8s/*.yaml` sang template parameterized                                                         |
+| `k8s/observability/loki.yaml`                | CREATE    | StatefulSet / Service cho Grafana Loki log storage engine                                                                |
+| `k8s/observability/promtail.yaml`            | CREATE    | DaemonSet Promtail thu thập log container node và đẩy về Loki                                                            |
+| `k8s/observability/tempo.yaml`               | CREATE    | Deployment / Service Grafana Tempo tiếp nhận OpenTelemetry traces                                                        |
+| `k8s/observability/grafana-datasources.yaml` | UPDATE    | Bổ sung Loki và Tempo vào danh sách DataSources tự động nạp của Grafana                                                  |
+| `k8s/hpa/backend-hpa.yaml`                   | CREATE    | Horizontal Pod Autoscaler cho backend (min: 2, max: 8 pods)                                                              |
+| `k8s/cronjobs/reconcile-cronjob.yaml`        | CREATE    | K8s CronJob chạy `reconcile_search.py` định kỳ 02:00 AM hàng ngày                                                        |
+| `k8s/security/network-policy.yaml`           | CREATE    | NetworkPolicy chặn truy cập trực tiếp vào DB/Redis từ bên ngoài                                                          |
+| `backend/app/core/telemetry.py`              | CREATE    | Cấu hình OpenTelemetry TracerProvider, Tracing Middleware cho FastAPI & SQLAlchemy                                       |
+| `backend/requirements.txt`                   | UPDATE    | Bổ sung `opentelemetry-api`, `opentelemetry-sdk`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-exporter-otlp` |
+| `.github/workflows/ci.yml`                   | CREATE    | Pipeline CI tự động: Backend test (85 tests) + Bandit SAST + Frontend build + Docker lint                                |
+| `deploy/argocd/application.yaml`             | CREATE    | Khai báo ArgoCD Application đồng bộ GitOps từ repository                                                                 |
 
-### Task 5: Advanced Search API Endpoints
-- **Action**: Enhance product search API to support Meilisearch with faceted search, typo tolerance, and Vietnamese language support
-- **Mirror**: Follow existing API patterns in backend/app/api/v1/endpoints/products.py
-- **Validate**:
-  - Search endpoint accepts new parameters (filters, facets, etc.)
-  - Meilisearch returns results with sub-50ms response time
-  - Faceted search returns correct aggregation counts
-  - Typo tolerance works for Vietnamese text (e.g., "ao thun" finds "áo thun")
-  - Language-specific settings handle Vietnamese diacritics correctly
+---
 
-### Task 6: AI Recommendation Engine
-- **Action**: Implement semantic similarity search using pgvector and collaborative filtering algorithms
-- **Mirror**: Follow existing service patterns for business logic encapsulation
-- **Cold Start Mitigation**: Collaborative filtering requires sufficient interaction history. This task explicitly handles the cold-start scenario:
-  - **Content-based fallback**: When collaborative filtering data is insufficient (fewer than 100 user interactions in the system), fall back to content-based filtering using pgvector semantic similarity on product embeddings.
-  - **Hybrid scoring**: Combine semantic similarity score with collaborative filtering score using a weighted formula. Weight shifts toward collaborative filtering as more interaction data accumulates.
-  - **Graceful empty state**: If both algorithms return no results, return a curated "Popular Products" or "New Arrivals" list instead of an empty response. Never return an empty recommendation section to the user.
-  - **Popularity baseline**: Maintain a Redis-sorted set (`products:popularity`) updated on order events, used as a universal fallback.
-- **Validate**:
-  - Semantic similarity finds products with similar meanings
-  - Collaborative filtering suggests products frequently bought together
-  - With zero interaction data, recommendations fall back to content-based similarity and popularity (no empty response)
-  - With sufficient interaction data, collaborative filtering results are prioritized
-  - Recommendation endpoints return relevant products
-  - Fallback mechanisms work when insufficient data exists
+## 4. Kế hoạch Thực thi Chi tiết (Implementation Tasks)
 
-### Task 7: Frontend Integration - Search Enhancement
-- **Action**: Update ProductsPage and ProductStore to utilize faceted search and display filters
-- **Mirror**: Follow existing Zustand store and API client patterns in frontend/src/
-- **Validate**:
-  - Search interface shows faceted filters (price, category, brand, etc.)
-  - Filter selections update search results in real-time
-  - Mobile-responsive design works correctly
-  - Loading states and error handling are implemented
+### Task 1: Thu thập & Quản lý Log tập trung (Grafana Loki + Promtail DaemonSet)
 
-### Task 8: Frontend Integration - Recommendations Display
-- **Action**: Add recommendation sections to ProductDetail page and potentially cart/checkout pages
-- **Mirror**: Follow existing component patterns in frontend/src/components/
-- **Validate**:
-  - "Sản phẩm tương tự" section shows semantically similar products
-  - "Khách hàng thường mua cùng" section shows relevant complementary products
-  - Recommendations update based on current product/context
-  - Components handle loading and empty states gracefully
+- **Mục tiêu**: Loại bỏ việc dùng `kubectl logs` thủ công; toàn bộ log pod được index và xem được trên Grafana Explore.
+- **Hành động**:
+  1. Triển khai **Loki**: Tạo `k8s/observability/loki.yaml` với volume mount lưu trữ logs cục bộ (Retention: 7 ngày).
+  2. Triển khai **Promtail DaemonSet**: Tạo `k8s/observability/promtail.yaml` đọc logs từ `/var/log/pods`, parse nhãn K8s (`app`, `pod`, `namespace`), trích xuất JSON log field và gửi tới Loki.
+  3. Cập nhật `grafana-datasources.yaml`: Thêm `Loki` data source trỏ tới `http://loki:3100`.
+  4. Tạo sẵn 1 Dashboard mẫu trong Grafana: Log volume theo service, tỷ lệ log Level (`ERROR`, `WARNING`, `INFO`), và stream log trực tiếp có filter theo `TraceId`.
+- **Kiểm chứng**:
+  - Truy cập Grafana: `http://localhost:3000/explore` ➔ Chọn Data Source **Loki**.
+  - Query `{app="backend"} |= "ERROR"` trả về đúng các bản ghi log lỗi thời gian thực.
 
-### Task 9: Performance Optimization & Caching
-- **Action**: Implement caching strategies for search results and recommendations
-- **Mirror**: Follow existing Redis caching patterns in product API endpoints
-- **Validate**:
-  - Frequently accessed search results are cached appropriately
-  - Cache invalidation works when product data changes
-  - Recommendation caching prevents excessive database load
-  - Cache TTL values are configured for different data types
+---
 
-### Task 10: Testing, Deployment & Documentation
-- **Action**: Write integration tests, update deployment procedures, and document API usage
-- **Mirror**: Follow existing testing patterns in backend/ and frontend/ test files
-- **Validate**:
-  - Unit and integration tests pass for new search and recommendation features
-  - End-to-end tests verify search and recommendation workflows
-  - Deployment scripts include Meilisearch and pgvector setup
-  - API documentation is updated with new endpoints and parameters
+### Task 2: Distributed Tracing (OpenTelemetry + Grafana Tempo)
 
-## Validation
+- **Mục tiêu**: Đo lường độ trễ chi tiết của từng bước xử lý request (Network Ingress ➔ FastAPI Handler ➔ Cache Lookups ➔ SQL Execution).
+- **Hành động**:
+  1. Triển khai **Grafana Tempo**: Tạo `k8s/observability/tempo.yaml` hỗ trợ nhận trace qua giao thức OTLP/gRPC (port 4317) và OTLP/HTTP (port 4318).
+  2. Bổ sung thư viện OpenTelemetry vào `backend/requirements.txt` (`opentelemetry-distro`, `opentelemetry-instrumentation-fastapi`, `opentelemetry-instrumentation-sqlalchemy`, `opentelemetry-instrumentation-redis`, `opentelemetry-exporter-otlp`).
+  3. Viết module `backend/app/core/telemetry.py`: Tự động khởi tạo Tracer, gắn Trace ID vào response header `X-Trace-ID` và log context.
+  4. Cấu hình Grafana Tempo DataSource: Liên kết chặt chẽ giữa Loki và Tempo (nhấp vào TraceID trong Log để mở ngay Trace Waterfall View).
+- **Kiểm chứng**:
+  - Thực hiện một request gọi API `/api/v1/products/search?q=phone`.
+  - Trên Grafana Tempo, tìm kiếm trace tương ứng: Hiển thị rõ ràng span của FastAPI handler, span của Meilisearch/Postgres FTS query, và span của Redis caching check.
+
+---
+
+### Task 3: Chuẩn hóa Đóng gói Helm Charts & Đa môi trường
+
+- **Mục tiêu**: Thay thế toàn bộ các file YAML tĩnh rời rạc trong `k8s/` bằng một Helm Chart có thể tái sử dụng và triển khai nhất quán qua 1 lệnh.
+- **Hành động**:
+  1. Khởi tạo cấu trúc `helm/ecommerce`:
+     ```text
+     helm/ecommerce/
+     ├── Chart.yaml
+     ├── values.yaml            # Cấu hình gốc
+     ├── values-dev.yaml        # Môi trường dev (1 replica, resource nhẹ)
+     ├── values-prod.yaml       # Môi trường prod (HPA, HA, ingress TLS)
+     └── templates/
+         ├── backend.yaml
+         ├── frontend.yaml
+         ├── worker.yaml
+         ├── postgres.yaml
+         ├── redis.yaml
+         ├── pgbouncer.yaml
+         ├── ingress.yaml
+         └── _helpers.tpl
+     ```
+  2. Tham số hóa (parameterize) toàn bộ hình ảnh, tài nguyên (`requests`/`limits`), biến môi trường, và replica count.
+  3. Tích hợp kiểm tra cú pháp với `helm lint` và `helm template`.
+- **Kiểm chứng**:
+  - Chạy `helm lint ./helm/ecommerce` đạt 0 errors.
+  - Chạy `helm template ecommerce ./helm/ecommerce -f ./helm/ecommerce/values-dev.yaml` sinh ra toàn bộ manifest chuẩn xác.
+
+---
+
+### Task 4: Hạ tầng Tự phục hồi, CronJob & Bảo mật NetworkPolicy
+
+- **Mục tiêu**: Đảm bảo hệ thống tự động mở rộng khi chịu tải cao, tự động sửa chữa dữ liệu định kỳ, và cách ly mạng nội bộ.
+- **Hành động**:
+  1. **Horizontal Pod Autoscaler (HPA)**: Tạo `k8s/hpa/backend-hpa.yaml` kích hoạt co giãn từ 2 đến 8 pods khi CPU utilization vượt 70% hoặc Memory vượt 80%.
+  2. **Reconciliation CronJob**: Tạo `k8s/cronjobs/reconcile-cronjob.yaml` định kỳ 02:00 AM mỗi ngày (`0 2 * * *`) chạy script `backend/scripts/reconcile_search.py --fix` trong môi trường K8s để tự động bù trừ dữ liệu giữa Postgres và Meilisearch.
+  3. **NetworkPolicy**: Tạo `k8s/security/network-policy.yaml`:
+     - Chỉ cho phép `backend` và `worker` kết nối tới `pgbouncer` (port 6432) và `redis` (port 6379).
+     - Chặn mọi Pod khác trong cluster truy cập trực tiếp vào port 5432 của `postgres`.
+- **Kiểm chứng**:
+  - `kubectl get cronjob` hiển thị lịch chạy `0 2 * * *`.
+  - Kiểm tra kết nối từ Pod không phận sự tới cổng DB bị drop bởi NetworkPolicy.
+
+---
+
+### Task 5: Pipeline CI/CD (GitHub Actions) & Triển khai GitOps (ArgoCD)
+
+- **Mục tiêu**: Tự động hóa hoàn toàn chu trình từ lúc lập trình viên commit code đến khi ứng dụng chạy trên cụm K8s.
+- **Hành động**:
+  1. Tạo file `.github/workflows/ci.yml`:
+     - **Stage 1 (Test & Lint)**: Chạy song song:
+       - Backend: `pytest backend/tests/` (85 tests) + `flake8` + `bandit -r backend/app`
+       - Frontend: `npm run lint` + `npm test` + `npm run build`
+     - **Stage 2 (Security Scan)**: Quét dependency vulnerabilities với `safety` (Python) và `npm audit` (JS).
+     - **Stage 3 (Docker Build & Verify)**: Đóng gói images với tag SHA commit và `:latest`.
+  2. Cấu hình **ArgoCD Application**: Tạo `deploy/argocd/application.yaml` theo dõi thư mục `helm/ecommerce/` trên repo GitHub. Mọi thay đổi merge vào nhánh `main` sẽ được ArgoCD tự động kéo và cập nhật lên cụm Kubernetes theo cơ chế Self-healing / Automated Sync.
+- **Kiểm chứng**:
+  - Workflow GitHub Actions chạy xanh 100% các stages.
+  - Manifest ArgoCD đạt trạng thái `Synced` và `Healthy`.
+
+---
+
+## 5. Kế hoạch Kiểm tra & Xác minh (Validation Plan)
+
 ```bash
 # Backend validation
 cd backend
@@ -239,19 +190,19 @@ python backend/scripts/backfill_search.py --dry-run
 ```
 
 ## Risks
-| Risk | Likelihood | Mitigation |
-|---|---|---|
-| Meilisearch resource consumption (memory/CPU) | Medium | Configure proper resource limits in docker-compose, monitor usage, implement indexing strategies |
-| Embedding generation performance impact (CPU starvation) | **Medium** | Use **local Free LLM API** (`http://localhost:3001/v1`) instead of running heavy models in-process. The API handles model inference separately; ARQ worker only makes HTTP calls. Set Docker resource limits on worker service as additional guardrail. |
-| **Silent data divergence between Postgres/Meilisearch/Redis** | **High** | Implement Dead Letter Queue for failed sync tasks, idempotent sync with `updated_at`/`version` checks, and a periodic Reconciliation Script to detect and repair inconsistencies. |
-| **Backfill blocking database or worker during initial deploy** | **High** | Run backfill as a standalone CLI script (not in request path), process in batches of 100 with sleeps, persist progress for pause/resume, and skip embedding generation if API is unavailable. |
-| Collaborative filtering cold-start (empty results) | Medium | Implement content-based fallback (pgvector semantic similarity), popularity baseline (Redis sorted set), and hybrid scoring that shifts toward collaborative filtering as interaction data grows. Never return an empty recommendation section. |
-| Vietnamese language processing accuracy | Low | Test extensively with Vietnamese diacritics, use Meilisearch's built-in Vietnamese support |
-| Cache invalidation complexity | Medium | Implement comprehensive cache key strategy, use Redis patterns, test invalidation scenarios |
-| Search relevance tuning | Medium | Implement A/B testing framework, collect user feedback, tune ranking rules periodically |
-| Database migration downtime | Low | Use online schema migrations where possible, test migrations on staging first |
-| Frontend bundle size increase | Low | Code-split new components, lazy-load recommendation modules, monitor bundle analytics |
 
+| Risk                                                           | Likelihood | Mitigation                                                                                                                                                                                                                                              |
+| -------------------------------------------------------------- | ---------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Meilisearch resource consumption (memory/CPU)                  | Medium     | Configure proper resource limits in docker-compose, monitor usage, implement indexing strategies                                                                                                                                                        |
+| Embedding generation performance impact (CPU starvation)       | **Medium** | Use **local Free LLM API** (`http://localhost:3001/v1`) instead of running heavy models in-process. The API handles model inference separately; ARQ worker only makes HTTP calls. Set Docker resource limits on worker service as additional guardrail. |
+| **Silent data divergence between Postgres/Meilisearch/Redis**  | **High**   | Implement Dead Letter Queue for failed sync tasks, idempotent sync with `updated_at`/`version` checks, and a periodic Reconciliation Script to detect and repair inconsistencies.                                                                       |
+| **Backfill blocking database or worker during initial deploy** | **High**   | Run backfill as a standalone CLI script (not in request path), process in batches of 100 with sleeps, persist progress for pause/resume, and skip embedding generation if API is unavailable.                                                           |
+| Collaborative filtering cold-start (empty results)             | Medium     | Implement content-based fallback (pgvector semantic similarity), popularity baseline (Redis sorted set), and hybrid scoring that shifts toward collaborative filtering as interaction data grows. Never return an empty recommendation section.         |
+| Vietnamese language processing accuracy                        | Low        | Test extensively with Vietnamese diacritics, use Meilisearch's built-in Vietnamese support                                                                                                                                                              |
+| Cache invalidation complexity                                  | Medium     | Implement comprehensive cache key strategy, use Redis patterns, test invalidation scenarios                                                                                                                                                             |
+| Search relevance tuning                                        | Medium     | Implement A/B testing framework, collect user feedback, tune ranking rules periodically                                                                                                                                                                 |
+| Database migration downtime                                    | Low        | Use online schema migrations where possible, test migrations on staging first                                                                                                                                                                           |
+| Frontend bundle size increase                                  | Low        | Code-split new components, lazy-load recommendation modules, monitor bundle analytics                                                                                                                                                                   |
 
 **Kết luận: Trụ cột 4 ĐÃ ĐẠT (COMPLETED & VERIFIED).**
 Tất cả 6 vấn đề (P1 & P2) đã được xử lý triệt để, hệ thống tìm kiếm nâng cao (Advanced Search & Facets) và hệ thống gợi ý AI (Recommendation Engine) đã được tích hợp end-to-end từ Backend, Database, Meilisearch đến Frontend Store và UI.
@@ -268,30 +219,28 @@ Tất cả 6 vấn đề (P1 & P2) đã được xử lý triệt để, hệ th
    - Đã chuẩn hóa helper `_format_product_doc()` trong `search_service.py` xử lý linh hoạt cả `dict` (từ worker payload) và ORM `Product` instance, ngăn chặn triệt để lỗi `product.id` AttributeError.
    - Worker background job `sync_to_meilisearch_task` và `incremental_sync_task` hoạt động thông suốt với batching.
 
-3. **P1: Recommendation Engine hoàn chỉnh & UI Showcase:**
-   - Triển khai thuật toán Hybrid Recommendation trong `recommendation_service.py`:
-     + **Collaborative Filtering:** Dựa trên ma trận đồng mua sản phẩm (`OrderItem` co-occurrence) của khách hàng.
-     + **Semantic Search:** Dựa trên khoảng cách cosine vector embedding (`Product.embedding.cosine_distance`) qua PostgreSQL `pgvector`.
-     + **Graceful Multi-tier Fallback:** Tự động fallback sang sản phẩm cùng danh mục/thương hiệu và sản phẩm bán chạy/mới nhất (`get_popular_products`/`get_new_arrivals`). Đã sửa lỗi slice dict để hàm luôn trả về danh sách `List[Dict[str, Any]]` hợp lệ, không bao giờ crash hoặc trả về rỗng vô cớ.
-   - Đã expose endpoint `GET /api/v1/products/{product_id}/recommendations` với Redis caching (300s).
-   - Đã xây dựng component `ProductRecommendations.tsx` và tích hợp vào `ProductDetail.tsx` hiển thị gợi ý thông minh "Frequently Explored Together" kèm hiệu ứng animation mượt mà.
+3. **P1: Recommendation còn là placeholder và có thể lỗi ở fallback.** Collaborative filtering luôn trả danh sách rỗng; nhánh fallback nhận `dict` từ `get_popular_products` rồi cắt như một list. “Popular” hiện được sắp theo giá giảm dần, không phải độ phổ biến. Không có endpoint hoặc UI recommendation. `recommendation_service.py:61`, `recommendation_service.py:63`, `search_service.py:320`
 
-4. **P1: Bảo mật Credential & Secret Management (OWASP Top 10):**
-   - Đã loại bỏ hoàn toàn hardcoded embedding API key trong `backend/app/core/config.py`.
-   - Cấu hình chỉ nạp từ biến môi trường `EMBEDDING_API_KEY` (mặc định chuỗi rỗng an toàn).
+4. **P1: Có embedding API key hard-code trong cấu hình.** Cần thu hồi/rotate key nếu còn hiệu lực, rồi chỉ nạp từ secret manager hoặc environment; tránh giữ credential trong source và plan. `config.py:58`
 
-5. **P1: Dead Letter Queue (DLQ), Reconciliation & Resumable Backfill:**
-   - Đã tích hợp `record_failed_sync()` vào `backend/app/worker.py` để lưu trữ mọi tác vụ sync lỗi vào bảng `failed_sync_tasks` phục vụ retry/alert.
-   - Đã phát triển script đối soát toàn diện `backend/scripts/reconcile_search.py` (hỗ trợ `--dry-run` và `--fix` tự động đẩy các sản phẩm thiếu lên Meilisearch).
-   - Đã phát triển script backfill tuần tự `backend/scripts/backfill_search.py` (hỗ trợ batching, `--dry-run`, và `--resume` đọc tiến trình từ bảng `backfill_jobs`).
+5. **P1: DLQ, reconciliation và resumable backfill chưa được triển khai.** Model cho `FailedSyncTask`/`BackfillJob` và migration đã có, nhưng không thấy code ghi DLQ, script reconcile/backfill hay test tương ứng. Worker bắt lỗi và trả stats thay vì để job thất bại, nên cơ chế retry/DLQ không được chứng minh. `search_sync.py:10`, `worker.py:247`, `worker.py:254`
 
-6. **P2: Đồng bộ cấu hình môi trường Meilisearch:**
-   - Đã đồng bộ `MEILI_MASTER_KEY` và fallback `masterKey123` trong `docker-compose.yml`, đồng thời truyền đầy đủ `MEILISEARCH_URL` và `MEILISEARCH_MASTER_KEY` sang các container backend và worker.
+6. **P2: Cấu hình Meilisearch mặc định không khớp.** Compose dùng `masterKey` làm fallback, còn backend dùng `masterKey123`; backend cũng không nhận `MEILISEARCH_MASTER_KEY` trong biến môi trường service. Nếu chạy với fallback mặc định, client sẽ không xác thực được. `docker-compose.yml:38`, `config.py:54`
 
-**Kiểm tra và kiểm thử đã thực hiện:**
-- **Backend Tests:** Toàn bộ **85/85 tests passed** (100%), bao gồm cả các test mới cho Search API, Meilisearch Fallback, Recommendation Hybrid & Cold-start, DLQ recording, và Scripts dry-run (`backend/tests/domain/test_search_and_recommendation.py`, `backend/tests/api/test_products_api.py`).
-- **Bảo mật SAST (Bandit):** **0 issues identified** trên 5,115 dòng mã nguồn.
-- **Flake8 Linter:** **0 syntax / import errors**.
-- **Frontend Unit Tests:** `useProductStore.test.ts` passed 4/4 tests.
-- **Frontend Linter:** `npm run lint` passed (0 errors, 0 warnings).
-- **Frontend Production Build:** `npm run build` thành công (0 TypeScript errors, bundle sẵn sàng).
+**Đối chiếu nhanh với PLAN**
+
+- Infrastructure và migration: có phần khung; chưa xác nhận trạng thái live database/Meilisearch.
+- Advanced Search, facets, API, Recommendations và UI recommendations: chưa đạt.
+- Embedding sync: có worker nhưng chưa hoạt động đúng; không có backfill/reconciliation/DLQ thực thi.
+- Cache: hiện là cache cho API CRUD/list cơ bản, chưa có cache search/recommendation.
+- Kiểm thử: thiếu test theo các luồng Search/Recommendation/Backfill/Reconciliation nêu trong PLAN.
+
+**Kiểm tra đã chạy**
+
+- Frontend build: thành công, nhưng bundle JS khoảng `786 kB` và có cảnh báo chunk lớn.
+- Backend domain tests: `4 passed`.
+- Backend API tests: không thu thập được vì môi trường thiếu `aiosmtplib`.
+- Frontend tests: không chạy được vì thiếu `happy-dom`; mình không cài thêm dependency.
+- GitNexus không chạy được do `mise` thiếu shim `gitnexus`; đã trace trực tiếp bằng source và call sites.
+
+Lưu ý worktree: lệnh build đã tạo thay đổi trong `dist`; thao tác khôi phục riêng các artifact đó đã bị bỏ qua, nên hiện chúng vẫn còn thay đổi. Các thay đổi có sẵn trong `.gitignore` và `.openrig` được giữ nguyên.
