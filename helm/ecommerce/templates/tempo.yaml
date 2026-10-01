@@ -1,0 +1,105 @@
+{{- if and .Values.observability.enabled .Values.observability.tempo.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-tempo
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: tempo
+    component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tempo
+  template:
+    metadata:
+      labels:
+        app: tempo
+        component: observability
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: tempo
+        image: grafana/tempo:2.3.1
+        command:
+        - /usr/bin/tempo
+        args:
+        - -config.file=/etc/tempo/user-config.yaml
+        ports:
+        - containerPort: 4317
+          name: otlp-grpc
+        - containerPort: 4318
+          name: otlp-http
+        - containerPort: 3200
+          name: tempo-grpc
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/tempo
+        - name: storage-volume
+          mountPath: /var/tempo
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+  volumes:
+  - name: config-volume
+    configMap:
+      name: {{ include "ecommerce.fullname" . }}-tempo-config
+  - name: storage-volume
+    emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-tempo-config
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: tempo
+    component: observability
+data:
+  user-config.yaml: |
+    server:
+      grpc_host: 0.0.0.0
+      grpc_port: 4317
+      http_host: 0.0.0.0
+      http_port: 4318
+    tempo:
+      tracekey: trace_id
+      search:
+        traces: true
+    dependencies:
+      query:
+        max_age: 720h
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-tempo
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: tempo
+    component: observability
+spec:
+  ports:
+  - name: otlp-grpc
+    port: 4317
+    targetPort: otlp-grpc
+  - name: otlp-http
+    port: 4318
+    targetPort: otlp-http
+  - name: tempo-grpc
+    port: 3200
+    targetPort: tempo-grpc
+  selector:
+    app: tempo
+{{- end }}

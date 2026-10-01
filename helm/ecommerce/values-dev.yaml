@@ -1,0 +1,56 @@
+global:
+  imageRegistry: ""
+  imageTag: dev
+
+backend:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+
+frontend:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+
+worker:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+
+postgres:
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+
+hpa:
+  enabled: false
+
+ingress:
+  enabled: false
+
+observability:
+  loki:
+    enabled: false
+  promtail:
+    enabled: false
+  tempo:
+    enabled: false

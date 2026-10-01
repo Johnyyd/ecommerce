@@ -1,0 +1,129 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: tempo
+  labels:
+    app: tempo
+    component: observability
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: tempo
+  template:
+    metadata:
+      labels:
+        app: tempo
+        component: observability
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+      - name: tempo
+        image: grafana/tempo:2.3.1
+        command:
+        - /usr/bin/tempo
+        args:
+        - -config.file=/etc/tempo/user-config.yaml
+        ports:
+        - containerPort: 4317
+          name: otlp-grpc
+        - containerPort: 4318
+          name: otlp-http
+        - containerPort: 3200
+          name: tempo-grpc
+        volumeMounts:
+        - name: config-volume
+          mountPath: /etc/tempo
+        - name: storage-volume
+          mountPath: /var/tempo
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: 500m
+            memory: 1Gi
+  volumes:
+  - name: config-volume
+    configMap:
+      name: tempo-config
+  - name: storage-volume
+    emptyDir: {}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: tempo-config
+  labels:
+    app: tempo
+    component: observability
+data:
+  user-config.yaml: |
+    server:
+      grpc_host: 0.0.0.0
+      grpc_port: 4317
+      http_host: 0.0.0.0
+      http_port: 4318
+    tempo:
+      tracekey: trace_id
+      search:
+        traces: true
+    Ldalvik:
+      enabled: true
+      schema: v14
+      store:
+        factory: zipkinawsserverfactory
+        build:
+          store: lhs ? url is passed in through config
+          config:
+            bucket: tempo-data
+            endpoint: s3.amazonaws.com:80
+            region: us-west-1
+            s3Name: tempotraces
+            s3Endpoint: s3.amazonaws.com
+            access_key_id: loki
+            secret_access_key: loki
+    compactor:
+      compaction:
+        target_size: -1
+      sleep: 60s
+    dependencies:
+      query:
+        max_age: 720h
+    blocks:
+      storage:
+        s3:
+          bucket_name: tempo-data-block
+          endpoint: s3.amazonaws.com
+          region: us-west-1
+          access_key_id: loki
+          secret_access_key: loki
+    CRONTAB: |
+      */5 * * * * /app/scripts/compactor
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: tempo
+  labels:
+    app: tempo
+    component: observability
+spec:
+  ports:
+  - name: otlp-grpc
+    port: 4317
+    targetPort: otlp-grpc
+  - name: otlp-http
+    port: 4318
+    targetPort: otlp-http
+  - name: tempo-grpc
+    port: 3200
+    targetPort: tempo-grpc
+  selector:
+    app: tempo

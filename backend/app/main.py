@@ -5,6 +5,7 @@ from fastapi import FastAPI
 from app.core.config import settings
 from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup, reviews, async_jobs, shipping
 from app.core.logging import setup_logging
+from app.core.telemetry import init_telemetry, tracing_middleware
 from prometheus_fastapi_instrumentator import Instrumentator
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
@@ -13,6 +14,9 @@ import logging
 
 setup_logging()
 logger = logging.getLogger("app.main")
+
+# Initialize OpenTelemetry
+tracer_provider = init_telemetry()
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -25,15 +29,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(
     title=settings.PROJECT_NAME,
-    # "Vô hiệu hóa Swagger UI (openapi_url=None) khi ở môi trường Production."
     openapi_url=None if settings.ENVIRONMENT == "production" else "/openapi.json",
     lifespan=lifespan
 )
 
+# Add OpenTelemetry tracing middleware
+app.middleware("http")(tracing_middleware)
+
 # Prometheus metrics instrumentation
 Instrumentator().instrument(app).expose(app)
 
-# "Loại bỏ CORSMiddleware ở FastAPI trong môi trường Production để Gateway/Nginx xử lý Preflight OPTIONS."
 if settings.ENVIRONMENT != "production":
     from fastapi.middleware.cors import CORSMiddleware
     app.add_middleware(
@@ -73,4 +78,3 @@ app.include_router(async_jobs.router, prefix="/api/v1", tags=["async-jobs"])
 @app.get("/health")
 async def health_check():
     return {"status": "ok"}
-

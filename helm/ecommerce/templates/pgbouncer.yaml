@@ -1,0 +1,51 @@
+{{- if .Values.pgbouncer.enabled -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-pgbouncer
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: pgbouncer
+spec:
+  replicas: {{ .Values.pgbouncer.replicaCount }}
+  revisionHistoryLimit: 2
+  selector:
+    matchLabels:
+      {{- include "ecommerce.selectorLabels" . | nindent 6 }}
+      app: pgbouncer
+  template:
+    metadata:
+      labels:
+        {{- include "ecommerce.selectorLabels" . | nindent 8 }}
+        app: pgbouncer
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: pgbouncer
+          image: "{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}"
+          envFrom:
+            - secretRef:
+                name: db-secrets
+          ports:
+            - containerPort: {{ .Values.pgbouncer.service.port }}
+          resources:
+            {{- toYaml .Values.pgbouncer.resources | nindent 12 }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-pgbouncer
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: pgbouncer
+spec:
+  ports:
+    - port: {{ .Values.pgbouncer.service.port }}
+      targetPort: {{ .Values.pgbouncer.service.port }}
+  selector:
+    {{- include "ecommerce.selectorLabels" . | nindent 4 }}
+    app: pgbouncer
+{{- end }}

@@ -1,0 +1,155 @@
+task_id: task-3-helm-charts
+title: "Helm Charts Standardization & Multi-Environment Configuration"
+phase: 1
+priority: P1
+status: READY
+assigned_to: devops.devops_engineer
+reviewed_by: devops.devops_architect
+estimated_effort: 3 days
+
+description: |
+  Convert all existing static K8s manifests in k8s/ to a standardized Helm Chart
+  (helm/ecommerce/) with multi-environment support via values files.
+
+requirements:
+  - Create helm/ecommerce/Chart.yaml with metadata
+  - Create helm/ecommerce/values.yaml (base configuration)
+  - Create helm/ecommerce/values-dev.yaml (dev: 1 replica, minimal resources)
+  - Create helm/ecommerce/values-prod.yaml (prod: HA, HPA, TLS ingress)
+  - Convert all k8s/*.yaml to parameterized templates in helm/ecommerce/templates/
+  - Include _helpers.tpl for common template functions
+
+files_to_create:
+  - helm/ecommerce/Chart.yaml
+  - helm/ecommerce/values.yaml
+  - helm/ecommerce/values-dev.yaml
+  - helm/ecommerce/values-prod.yaml
+  - helm/ecommerce/templates/backend.yaml
+  - helm/ecommerce/templates/frontend.yaml
+  - helm/ecommerce/templates/worker.yaml
+  - helm/ecommerce/templates/postgres.yaml
+  - helm/ecommerce/templates/redis.yaml
+  - helm/ecommerce/templates/pgbouncer.yaml
+  - helm/ecommerce/templates/ingress.yaml
+  - helm/ecommerce/templates/_helpers.tpl
+
+files_to_reference:
+  - k8s/backend.yaml (primary reference for all patterns)
+  - k8s/frontend.yaml
+  - k8s/worker.yaml
+  - k8s/postgres.yaml
+  - k8s/redis.yaml
+  - k8s/pgbouncer.yaml
+  - k8s/ingress.yaml
+  - k8s/hpa/backend-hpa.yaml (for HPA template)
+  - k8s/cronjobs/reconcile-cronjob.yaml (for CronJob template)
+  - k8s/security/network-policy.yaml (for NetworkPolicy template)
+
+acceptance_criteria:
+  - helm lint ./helm/ecommerce → 0 errors, 0 warnings
+  - helm template ecommerce ./helm/ecommerce -f ./helm/ecommerce/values-dev.yaml → valid manifests
+  - helm template ecommerce ./helm/ecommerce -f ./helm/ecommerce/values-prod.yaml → valid manifests with HA settings
+  - All original k8s/ manifests reproducible from templates
+  - Parameters for: image tags, replicas, resources, env vars, ingress hosts
+
+parameterization_map:
+  images:
+    backend: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+    frontend: "{{ .Values.frontend.image.repository }}:{{ .Values.frontend.image.tag }}"
+    worker: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+    postgres: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+    redis: "{{ .Values.redis.image.repository }}:{{ .Values.redis.image.tag }}"
+    pgbouncer: "{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}"
+  
+  replicas:
+    backend: "{{ .Values.backend.replicaCount }}"
+    frontend: "{{ .Values.frontend.replicaCount }}"
+    worker: "{{ .Values.worker.replicaCount }}"
+    pgbouncer: "{{ .Values.pgbouncer.replicaCount }}"
+  
+  resources:
+    backend:
+      requests:
+        cpu: "{{ .Values.backend.resources.requests.cpu }}"
+        memory: "{{ .Values.backend.resources.requests.memory }}"
+      limits:
+        cpu: "{{ .Values.backend.resources.limits.cpu }}"
+        memory: "{{ .Values.backend.resources.limits.memory }}"
+  
+  env_vars: All env vars from k8s/manifests as templated values
+
+security_context: Follow k8s/backend.yaml:18-24
+  runAsNonRoot: true
+  readOnlyRootFilesystem: true
+  drop: [ALL]
+  seccompProfile: RuntimeDefault
+  enableServiceLinks: false
+
+validation_commands:
+  - helm lint ./helm/ecommerce
+  - helm template ecommerce ./helm/ecommerce -f ./helm/ecommerce/values-dev.yaml
+  - helm template ecommerce ./helm/ecommerce -f ./helm/ecommerce/values-prod.yaml
+  - diff <(helm template ...) <(cat k8s/*.yaml)  # Should be minimal
+
+dependencies: []
+parallel_with: ["task-1-loki-promtail"]
+
+notes: |
+  Structure values.yaml with clear hierarchy:
+  
+  global:
+    imagePullSecrets: []
+    labels: {}
+  
+  backend:
+    replicaCount: 2
+    image:
+      repository: ecommerce/backend
+      tag: latest
+    resources:
+      requests:
+        cpu: 100m
+        memory: 256Mi
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    env: {}
+    hpa:
+      enabled: false
+      minReplicas: 2
+      maxReplicas: 8
+  
+  frontend:
+    replicaCount: 2
+    image:
+      repository: ecommerce/frontend
+      tag: latest
+    resources: ...
+  
+  postgres:
+    image: ...
+    persistence:
+      size: 10Gi
+  
+  redis:
+    image: ...
+    persistence:
+      size: 2Gi
+  
+  pgbouncer:
+    replicaCount: 2
+    image: ...
+  
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: ecommerce.local
+        paths: ...
+    tls: []
+  
+  observability:
+    loki:
+      enabled: true
+    tempo:
+      enabled: true
