@@ -7,6 +7,7 @@ import { Product } from "@/store/useProductStore"
 import { Button } from "@/components/ui/Button"
 import { Navbar } from "@/components/layout/Navbar"
 import { ProductReviews } from "@/components/reviews/ProductReviews"
+import { ProductRecommendations } from "@/components/products/ProductRecommendations"
 
 export function ProductDetail({ params: propsParams }: { params?: { id: string } }) {
   const routerParams = useParams()
@@ -128,6 +129,9 @@ export function ProductDetail({ params: propsParams }: { params?: { id: string }
                 </div>
               </motion.div>
             </div>
+
+            {/* Pillar 4: AI & Collaborative Recommendations */}
+            <ProductRecommendations productId={product.id} />
 
             {/* Pillar 2: Verified Customer Reviews */}
             <ProductReviews productId={product.id} />

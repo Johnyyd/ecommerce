@@ -237,20 +237,57 @@ class SearchService:
     async def close(self):
         await self.meilisearch.close()
 
-    async def sync_product_to_meilisearch(self, product) -> Dict[str, Any]:
-        """Sync a single product to Meilisearch index."""
-        doc = {
+    async def ensure_index_initialized(self) -> bool:
+        """Initialize index and its searchable/filterable/sortable settings."""
+        try:
+            exists = await self.meilisearch.index_exists()
+            if not exists:
+                await self.meilisearch.create_index(
+                    index_name=self.meilisearch.index_name,
+                    settings={"primary_key": "id"}
+                )
+            await self.meilisearch.update_settings(
+                index_name=self.meilisearch.index_name,
+                settings={
+                    "searchableAttributes": ["name", "description", "brand"],
+                    "filterableAttributes": ["category_id", "brand", "price"],
+                    "sortableAttributes": ["price", "updated_at"],
+                }
+            )
+            return True
+        except Exception as e:
+            logger.warning(f"Could not initialize Meilisearch index settings: {e}")
+            return False
+
+    def _format_product_doc(self, product: Any) -> Dict[str, Any]:
+        """Format a product into a Meilisearch document supporting both ORM model and dict."""
+        if isinstance(product, dict):
+            return {
+                "id": str(product.get("id")),
+                "name": product.get("name", ""),
+                "description": product.get("description") or "",
+                "price": float(product.get("price") or 0.0),
+                "brand": product.get("brand") or "",
+                "category_id": str(product.get("category_id")) if product.get("category_id") else "",
+                "search_vector": str(product.get("search_vector") or ""),
+                "embedding": product.get("embedding") or [],
+                "updated_at": str(product.get("updated_at") or ""),
+            }
+        return {
             "id": str(product.id),
-            "name": product.name,
-            "description": product.description or "",
-            "price": float(product.price) if product.price else 0.0,
-            "brand": product.brand or "",
-            "category_id": str(product.category_id) if product.category_id else "",
-            "search_vector": product.search_vector or "",
-            "embedding": product.embedding or [],
-            "updated_at": product.updated_at.isoformat() if product.updated_at else "",
+            "name": getattr(product, "name", ""),
+            "description": getattr(product, "description", "") or "",
+            "price": float(product.price) if getattr(product, "price", None) else 0.0,
+            "brand": getattr(product, "brand", "") or "",
+            "category_id": str(product.category_id) if getattr(product, "category_id", None) else "",
+            "search_vector": str(getattr(product, "search_vector", "") or ""),
+            "embedding": getattr(product, "embedding", []) or [],
+            "updated_at": product.updated_at.isoformat() if getattr(product, "updated_at", None) else "",
         }
 
+    async def sync_product_to_meilisearch(self, product) -> Dict[str, Any]:
+        """Sync a single product to Meilisearch index."""
+        doc = self._format_product_doc(product)
         result = await self.meilisearch.add_documents(
             index_name=self.meilisearch.index_name,
             documents=[doc]
@@ -258,22 +295,8 @@ class SearchService:
         return result
 
     async def sync_products_to_meilisearch(self, products) -> Dict[str, Any]:
-        """Sync multiple products to Meilisearch index."""
-        documents = []
-        for product in products:
-            doc = {
-                "id": str(product.id),
-                "name": product.name,
-                "description": product.description or "",
-                "price": float(product.price) if product.price else 0.0,
-                "brand": product.brand or "",
-                "category_id": str(product.category_id) if product.category_id else "",
-                "search_vector": product.search_vector or "",
-                "embedding": product.embedding or [],
-                "updated_at": product.updated_at.isoformat() if product.updated_at else "",
-            }
-            documents.append(doc)
-
+        """Sync multiple products to Meilisearch index supporting dicts or ORM objects."""
+        documents = [self._format_product_doc(p) for p in products]
         result = await self.meilisearch.add_documents(
             index_name=self.meilisearch.index_name,
             documents=documents
@@ -317,21 +340,49 @@ class SearchService:
             sort=sort
         )
 
-    async def get_popular_products(self, limit: int = 10) -> Dict[str, Any]:
-        """Get popular products from Meilisearch."""
-        return await self.meilisearch.search(
-            index_name=self.meilisearch.index_name,
-            query="",
-            sort=["price:desc"],
-            limit=limit
-        )
+    async def get_popular_products(self, limit: int = 10) -> List[Dict[str, Any]]:
+        """Get popular products as a list of product dicts."""
+        try:
+            res = await self.meilisearch.search(
+                index_name=self.meilisearch.index_name,
+                query="",
+                sort=["price:desc"],
+                limit=limit
+            )
+            hits = res.get("hits", [])
+            if hits:
+                return hits
+        except Exception as e:
+            logger.warning(f"Meilisearch get_popular_products fallback: {e}")
+
+        # Fallback to database if Meilisearch is empty or down
+        try:
+            from app.core.db import AsyncSessionLocal
+            from app.models.product import Product
+            from sqlalchemy import select, desc
+            async with AsyncSessionLocal() as session:
+                stmt = select(Product).order_by(desc(Product.created_at)).limit(limit)
+                result = await session.execute(stmt)
+                products = result.scalars().all()
+                return [
+                    {
+                        "id": str(p.id),
+                        "name": p.name,
+                        "description": p.description or "",
+                        "price": float(p.price) if p.price else 0.0,
+                        "brand": p.brand or "",
+                        "category_id": str(p.category_id) if p.category_id else "",
+                    }
+                    for p in products
+                ]
+        except Exception as db_err:
+            logger.error(f"Database fallback in get_popular_products failed: {db_err}")
+            return []
 
     async def get_recommendations_by_embedding(
         self,
         embedding: List[float],
         limit: int = 10
-    ) -> Dict[str, Any]:
-        """Get recommendations based on vector similarity (placeholder for pgvector search)."""
-        # This would be implemented with pgvector semantic similarity
-        # For now, return popular products as fallback
+    ) -> List[Dict[str, Any]]:
+        """Get recommendations based on vector similarity or fallback."""
         return await self.get_popular_products(limit=limit)

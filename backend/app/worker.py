@@ -235,6 +235,15 @@ async def sync_to_meilisearch_task(ctx: Any, batch_size: int = 100) -> Dict[str,
                 except Exception as e:
                     logger.error(f"Error syncing batch {batch_num} to Meilisearch: {e}")
                     stats["failed"] += len(batch)
+                    from app.services.sync_service import record_failed_sync
+                    for p in batch:
+                        pid = p.get("id") if isinstance(p, dict) else getattr(p, "id", None)
+                        if pid:
+                            await record_failed_sync(
+                                product_id=pid,
+                                error=str(e),
+                                error_type="worker_batch_sync_failure"
+                            )
 
                 # Small delay between batches
                 if i + batch_size < len(products):
@@ -327,6 +336,15 @@ async def incremental_sync_task(ctx: Any) -> Dict[str, Any]:
                 except Exception as e:
                     logger.error(f"Error in incremental sync: {e}")
                     stats["failed"] = len(products)
+                    from app.services.sync_service import record_failed_sync
+                    for p in products:
+                        pid = p.get("id") if isinstance(p, dict) else getattr(p, "id", None)
+                        if pid:
+                            await record_failed_sync(
+                                product_id=pid,
+                                error=str(e),
+                                error_type="worker_incremental_sync_failure"
+                            )
 
             await search_service.close()
             break  # Exit the async generator loop

@@ -28,6 +28,7 @@ interface ProductState {
   total: number
   limit: number
   filters: FilterOptions
+  facets: Record<string, Record<string, number>>
   fetchProducts: (page?: number) => Promise<void>
   setPage: (page: number) => void
   setFilters: (filters: Partial<FilterOptions>) => void
@@ -42,12 +43,13 @@ export const useProductStore = create<ProductState>((set, get) => ({
   total: 0,
   limit: 12,
   filters: {},
+  facets: {},
   setPage: (page: number) => set({ page }),
   setFilters: (newFilters) => set((state) => ({ 
     filters: { ...state.filters, ...newFilters }, 
     page: 1 
   })),
-  clearFilters: () => set({ filters: {}, page: 1 }),
+  clearFilters: () => set({ filters: {}, facets: {}, page: 1 }),
   fetchProducts: async (pageArg?: number) => {
     set({ isLoading: true, error: null })
     try {
@@ -67,7 +69,14 @@ export const useProductStore = create<ProductState>((set, get) => ({
       if (filters.min_price !== undefined) queryParams.append('min_price', filters.min_price.toString());
       if (filters.max_price !== undefined) queryParams.append('max_price', filters.max_price.toString());
 
-      const response = await fetch(`/api/v1/products/?${queryParams.toString()}`)
+      // Use advanced search endpoint if search query is provided
+      let endpoint = '/api/v1/products/';
+      if (filters.q && filters.q.trim()) {
+        endpoint = '/api/v1/products/search';
+        queryParams.append('facets', 'category_id,brand');
+      }
+
+      const response = await fetch(`${endpoint}?${queryParams.toString()}`)
       if (!response.ok) {
         throw new Error('Failed to fetch products')
       }
@@ -75,6 +84,7 @@ export const useProductStore = create<ProductState>((set, get) => ({
       set({ 
         products: Array.isArray(data) ? data : data.items || [], 
         total: typeof data?.total === 'number' ? data.total : (Array.isArray(data) ? data.length : 0), 
+        facets: data?.facets || {},
         isLoading: false, 
         page 
       })
