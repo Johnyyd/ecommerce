@@ -35,7 +35,7 @@ services:
       - meilisearch_data:/data.ms
     environment:
       MEILI_NO_ANALYTICS: "true"
-      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-masterKey}
+      MEILI_MASTER_KEY: ${MEILISEARCH_MASTER_KEY:-masterKey123}
     ports:
       - "7700:7700"
     healthcheck:
@@ -83,6 +83,8 @@ services:
       - WEB_CONCURRENCY=4
       - EMBEDDING_API_URL=${EMBEDDING_API_URL:-http://host.docker.internal:3001/v1}
       - EMBEDDING_API_KEY=${EMBEDDING_API_KEY}
+      - MEILISEARCH_URL=${MEILISEARCH_URL:-http://meilisearch:7700}
+      - MEILISEARCH_MASTER_KEY=${MEILISEARCH_MASTER_KEY:-masterKey123}
     ports:
       - "8000:8000"
     depends_on:
@@ -174,6 +176,8 @@ services:
       - SECRET_KEY=${SECRET_KEY}
       - EMBEDDING_API_URL=${EMBEDDING_API_URL:-http://host.docker.internal:3001/v1}
       - EMBEDDING_API_KEY=${EMBEDDING_API_KEY}
+      - MEILISEARCH_URL=${MEILISEARCH_URL:-http://meilisearch:7700}
+      - MEILISEARCH_MASTER_KEY=${MEILISEARCH_MASTER_KEY:-masterKey123}
     depends_on:
       pgbouncer:
         condition: service_healthy

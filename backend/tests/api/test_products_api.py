@@ -134,3 +134,96 @@ async def test_list_products_low_stock_api(mock_redis):
 
     app.dependency_overrides.clear()
 
+
+@pytest.mark.asyncio
+async def test_search_products_api_meilisearch(mock_redis):
+    from app.api.v1.endpoints.products import get_search_service
+
+    mock_search = AsyncMock()
+    mock_search.search_products.return_value = {
+        "hits": [{"id": "p1", "name": "Phone Case", "price": 10.0}],
+        "estimatedTotalHits": 1,
+        "facetDistribution": {"brand": {"Apple": 1}}
+    }
+
+    app.dependency_overrides[get_search_service] = lambda: mock_search
+    app.dependency_overrides[get_redis_client] = lambda: mock_redis
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/v1/products/search?q=phone&facets=brand")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["name"] == "Phone Case"
+    assert "brand" in data["facets"]
+    mock_search.search_products.assert_called_once()
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_search_products_api_fallback_to_postgres(mock_redis):
+    from app.api.v1.endpoints.products import get_search_service
+
+    mock_search = AsyncMock()
+    mock_search.search_products.side_effect = Exception("Meilisearch unavailable")
+
+    mock_service = AsyncMock()
+    mock_product = Product(
+        id=generate_uuidv7(),
+        name="Fallback Product",
+        description="From Postgres",
+        price=20.00,
+        stock_quantity=10,
+        version=1
+    )
+    mock_service.get_products.return_value = [mock_product]
+    mock_service.get_products_count.return_value = 1
+
+    app.dependency_overrides[get_search_service] = lambda: mock_search
+    app.dependency_overrides[get_product_service] = lambda: mock_service
+    app.dependency_overrides[get_redis_client] = lambda: mock_redis
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get("/api/v1/products/search?q=fallback")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert data["total"] == 1
+    assert len(data["items"]) == 1
+    assert data["items"][0]["name"] == "Fallback Product"
+
+    app.dependency_overrides.clear()
+
+
+@pytest.mark.asyncio
+async def test_product_recommendations_api(mock_redis):
+    from app.api.v1.endpoints.products import get_recommendation_service
+
+    product_id = generate_uuidv7()
+    mock_rec = AsyncMock()
+    mock_rec.get_recommendations.return_value = [
+        {"id": str(generate_uuidv7()), "name": "Recommended Shoes", "price": 49.99}
+    ]
+
+    app.dependency_overrides[get_recommendation_service] = lambda: mock_rec
+    app.dependency_overrides[get_redis_client] = lambda: mock_redis
+
+    transport = ASGITransport(app=app)
+    async with AsyncClient(transport=transport, base_url="http://test") as ac:
+        response = await ac.get(f"/api/v1/products/{product_id}/recommendations?limit=4")
+
+    assert response.status_code == 200
+    data = response.json()
+    assert isinstance(data, list)
+    assert len(data) == 1
+    assert data[0]["name"] == "Recommended Shoes"
+    mock_rec.get_recommendations.assert_called_with(product_id=product_id, limit=4)
+
+    app.dependency_overrides.clear()
+
+
