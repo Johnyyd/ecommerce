@@ -12,6 +12,8 @@ Quick reference for documentation writers.
 | `tracing/` | Tempo & OpenTelemetry guides |
 | `runbooks/` | Operational runbooks |
 | `helm/` | Helm chart documentation |
+| `ci-cd/` | CI/CD & GitOps documentation |
+| `architecture/` | Architecture Decision Records (ADRs) |
 
 ---
 
@@ -43,6 +45,10 @@ Issues
 - [Loki Setup](logging/loki-setup.md)
 - [Tempo Setup](tracing/tempo-setup.md)
 - [Helm Guide](runbooks/helm-deployment-guide.md)
+- [Chart Structure](helm/chart-structure.md)
+- [Values Configuration](helm/values-configuration.md)
+- [Pipeline Overview](ci-cd/pipeline-overview.md)
+- [ArgoCD GitOps](ci-cd/argocd-gitops.md)
 
 ---
 

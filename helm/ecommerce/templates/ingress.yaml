@@ -23,9 +23,9 @@ spec:
             pathType: {{ .pathType }}
             backend:
               service:
-                name: {{ include "ecommerce.fullname" . }}-backend
+                name: {{ include "ecommerce.fullname" $ }}-backend
                 port:
-                  number: {{ .Values.backend.service.port }}
+                  number: {{ $.Values.backend.service.port }}
           {{- end }}
     {{- end }}
 {{- end }}

@@ -67,6 +67,15 @@ This documentation covers **Trụ cột 5: DevOps, Bảo mật & Khả năng Qua
 - [CI/CD Pipeline Usage](runbooks/cicd-pipeline-usage.md)
 - [ArgoCD GitOps Workflow](runbooks/argocd-gitops-workflow.md)
 
+### Runbooks
+- [Loki/Promtail Troubleshooting](runbooks/loki-promtail-troubleshooting.md)
+- [Tempo Trace Analysis](runbooks/tempo-trace-analysis.md)
+- [Helm Chart Deployment](runbooks/helm-deployment-guide.md)
+- [HPA Tuning Guide](runbooks/hpa-tuning.md)
+- [NetworkPolicy Management](runbooks/networkpolicy-management.md)
+- [CI/CD Pipeline Usage](runbooks/cicd-pipeline-usage.md)
+- [ArgoCD GitOps Workflow](runbooks/argocd-gitops-workflow.md)
+
 ---
 
 ## 🔗 Related Resources

@@ -1,0 +1,153 @@
+global:
+  imageRegistry: ""
+  imageRepository: ecommerce
+  imageTag: latest
+  pullPolicy: IfNotPresent
+
+backend:
+  enabled: true
+  replicaCount: 3
+  image:
+    repository: ecommerce-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 8000
+  resources:
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+  env:
+    POSTGRES_SERVER: pgbouncer
+    POSTGRES_PORT: "6432"
+    REDIS_HOST: redis
+    REDIS_PORT: "6379"
+    WEB_CONCURRENCY: "5"
+    BACKUP_DIR: "/backups"
+  securityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 102
+    seccompProfile:
+      type: RuntimeDefault
+
+frontend:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: ecommerce-frontend
+    tag: latest
+    pullPolicy: IfNotPresent
+  service:
+    type: ClusterIP
+    port: 3000
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+
+worker:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: ecommerce-worker
+    tag: latest
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: "1"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+
+postgres:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: postgres
+    tag: "15-alpine"
+  service:
+    port: 5432
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+
+redis:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: redis
+    tag: "7-alpine"
+  service:
+    port: 6379
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+
+pgbouncer:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: bitnami/pgbouncer
+    tag: "1.21"
+  service:
+    port: 6432
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
+
+ingress:
+  enabled: true
+  className: nginx
+  hosts:
+    - host: localhost
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+hpa:
+  enabled: true
+  minReplicas: 3
+  maxReplicas: 8
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+networkPolicy:
+  enabled: true
+
+observability:
+  prometheus:
+    enabled: true
+  enabled: true
+  loki:
+    enabled: true
+  promtail:
+    enabled: true
+  tempo:
+  grafana:
+    enabled: true
+    enabled: true
+
+fullnameOverride: "ecommerce"

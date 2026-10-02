@@ -73,7 +73,7 @@ data:
     server:
       http_listen_port: 3100
       log_level: info
-   Ingester:
+    ingester:
       lifecycler:
         address: self
         ring:
@@ -85,7 +85,7 @@ data:
       chunk_target_size: 1048576
       chunk_retain_period: 1m
       max_transfer_retries: 0
-    SchemaConfig:
+    schema_config:
       configs:
       - from: 2020-10-24
         store: boltdb-shipper
@@ -96,7 +96,7 @@ data:
           period: 24h
       delete:
         enabled: false
-    StorageConfig:
+    storage_config:
       bolt:
         directory: /var/loki/index
       boltdb_shipper:
@@ -105,18 +105,18 @@ data:
         shared_store: filesystem
       filesystem:
         directory: /var/loki/chunks
-    Compactor:
+    compactor:
       working_directory: /var/loki/compactor
       delete_request_timeout: 1m
       delete_worker_count: 150
-    LimitsConfig:
+    limits_config:
       enforce_metric_name: false
       reject_old_samples: true
       reject_old_samples_max_age: 168h
-    Chunking:
+    chunking:
       max_chunk_age: 1h
       chunk_target_size: 1048576
-    TableStore:
+    table_store:
       schema_state_version: 11
 ---
 apiVersion: v1
