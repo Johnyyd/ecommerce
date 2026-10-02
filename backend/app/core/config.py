@@ -21,16 +21,16 @@ class Settings(BaseSettings):
             return f"redis://:{self.REDIS_PASSWORD}@{self.REDIS_HOST}:{self.REDIS_PORT}/0"
         return f"redis://{self.REDIS_HOST}:{self.REDIS_PORT}/0"
 
-    SECRET_KEY: str = "super_secret_key_change_me_in_production"
+    SECRET_KEY: str
 
     # PayOS / VietQR Open Banking Credentials
-    PAYOS_CLIENT_ID: str = "payos_client_id_demo"
-    PAYOS_API_KEY: str = "payos_api_key_demo"
-    PAYOS_CHECKSUM_KEY: str = "payos_checksum_key_secret_2026"
+    PAYOS_CLIENT_ID: str
+    PAYOS_API_KEY: str
+    PAYOS_CHECKSUM_KEY: str
     VIETQR_BANK_ID: str = "vietinbank"  # VietinBank BIN 970415 or slug
     VIETQR_BANK_NAME: str = "Vietinbank"
-    VIETQR_ACCOUNT_NO: str = "100879630629"
-    VIETQR_ACCOUNT_NAME: str = "ECOMMERCE ENTERPRISE"
+    VIETQR_ACCOUNT_NO: str
+    VIETQR_ACCOUNT_NAME: str
 
     # Pillar 3: Async Workers, Media & Reporting settings
     FRONTEND_URL: str = "http://localhost:3000"
@@ -44,18 +44,18 @@ class Settings(BaseSettings):
 
     # Logistics / Shipping (Giao Hàng Nhanh - GHN API v2)
     GHN_API_URL: str = "https://dev-online-gateway.ghn.vn/shiip/public-api"
-    GHN_API_TOKEN: str = "ghn_sandbox_token_demo"
-    GHN_SHOP_ID: int = 884920
-    GHN_FROM_DISTRICT_ID: int = 1442  # e.g., District 1, Ho Chi Minh City
-    GHN_FROM_WARD_CODE: str = "20101"
+    GHN_API_TOKEN: str
+    GHN_SHOP_ID: int
+    GHN_FROM_DISTRICT_ID: int
+    GHN_FROM_WARD_CODE: str
 
     # Meilisearch Configuration
     MEILISEARCH_URL: str = "http://meilisearch:7700"
-    MEILISEARCH_MASTER_KEY: str = "masterKey123"
+    MEILISEARCH_MASTER_KEY: str
 
     # Embedding API Configuration (Free LLM API)
     EMBEDDING_API_URL: str = "http://host.docker.internal:3001/v1"
-    EMBEDDING_API_KEY: str = ""
+    EMBEDDING_API_KEY: str
 
     model_config = SettingsConfigDict(env_file=(".env", "backend/.env"), env_file_encoding="utf-8", extra="ignore")
 

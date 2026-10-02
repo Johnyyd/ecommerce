@@ -1,13 +1,14 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: db-redis-isolation
+  name: pgbouncer-isolation
   labels:
-    app: db-redis-isolation
+    app: pgbouncer-isolation
     component: security
 spec:
   podSelector:
-    matchLabels: {}
+    matchLabels:
+      app: pgbouncer
   policyTypes:
   - Ingress
   - Egress
@@ -19,8 +20,6 @@ spec:
     ports:
     - protocol: TCP
       port: 6432
-    - protocol: TCP
-      port: 5432
   - from:
     - podSelector:
         matchLabels:
@@ -28,34 +27,66 @@ spec:
     ports:
     - protocol: TCP
       port: 6432
-    - protocol: TCP
-      port: 5432
-  - from:
-    - podSelector:
-        matchLabels:
-          app: backend
-    ports:
-    - protocol: TCP
-      port: 6379
-  - from:
-    - podSelector:
-        matchLabels:
-          app: worker
-    ports:
-    - protocol: TCP
-      port: 6379
   egress:
   - to:
     - podSelector:
         matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: postgres-isolation
+  labels:
+    app: postgres-isolation
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: pgbouncer
+    ports:
+    - protocol: TCP
+      port: 5432
+  egress: []
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: redis-isolation
+  labels:
+    app: redis-isolation
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
           app: backend
     ports:
     - protocol: TCP
-      port: 8000
-  - to:
+      port: 6379
+  - from:
     - podSelector:
         matchLabels:
           app: worker
     ports:
     - protocol: TCP
-      port: 8000
+      port: 6379
+  egress: []

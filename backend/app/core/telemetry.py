@@ -4,6 +4,7 @@ import os
 from typing import Optional
 
 from opentelemetry import trace
+from opentelemetry.propagate import extract
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
@@ -85,14 +86,10 @@ async def tracing_middleware(request: Request, call_next):
     Custom middleware to add trace ID to response headers and log context.
     """
     tracer = trace.get_tracer(__name__)
-    
-    # Get or create trace context
-    trace_header = request.headers.get("traceparent")
-    if trace_header:
-        # Extract trace context from incoming headers
-        ctx = trace.get_current_span().get_span_context()
-    else:
-        ctx = None
+
+    # Get or create trace context from incoming headers
+    carrier = {"traceparent": request.headers.get("traceparent", "")}
+    ctx = extract(carrier) if carrier["traceparent"] else None
 
     with tracer.start_as_current_span(
         f"{request.method} {request.url.path}",
@@ -105,17 +102,17 @@ async def tracing_middleware(request: Request, call_next):
     ) as span:
         # Add trace ID to response headers
         trace_id = format(span.get_span_context().trace_id, "032x")
-        
+
         response = await call_next(request)
-        
+
         # Add trace context to response
         response.headers["X-Trace-ID"] = trace_id
         if span.get_span_context().span_id:
             response.headers["X-Span-ID"] = format(span.get_span_context().span_id, "016x")
-        
+
         # Record HTTP status
         span.set_attribute("http.status_code", response.status_code)
-        
+
         return response
 
 

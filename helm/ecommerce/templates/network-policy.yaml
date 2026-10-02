@@ -2,10 +2,49 @@
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: {{ include "ecommerce.fullname" . }}-db-redis-isolation
+  name: {{ include "ecommerce.fullname" . }}-pgbouncer-isolation
   labels:
     {{- include "ecommerce.labels" . | nindent 4 }}
-    app: db-redis-isolation
+    app: pgbouncer-isolation
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: pgbouncer
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backend
+    ports:
+    - protocol: TCP
+      port: 6432
+  - from:
+    - podSelector:
+        matchLabels:
+          app: worker
+    ports:
+    - protocol: TCP
+      port: 6432
+  egress:
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-postgres-isolation
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: postgres-isolation
     component: security
 spec:
   podSelector:
@@ -18,36 +57,11 @@ spec:
   - from:
     - podSelector:
         matchLabels:
-          app: backend
+          app: pgbouncer
     ports:
-    - protocol: TCP
-      port: 6432
     - protocol: TCP
       port: 5432
-  - from:
-    - podSelector:
-        matchLabels:
-          app: worker
-    ports:
-    - protocol: TCP
-      port: 6432
-    - protocol: TCP
-      port: 5432
-  egress:
-  - to:
-    - podSelector:
-        matchLabels:
-          app: backend
-    ports:
-    - protocol: TCP
-      port: 8000
-  - to:
-    - podSelector:
-        matchLabels:
-          app: worker
-    ports:
-    - protocol: TCP
-      port: 8000
+  egress: []
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -79,19 +93,5 @@ spec:
     ports:
     - protocol: TCP
       port: 6379
-  egress:
-  - to:
-    - podSelector:
-        matchLabels:
-          app: backend
-    ports:
-    - protocol: TCP
-      port: 8000
-  - to:
-    - podSelector:
-        matchLabels:
-          app: worker
-    ports:
-    - protocol: TCP
-      port: 8000
+  egress: []
 {{- end }}
