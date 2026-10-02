@@ -74,21 +74,6 @@ data:
       tracekey: trace_id
       search:
         traces: true
-    Ldalvik:
-      enabled: true
-      schema: v14
-      store:
-        factory: zipkinawsserverfactory
-        build:
-          store: lhs ? url is passed in through config
-          config:
-            bucket: tempo-data
-            endpoint: s3.amazonaws.com:80
-            region: us-west-1
-            s3Name: tempotraces
-            s3Endpoint: s3.amazonaws.com
-            access_key_id: loki
-            secret_access_key: loki
     compactor:
       compaction:
         target_size: -1
@@ -102,8 +87,7 @@ data:
           bucket_name: tempo-data-block
           endpoint: s3.amazonaws.com
           region: us-west-1
-          access_key_id: loki
-          secret_access_key: loki
+          bucket: tempo-data
     CRONTAB: |
       */5 * * * * /app/scripts/compactor
 ---

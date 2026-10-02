@@ -3,14 +3,14 @@ Unit tests for the reconciliation script.
 """
 import pytest
 from unittest.mock import AsyncMock, patch, MagicMock
-from backend.scripts.reconcile_search import reconcile
+from scripts.reconcile_search import reconcile
 
 
 @pytest.mark.asyncio
 async def test_reconcile_dry_run():
     """Test reconciliation in dry-run mode."""
-    with patch('backend.scripts.reconcile_search.SearchService') as mock_search_service_class, \
-         patch('backend.scripts.reconcile_search.AsyncSessionLocal') as mock_session_local:
+    with patch('scripts.reconcile_search.SearchService') as mock_search_service_class, \
+         patch('scripts.reconcile_search.AsyncSessionLocal') as mock_session_local:
 
         # Mock search service
         mock_search_service = AsyncMock()
@@ -43,8 +43,8 @@ async def test_reconcile_dry_run():
 @pytest.mark.asyncio
 async def test_reconcile_with_discrepancies():
     """Test reconciliation with missing and stale products."""
-    with patch('backend.scripts.reconcile_search.SearchService') as mock_search_service_class, \
-         patch('backend.scripts.reconcile_search.AsyncSessionLocal') as mock_session_local:
+    with patch('scripts.reconcile_search.SearchService') as mock_search_service_class, \
+         patch('scripts.reconcile_search.AsyncSessionLocal') as mock_session_local:
 
         # Mock search service
         mock_search_service = AsyncMock()

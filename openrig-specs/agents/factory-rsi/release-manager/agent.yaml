@@ -1,0 +1,29 @@
+name: factory_rsi_release_manager
+version: "1.0"
+description: Release-manager agent — prepares the release (notes, docs, PR) and holds the ship decision at the human gate
+
+defaults:
+  runtime: claude-code
+
+imports:
+  - ref: local:../../shared
+
+profiles:
+  default:
+    uses:
+      skills: [verification-before-completion]
+      guidance: []
+      subagents: []
+      permission_policy:
+      launch_posture: "floor"
+      permissions: []
+  guidance:
+    - id: role
+      path: guidance/role.md
+
+startup:
+  files:
+    - path: guidance/role.md
+      delivery_hint: send_text
+      required: true
+  actions: []

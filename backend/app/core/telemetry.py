@@ -6,13 +6,14 @@ from typing import Optional
 from opentelemetry import trace
 from opentelemetry.propagate import extract
 from opentelemetry.exporter.otlp.proto.grpc.trace_exporter import OTLPSpanExporter
+from opentelemetry.sdk.trace.export import ConsoleSpanExporter
 from opentelemetry.instrumentation.fastapi import FastAPIInstrumentor
 from opentelemetry.instrumentation.sqlalchemy import SQLAlchemyInstrumentor
 from opentelemetry.instrumentation.redis import RedisInstrumentor
 from opentelemetry.instrumentation.httpx import HTTPXClientInstrumentor
 from opentelemetry.sdk.resources import Resource, SERVICE_NAME
 from opentelemetry.sdk.trace import TracerProvider
-from opentelemetry.sdk.trace.export import BatchSpanProcessor
+from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 
@@ -22,10 +23,10 @@ from app.core.config import settings
 def init_telemetry(app: Optional[FastAPI] = None) -> TracerProvider:
     """
     Initialize OpenTelemetry TracerProvider with OTLP exporter.
-    
+
     Args:
         app: Optional FastAPI app for automatic instrumentation
-        
+
     Returns:
         Configured TracerProvider
     """
@@ -41,17 +42,21 @@ def init_telemetry(app: Optional[FastAPI] = None) -> TracerProvider:
     trace.set_tracer_provider(tracer_provider)
 
     # Configure OTLP exporter
-    otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://tempo:4317")
-    
-    # Use gRPC exporter for Tempo
-    otlp_exporter = OTLPSpanExporter(
-        endpoint=otlp_endpoint,
-        insecure=True,
-    )
+    otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
 
-    # Add batch span processor
-    span_processor = BatchSpanProcessor(otlp_exporter)
-    tracer_provider.add_span_processor(span_processor)
+    if otlp_endpoint:
+        # Production: Use OTLP exporter to send traces to Tempo
+        otlp_exporter = OTLPSpanExporter(
+            endpoint=otlp_endpoint,
+            insecure=True,
+        )
+        span_processor = BatchSpanProcessor(otlp_exporter)
+        tracer_provider.add_span_processor(span_processor)
+    else:
+        # Development/Local: Use console exporter for visibility without Tempo
+        console_exporter = ConsoleSpanExporter()
+        span_processor = SimpleSpanProcessor(console_exporter)
+        tracer_provider.add_span_processor(span_processor)
 
     # Auto-instrument FastAPI if app provided
     if app:
@@ -64,12 +69,7 @@ def init_telemetry(app: Optional[FastAPI] = None) -> TracerProvider:
     # Auto-instrument SQLAlchemy
     SQLAlchemyInstrumentor().instrument(
         tracer_provider=tracer_provider,
-        enable_commenter=True,
-        commenter_options={
-            "db_driver": True,
-            "db_framework": True,
-            "db_statement": True,
-        }
+        enable_commenter=False,  # Disabled to prevent potential SQL injection in logs
     )
 
     # Auto-instrument Redis

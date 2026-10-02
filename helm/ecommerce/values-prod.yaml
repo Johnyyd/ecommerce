@@ -92,8 +92,11 @@ networkPolicy:
 
 observability:
   enabled: true
+  grafana:
+    enabled: true
   loki:
     enabled: true
+    retentionDays: 7
   promtail:
     enabled: true
   tempo:

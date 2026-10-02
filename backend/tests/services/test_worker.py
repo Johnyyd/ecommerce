@@ -216,7 +216,7 @@ async def test_sync_to_meilisearch_task_with_products():
     with patch('app.worker.get_db_session') as mock_get_db_session, \
          patch('app.worker.ProductRepository') as mock_repo_class, \
          patch('app.worker.SearchService') as mock_search_service_class, \
-         patch('app.worker.record_failed_sync', new_callable=AsyncMock):
+         patch('app.services.sync_service.record_failed_sync', new_callable=AsyncMock):
 
         # Mock async generator for db session
         mock_session = AsyncMock()
@@ -272,7 +272,7 @@ async def test_sync_to_meilisearch_task_batch_processing():
     with patch('app.worker.get_db_session') as mock_get_db_session, \
          patch('app.worker.ProductRepository') as mock_repo_class, \
          patch('app.worker.SearchService') as mock_search_service_class, \
-         patch('app.worker.record_failed_sync', new_callable=AsyncMock), \
+         patch('app.services.sync_service.record_failed_sync', new_callable=AsyncMock), \
          patch('asyncio.sleep', return_value=None) as mock_sleep:
 
         # Mock async generator for db session
@@ -368,7 +368,7 @@ async def test_incremental_sync_task_with_products():
     with patch('app.worker.get_db_session') as mock_get_db_session, \
          patch('app.worker.ProductRepository') as mock_repo_class, \
          patch('app.worker.SearchService') as mock_search_service_class, \
-         patch('app.worker.record_failed_sync', new_callable=AsyncMock):
+         patch('app.services.sync_service.record_failed_sync', new_callable=AsyncMock):
 
         # Mock async generator for db session
         mock_session = AsyncMock()

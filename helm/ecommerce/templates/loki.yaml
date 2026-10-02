@@ -114,6 +114,9 @@ data:
       enforce_metric_name: false
       reject_old_samples: true
       reject_old_samples_max_age: 168h
+    table_manager:
+      retention_deletes_enabled: true
+      retention_period: {{ .Values.observability.loki.retentionDays }}d
     chunking:
       max_chunk_age: 1h
       chunk_target_size: 1048576

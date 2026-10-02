@@ -71,6 +71,7 @@ async def generate_embeddings_task(ctx: Any, batch_size: int = 50) -> Dict[str, 
 
             if not products:
                 logger.info("No products found without embeddings")
+                await embedding_service.close()
                 return stats
 
             logger.info(f"Found {len(products)} products without embeddings")
@@ -180,6 +181,7 @@ async def sync_to_meilisearch_task(ctx: Any, batch_size: int = 100) -> Dict[str,
 
             if not products:
                 logger.info("No products with embeddings found for sync")
+                await search_service.close()
                 return stats
 
             logger.info(f"Found {len(products)} products with embeddings to sync")
@@ -299,6 +301,7 @@ async def incremental_sync_task(ctx: Any) -> Dict[str, Any]:
 
             if not products:
                 logger.info("No recently updated products found")
+                await search_service.close()
                 return stats
 
             logger.info(f"Found {len(products)} recently updated products")

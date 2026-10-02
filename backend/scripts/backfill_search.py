@@ -40,8 +40,18 @@ async def backfill(
     resume: bool = True,
     delay_sec: float = 0.1
 ) -> Dict[str, Any]:
-    search_service = SearchService()
-    await search_service.ensure_index_initialized()
+    try:
+        search_service = SearchService()
+        await search_service.ensure_index_initialized()
+    except Exception as e:
+        logger.error(f"Failed to initialize search service: {e}")
+        return {
+            "total": 0,
+            "processed": 0,
+            "failed": 0,
+            "status": "failed",
+            "error": str(e)
+        }
 
     job_name = "initial_search_backfill"
     stats = {

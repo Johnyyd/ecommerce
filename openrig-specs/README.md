@@ -1,0 +1,2 @@
+# openrig-config
+ 

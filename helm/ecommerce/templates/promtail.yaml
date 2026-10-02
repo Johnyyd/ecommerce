@@ -107,11 +107,11 @@ data:
       - json:
           expressions:
             level: level
-      - match:
-          selector: '{level="ERROR"} |= "password"'
-          drop: true
       - taint:
           key: password
           value: redacted
           action: replace
+      - match:
+          selector: '{level="ERROR"} |= "password"'
+          drop: true
 {{- end }}

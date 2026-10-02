@@ -1,0 +1,206 @@
+{{- if and .Values.observability.enabled .Values.observability.grafana.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-grafana-dashboard
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: grafana
+    component: observability
+    grafana_dashboard: "1"
+data:
+  ecommerce-logs-dashboard.json: |
+    {
+      "annotations": {
+        "list": [
+          {
+            "builtIn": 1,
+            "datasource": "-- Grafana --",
+            "enable": true,
+            "hide": true,
+            "iconColor": "rgba(0, 211, 255, 1)",
+            "name": "Annotations & Alerts",
+            "type": "dashboard"
+          }
+        ]
+      },
+      "editable": true,
+      "gnetId": null,
+      "graphTooltip": 0,
+      "id": null,
+      "links": [],
+      "panels": [
+        {
+          "datasource": "Loki",
+          "description": "Log volume by service (last 5m)",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 0
+          },
+          "id": 2,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "values": false
+            },
+            "showText": "auto",
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.2.5",
+          "targets": [
+            {
+              "expr": "sum by (app) (count_over_time({app!=\"\"}[5m]))",
+              "interval": "",
+              "legendFormat": "",
+              "refId": "A"
+            }
+          ],
+          "title": "Log volume by service",
+          "type": "timeseries"
+        },
+        {
+          "datasource": "Loki",
+          "description": "Distribution of log levels",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 0
+          },
+          "id": 4,
+          "options": {
+            "legend": {
+              "displayMode": "list",
+              "placement": "bottom"
+            },
+            "orientation": "auto",
+            "reduceOptions": {
+              "calcs": [
+                "lastNotNull"
+              ],
+              "values": false
+            },
+            "showText": "auto",
+            "textMode": "auto"
+          },
+          "pluginVersion": "8.2.5",
+          "targets": [
+            {
+              "expr": "sum by (level) (count_over_time({app!=\"\"}|~\"(?i)(error|warning|info|debug)\"[5m]))",
+              "interval": "",
+              "legendFormat": "{{ printf \"{{%s}}\" \"level\" }}",
+              "refId": "A"
+            }
+          ],
+          "title": "Log level distribution",
+          "type": "timeseries"
+        },
+        {
+          "description": "Recent logs with trace_id filter",
+          "fieldConfig": {
+            "defaults": {
+              "color": {
+                "mode": "palette-classic"
+              },
+              "custom": {}
+            },
+            "overrides": []
+          },
+          "gridPos": {
+            "h": 16,
+            "w": 24,
+            "x": 0,
+            "y": 8
+          },
+          "id": 6,
+          "options": {
+            "showHeaders": true,
+            "sort": {
+              "desc": true
+            }
+          },
+          "pluginVersion": "8.2.5",
+          "targets": [
+            {
+              "exemplarTraceIdDepth": 2,
+              "expr": "|~ \"trace_id=[a-f0-9]+\"",
+              "interval": "",
+              "legendFormat": "_logline",
+              "refId": "A",
+              "url": ""
+            }
+          ],
+          "title": "Recent logs (with trace_id)",
+          "type": "logs"
+        }
+      ],
+      "refresh": "5s",
+      "schemaVersion": 38,
+      "style": "dark",
+      "tags": [],
+      "templating": {
+        "list": []
+      },
+      "time": {
+        "from": "now-1h",
+        "to": "now"
+      },
+      "timepicker": {
+        "refresh_intervals": [
+          "5s",
+          "10s",
+          "30s",
+          "1m",
+          "5m",
+          "15m",
+          "30m",
+          "1h",
+          "2h",
+          "1d"
+        ],
+        "time_options": [
+          "5m",
+          "15m",
+          "1h",
+          "6h",
+          "12h",
+          "24h",
+          "2d",
+          "7d",
+          "30d"
+        ]
+      },
+      "timezone": "",
+      "title": "Ecommerce Logs Overview",
+      "uid": "{{ include \"ecommerce.fullname\" . }}-logs-overview",
+      "version": 1,
+      "weekStart": ""
+    }
+{{- end }}

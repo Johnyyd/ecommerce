@@ -10,9 +10,9 @@ from app.core.telemetry import init_telemetry, tracing_middleware, get_tracer
 def test_init_telemetry():
     """Test that telemetry initialization returns a TracerProvider."""
     with patch('opentelemetry.sdk.resources.Resource.create'), \
-         patch('opentelemetry.sdk.trace.TracerProvider') as mock_tracer_provider, \
-         patch('opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter') as mock_otlp_exporter, \
-         patch('opentelemetry.sdk.trace.export.BatchSpanProcessor') as mock_batch_processor, \
+         patch('app.core.telemetry.TracerProvider') as mock_tracer_provider, \
+         patch('app.core.telemetry.OTLPSpanExporter') as mock_otlp_exporter, \
+         patch('app.core.telemetry.BatchSpanProcessor') as mock_batch_processor, \
          patch('opentelemetry.instrumentation.fastapi.FastAPIInstrumentor'), \
          patch('opentelemetry.instrumentation.sqlalchemy.SQLAlchemyInstrumentor'), \
          patch('opentelemetry.instrumentation.redis.RedisInstrumentor'), \
@@ -30,6 +30,12 @@ def test_init_telemetry():
         mock_exporter_instance = MagicMock()
         mock_otlp_exporter.return_value = mock_exporter_instance
 
+        # Mock the default values for BatchSpanProcessor
+        type(mock_batch_processor)._default_schedule_delay_millis = MagicMock(return_value=5000)
+        type(mock_batch_processor)._default_max_export_batch_size = MagicMock(return_value=512)
+        type(mock_batch_processor)._default_export_timeout_millis = MagicMock(return_value=30000)
+        type(mock_batch_processor)._default_max_queue_size = MagicMock(return_value=2048)
+
         # Initialize telemetry
         provider = init_telemetry()
 
@@ -44,9 +50,9 @@ def test_init_telemetry_with_app():
     app = FastAPI()
 
     with patch('opentelemetry.sdk.resources.Resource.create'), \
-         patch('opentelemetry.sdk.trace.TracerProvider') as mock_tracer_provider, \
-         patch('opentelemetry.exporter.otlp.proto.grpc.trace_exporter.OTLPSpanExporter') as mock_otlp_exporter, \
-         patch('opentelemetry.sdk.trace.export.BatchSpanProcessor') as mock_batch_processor, \
+         patch('app.core.telemetry.TracerProvider') as mock_tracer_provider, \
+         patch('app.core.telemetry.OTLPSpanExporter') as mock_otlp_exporter, \
+         patch('app.core.telemetry.BatchSpanProcessor') as mock_batch_processor, \
          patch('opentelemetry.instrumentation.fastapi.FastAPIInstrumentor.instrument_app') as mock_fastapi_instrument, \
          patch('opentelemetry.instrumentation.sqlalchemy.SQLAlchemyInstrumentor'), \
          patch('opentelemetry.instrumentation.redis.RedisInstrumentor'), \
@@ -63,6 +69,12 @@ def test_init_telemetry_with_app():
         # Mock the exporter
         mock_exporter_instance = MagicMock()
         mock_otlp_exporter.return_value = mock_exporter_instance
+
+        # Mock the default values for BatchSpanProcessor
+        type(mock_batch_processor)._default_schedule_delay_millis = MagicMock(return_value=5000)
+        type(mock_batch_processor)._default_max_export_batch_size = MagicMock(return_value=512)
+        type(mock_batch_processor)._default_export_timeout_millis = MagicMock(return_value=30000)
+        type(mock_batch_processor)._default_max_queue_size = MagicMock(return_value=2048)
 
         # Initialize telemetry with app
         provider = init_telemetry(app)

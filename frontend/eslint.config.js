@@ -4,7 +4,7 @@ import tseslint from 'typescript-eslint';
 
 export default [
   {
-    ignores: ['dist', 'node_modules', 'test_click.cjs'],
+    ignores: ['dist', 'node_modules', 'test_click.cjs', '.claude', '.openrig'],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,

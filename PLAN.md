@@ -156,6 +156,7 @@ python -m pytest tests/test_recommendation_service.py -v
 python -m pytest tests/test_product_search.py -v
 python -m pytest tests/test_reconciliation.py -v
 python -m pytest tests/test_backfill.py -v
+python -m pytest tests/core/test_telemetry.py -v
 
 # Frontend validation
 cd ../frontend
@@ -179,6 +180,12 @@ curl -s -H "Authorization: Bearer freellmapi-fa22e5cba463c21104c1c19f6ec9ddda0fb
 # End-to-end validation
 curl -s "http://localhost:8000/api/v1/products/search?q=ao+thun&facets=[\"category\",\"brand\",\"price_range\"]" | jq '.facets'
 curl -s "http://localhost:8000/api/v1/products/123e4567-e89b-12d3-a456-426614174000/recommendations" | jq 'length > 0'
+
+# Observability validation
+# Check Loki is running and accepting logs
+curl -s http://localhost:3100/ready
+# Check Tempo is running and accepting traces
+curl -s http://localhost:4318/api/traces
 
 # Reconciliation validation (inject inconsistency and verify fix)
 python backend/scripts/reconcile_search.py --dry-run

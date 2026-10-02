@@ -341,12 +341,12 @@ class SearchService:
         )
 
     async def get_popular_products(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get popular products as a list of product dicts."""
+        """Get popular products as a list of product dicts, sorted by interaction count (popularity)."""
         try:
             res = await self.meilisearch.search(
                 index_name=self.meilisearch.index_name,
                 query="",
-                sort=["price:desc"],
+                sort=["popularity:desc"],  # Sort by popularity instead of price
                 limit=limit
             )
             hits = res.get("hits", [])
@@ -359,21 +359,27 @@ class SearchService:
         try:
             from app.core.db import AsyncSessionLocal
             from app.models.product import Product
-            from sqlalchemy import select, desc
+            from app.models.order import OrderItem
+            from sqlalchemy import select, desc, func
             async with AsyncSessionLocal() as session:
-                stmt = select(Product).order_by(desc(Product.created_at)).limit(limit)
+                # Try to get products with most order interactions first
+                stmt = select(Product, func.count(OrderItem.id).label('order_count'))\
+                    .select_from(Product.join(OrderItem, Product.id == OrderItem.product_id, isouter=True))\
+                    .group_by(Product.id)\
+                    .order_by(desc('order_count'), desc(Product.created_at))\
+                    .limit(limit)
                 result = await session.execute(stmt)
-                products = result.scalars().all()
+                products = result.all()
                 return [
                     {
-                        "id": str(p.id),
-                        "name": p.name,
-                        "description": p.description or "",
-                        "price": float(p.price) if p.price else 0.0,
-                        "brand": p.brand or "",
-                        "category_id": str(p.category_id) if p.category_id else "",
+                        "id": str(product.Product.id),
+                        "name": product.Product.name,
+                        "description": product.Product.description or "",
+                        "price": float(product.Product.price) if product.Product.price else 0.0,
+                        "brand": product.Product.brand or "",
+                        "category_id": str(product.Product.category_id) if product.Product.category_id else "",
                     }
-                    for p in products
+                    for product in products
                 ]
         except Exception as db_err:
             logger.error(f"Database fallback in get_popular_products failed: {db_err}")

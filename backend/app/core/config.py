@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import SecretStr
+from pydantic import SecretStr, field_validator
 import os
 
 class Settings(BaseSettings):
@@ -8,13 +8,13 @@ class Settings(BaseSettings):
     POSTGRES_SERVER: str = "postgres"
     POSTGRES_PORT: int = 5432
     POSTGRES_USER: str = "ecommerce_user"
-    POSTGRES_PASSWORD: str = "ecommerce_password"
+    POSTGRES_PASSWORD: str
     POSTGRES_DB: str = "ecommerce_db"
-    
+
     REDIS_HOST: str = "redis"
     REDIS_PORT: int = 6379
     REDIS_PASSWORD: str | None = None
-    
+
     @property
     def REDIS_URL(self) -> str:
         if self.REDIS_PASSWORD:
@@ -55,7 +55,22 @@ class Settings(BaseSettings):
 
     # Embedding API Configuration (Free LLM API)
     EMBEDDING_API_URL: str = "http://host.docker.internal:3001/v1"
-    EMBEDDING_API_KEY: str
+    EMBEDDING_API_KEY: str | None = None
+
+    def __init__(self, **kwargs):
+        super().__init__(**kwargs)
+        # Validate required secrets are not empty in non-test environments
+        if self.ENVIRONMENT != "test":
+            if not self.MEILISEARCH_MASTER_KEY:
+                raise ValueError("MEILISEARCH_MASTER_KEY must be set")
+            # Note: EMBEDDING_API_KEY is optional as it's only needed for embedding generation
+
+    @field_validator("POSTGRES_PASSWORD")
+    @classmethod
+    def validate_postgres_password(cls, v: str) -> str:
+        if not v:
+            raise ValueError("POSTGRES_PASSWORD must be set in environment")
+        return v
 
     model_config = SettingsConfigDict(env_file=(".env", "backend/.env"), env_file_encoding="utf-8", extra="ignore")
 

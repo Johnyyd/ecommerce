@@ -30,6 +30,7 @@ spec:
     - protocol: TCP
       port: 6432
   egress:
+  # Allow pgbouncer to connect to postgres
   - to:
     - podSelector:
         matchLabels:
@@ -54,6 +55,7 @@ spec:
   - Ingress
   - Egress
   ingress:
+  # Only allow pgbouncer to connect to postgres
   - from:
     - podSelector:
         matchLabels:
@@ -61,7 +63,21 @@ spec:
     ports:
     - protocol: TCP
       port: 5432
-  egress: []
+  egress:
+  # Allow DNS resolution (required for SSL cert validation, hostname resolution, etc.)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow NTP time synchronization (critical for database operations and replication)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 123
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -79,6 +95,7 @@ spec:
   - Ingress
   - Egress
   ingress:
+  # Only allow backend and worker to connect to redis
   - from:
     - podSelector:
         matchLabels:

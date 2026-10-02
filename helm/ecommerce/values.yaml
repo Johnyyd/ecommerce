@@ -2,6 +2,7 @@ backend:
   enabled: true
   env:
     BACKUP_DIR: /backups
+    # POSTGRES_PORT is actually the pgbouncer port (6432) for connection pooling
     POSTGRES_PORT: '6432'
     POSTGRES_SERVER: pgbouncer
     REDIS_HOST: redis
@@ -55,7 +56,7 @@ global:
 hpa:
   enabled: true
   maxReplicas: 8
-  minReplicas: 3
+  minReplicas: 2
   targetCPUUtilizationPercentage: 70
   targetMemoryUtilizationPercentage: 80
 ingress:
@@ -75,6 +76,7 @@ observability:
     enabled: true
   loki:
     enabled: true
+    retentionDays: 7
   prometheus:
     enabled: true
   promtail:

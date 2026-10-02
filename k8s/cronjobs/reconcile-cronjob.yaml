@@ -28,7 +28,7 @@ spec:
           containers:
           - name: reconcile
             image: ecommerce-backend:latest
-            command: ["python", "scripts/reconcile_search.py", "--fix"]
+            command: ["python", "/app/backend/scripts/reconcile_search.py", "--fix"]
             envFrom:
             - secretRef:
                 name: app-secrets
