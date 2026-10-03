@@ -1,0 +1,57 @@
+task_id: task-vietnamese-search
+title: "Vietnamese Search - Production Validation & Optimization"
+phase: 1
+priority: P2
+status: READY
+assigned_to: development.developer_backend
+reviewed_by: performance.performance_engineer
+estimated_effort: 1 day
+
+description: |
+  Validate and optimize the Vietnamese search implementation for production.
+  Backend integration is 95% complete with Meilisearch + PostgreSQL FTS fallback.
+
+requirements:
+  - Verify Meilisearch running with Vietnamese tokenizer/config in production
+  - Test typo-tolerance with Vietnamese diacritics (e.g., "ao thun" → "áo thun")
+  - Validate faceted search performance (category, brand, price_range)
+  - Optimize Redis cache TTL for search queries
+  - Load test search API under concurrent users
+
+files_to_create:
+  - backend/tests/api/test_vietnamese_search.py
+  - k8s/meilisearch-config.yaml (if custom config needed)
+
+files_to_update:
+  - backend/app/services/search_service.py (verify Vietnamese config)
+  - helm/ecommerce/templates/meilisearch.yaml (add Vietnamese config)
+
+acceptance_criteria:
+  - Meilisearch uses Vietnamese tokenizer (if available) or appropriate analyzer
+  - Typo-tolerance works: "ao thun" matches "áo thun", "dien thoai" matches "điện thoại"
+  - Faceted search returns correct counts for category, brand, price_range
+  - Search latency < 100ms p95 under load
+  - Fallback to PostgreSQL FTS works when Meilisearch unavailable
+  - Redis caching reduces repeated query latency by >50%
+
+validation_commands:
+  - curl "http://localhost:8000/api/v1/products/search?q=ao+thun&facets=[\"category\",\"brand\",\"price_range\"]" | jq '.facets'
+  - curl "http://localhost:8000/api/v1/products/search?q=dien+thoai" | jq '.items[]?.name'
+  - Load test: k6 run load-test/search.js (or similar)
+  - pytest backend/tests/api/test_vietnamese_search.py -v
+
+dependencies: []
+parallel_with: ["task-payment-gateway", "task-reviews-frontend"]
+
+notes: |
+  Current implementation has:
+  - Meilisearch integration with typo-tolerance
+  - PostgreSQL FTS fallback (pg_trgm, tsvector)
+  - Faceted search API with category, brand, price_range
+  - Redis caching (120s)
+
+  Need to verify:
+  1. Meilisearch Vietnamese configuration in production
+  2. Typo-tolerance with Vietnamese diacritics
+  3. Performance under load
+  4. Fallback behavior when Meilisearch down

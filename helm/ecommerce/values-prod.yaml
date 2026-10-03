@@ -90,6 +90,21 @@ hpa:
 networkPolicy:
   enabled: true
 
+# CronJob for auto-cancelling expired orders (disabled in prod, use ARQ worker cron)
+# The ARQ worker runs cancel_expired_orders_task every 2 minutes (see backend/app/worker.py)
+cancelExpiredOrders:
+  enabled: false
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+
 observability:
   enabled: true
   grafana:

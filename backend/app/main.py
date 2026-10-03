@@ -1,8 +1,9 @@
 import sys, os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from app.core.config import settings
+from app.core.rate_limiter import limiter
 from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup, reviews, async_jobs, shipping
 from app.core.logging import setup_logging
 from app.core.telemetry import init_telemetry, tracing_middleware
@@ -11,12 +12,48 @@ from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from contextlib import asynccontextmanager
 import logging
+from slowapi import _rate_limit_exceeded_handler
+from slowapi.errors import RateLimitExceeded
+from slowapi.middleware import SlowAPIMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
 
 setup_logging()
 logger = logging.getLogger("app.main")
 
 # Initialize OpenTelemetry
 tracer_provider = init_telemetry()
+
+class SecurityHeadersMiddleware(BaseHTTPMiddleware):
+    """Add security headers to all responses."""
+    async def dispatch(self, request: Request, call_next):
+        response = await call_next(request)
+
+        # Only add security headers in production
+        if settings.ENVIRONMENT == "production":
+            # HSTS
+            response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
+            # Prevent MIME sniffing
+            response.headers["X-Content-Type-Options"] = "nosniff"
+            # XSS Protection
+            response.headers["X-XSS-Protection"] = "1; mode=block"
+            # Frame Options
+            response.headers["X-Frame-Options"] = "DENY"
+            # Referrer Policy
+            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+            # CSP - Basic policy, adjust as needed for your frontend
+            response.headers["Content-Security-Policy"] = (
+                "default-src 'self'; "
+                "script-src 'self'; "
+                "style-src 'self' 'unsafe-inline'; "
+                "img-src 'self' data: https:; "
+                "font-src 'self'; "
+                "connect-src 'self'; "
+                "frame-ancestors 'none'; "
+                "base-uri 'self'; "
+                "form-action 'self'"
+            )
+
+        return response
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -33,21 +70,32 @@ app = FastAPI(
     lifespan=lifespan
 )
 
+# Attach limiter to app state
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
+# Add SlowAPI Middleware
+app.add_middleware(SlowAPIMiddleware)
+
+# Add Security Headers Middleware
+app.add_middleware(SecurityHeadersMiddleware)
+
+# CORS Middleware - Use configured origins
+from fastapi.middleware.cors import CORSMiddleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=settings.CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"],
+    allow_headers=["*"],
+    expose_headers=["X-Trace-ID", "X-Span-ID"],
+)
+
 # Add OpenTelemetry tracing middleware
 app.middleware("http")(tracing_middleware)
 
 # Prometheus metrics instrumentation
 Instrumentator().instrument(app).expose(app)
-
-if settings.ENVIRONMENT != "production":
-    from fastapi.middleware.cors import CORSMiddleware
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-    )
 
 # Static media files mounting for product images & WebP variants
 media_dir = Path(settings.MEDIA_DIR)

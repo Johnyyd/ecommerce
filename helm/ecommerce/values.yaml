@@ -83,6 +83,8 @@ observability:
     enabled: true
   tempo:
     enabled: true
+    tls:
+      enabled: false
 pgbouncer:
   enabled: true
   image:
@@ -142,3 +144,52 @@ worker:
     requests:
       cpu: 100m
       memory: 128Mi
+  # Cron job configuration for periodic tasks
+  cronJob:
+    enabled: true
+    schedule: "*/5 * * * *"  # Every 5 minutes
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 5
+
+# CronJob for auto-cancelling expired orders (alternative to ARQ cron)
+# Set enabled: true to use Kubernetes CronJob approach
+# Set enabled: false (default) to use ARQ worker cron (recommended)
+cancelExpiredOrders:
+  enabled: false
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+meilisearch:
+  enabled: true
+  image:
+    pullPolicy: IfNotPresent
+    repository: getmeili/meilisearch
+    tag: v1.11
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: '1'
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  service:
+    port: 7700
+    type: ClusterIP
+  persistence:
+    storageClass: standard
+    size: 5Gi
+  environment: production

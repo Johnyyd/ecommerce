@@ -23,6 +23,10 @@ spec:
       securityContext:
         seccompProfile:
           type: RuntimeDefault
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 102
       containers:
         - name: worker
           image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
@@ -32,4 +36,30 @@ spec:
                 name: app-secrets
           resources:
             {{- toYaml .Values.worker.resources | nindent 12 }}
+          readinessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import redis; r = redis.from_url('redis://redis:6379'); r.ping()"
+            initialDelaySeconds: 30
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            exec:
+              command:
+                - python
+                - -c
+                - "import redis; r = redis.from_url('redis://redis:6379'); r.ping()"
+            initialDelaySeconds: 60
+            periodSeconds: 60
+            timeoutSeconds: 10
+            failureThreshold: 3
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities:
+              drop:
+                - ALL
 {{- end }}

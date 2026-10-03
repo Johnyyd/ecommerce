@@ -88,6 +88,11 @@ data:
           endpoint: s3.amazonaws.com
           region: us-west-1
           bucket: tempo-data
+    tls:
+      server:
+        cert_path: /etc/tempo/certs/tempo.crt
+        key_path: /etc/tempo/certs/tempo.key
+        client_ca_path: /etc/tempo/certs/ca.crt
     CRONTAB: |
       */5 * * * * /app/scripts/compactor
 ---

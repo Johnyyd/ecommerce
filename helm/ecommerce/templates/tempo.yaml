@@ -80,6 +80,13 @@ data:
     dependencies:
       query:
         max_age: 720h
+{{- if .Values.observability.tempo.tls.enabled }}
+    tls:
+      server:
+        cert_path: /etc/tempo/certs/tempo.crt
+        key_path: /etc/tempo/certs/tempo.key
+        client_ca_path: /etc/tempo/certs/ca.crt
+{{- end }}
 ---
 apiVersion: v1
 kind: Service

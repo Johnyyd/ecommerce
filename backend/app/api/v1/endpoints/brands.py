@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import List
@@ -16,8 +16,8 @@ def get_brand_repo(session: AsyncSession = Depends(get_db_session)) -> BrandRepo
 
 @router.get("/", response_model=List[BrandResponse])
 async def list_brands(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     repo: BrandRepository = Depends(get_brand_repo)
 ):
     return await repo.get_multi(skip=skip, limit=limit)

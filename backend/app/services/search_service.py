@@ -238,7 +238,7 @@ class SearchService:
         await self.meilisearch.close()
 
     async def ensure_index_initialized(self) -> bool:
-        """Initialize index and its searchable/filterable/sortable settings."""
+        """Initialize index and its searchable/filterable/sortable settings with Vietnamese support."""
         try:
             exists = await self.meilisearch.index_exists()
             if not exists:
@@ -249,9 +249,50 @@ class SearchService:
             await self.meilisearch.update_settings(
                 index_name=self.meilisearch.index_name,
                 settings={
-                    "searchableAttributes": ["name", "description", "brand"],
-                    "filterableAttributes": ["category_id", "brand", "price"],
-                    "sortableAttributes": ["price", "updated_at"],
+                    # Searchable attributes (weighted for relevance)
+                    "searchableAttributes": [
+                        "name",
+                        "description",
+                        "brand"
+                    ],
+                    # Filterable attributes for faceted search
+                    "filterableAttributes": [
+                        "category_id",
+                        "brand",
+                        "price",
+                        "is_active"
+                    ],
+                    # Sortable attributes
+                    "sortableAttributes": [
+                        "price",
+                        "updated_at",
+                        "created_at"
+                    ],
+                    # Vietnamese tokenizer support (Meilisearch v1.11+)
+                    "tokenizer": "vi",
+                    # Typo tolerance settings for Vietnamese
+                    "typoTolerance": {
+                        "enabled": True,
+                        "minWordSizeForTypos": {
+                            "oneTypo": 4,
+                            "twoTypos": 8
+                        }
+                    },
+                    # Ranking rules for better relevance
+                    "rankingRules": [
+                        "words",
+                        "typo",
+                        "proximity",
+                        "attribute",
+                        "sort",
+                        "exactness"
+                    ],
+                    # Distinct attribute for deduplication (e.g., same product different variants)
+                    "distinctAttribute": "id",
+                    # Faceting for advanced filtering
+                    "faceting": {
+                        "maxValuesPerFacet": 100
+                    }
                 }
             )
             return True
@@ -303,6 +344,17 @@ class SearchService:
         )
         return result
 
+    # Allowed filter fields to prevent Meilisearch filter injection
+    _ALLOWED_FILTER_FIELDS = frozenset({
+        "category_id", "brand", "price", "is_active", "stock_quantity",
+        "rating", "created_at", "updated_at"
+    })
+
+    # Allowed sort fields to prevent sort injection
+    _ALLOWED_SORT_FIELDS = frozenset({
+        "price", "created_at", "updated_at", "rating", "popularity"
+    })
+
     async def search_products(
         self,
         query: str,
@@ -313,22 +365,49 @@ class SearchService:
         sort: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Search products using Meilisearch with optional filters and facets."""
-        # Build filter string from filters dict
+        # Build filter string from filters dict with validation
         filter_str = None
         if filters:
             filter_parts = []
             for key, value in filters.items():
+                # Validate filter field against whitelist
+                if key not in self._ALLOWED_FILTER_FIELDS:
+                    logger.warning(f"Rejected filter field: {key} (not in whitelist)")
+                    continue
                 if value is not None:
                     if isinstance(value, list):
-                        # Handle IN clauses
-                        formatted_values = ", ".join(f'"{v}"' if isinstance(v, str) else str(v) for v in value)
-                        filter_parts.append(f"{key} IN [{formatted_values}]")
+                        # Handle IN clauses - validate each value
+                        formatted_values = []
+                        for v in value:
+                            if isinstance(v, str):
+                                # Escape quotes in string values
+                                escaped = v.replace('"', '\\"')
+                                formatted_values.append(f'"{escaped}"')
+                            else:
+                                formatted_values.append(str(v))
+                        filter_parts.append(f"{key} IN [{', '.join(formatted_values)}]")
                     else:
-                        # Handle equality
-                        formatted_value = f'"{value}"' if isinstance(value, str) else str(value)
+                        # Handle equality - escape string values
+                        if isinstance(value, str):
+                            escaped = value.replace('"', '\\"')
+                            formatted_value = f'"{escaped}"'
+                        else:
+                            formatted_value = str(value)
                         filter_parts.append(f"{key} = {formatted_value}")
             if filter_parts:
                 filter_str = " AND ".join(filter_parts)
+
+        # Validate sort fields
+        validated_sort = None
+        if sort:
+            validated_sort = []
+            for s in sort:
+                # Extract base field name (remove direction suffix like :asc, :desc and leading -)
+                base_field = s.lstrip('-').split(':')[0]
+                if base_field in self._ALLOWED_SORT_FIELDS:
+                    validated_sort.append(s)
+                else:
+                    logger.warning(f"Rejected sort field: {base_field} (not in whitelist)")
 
         return await self.meilisearch.search(
             index_name=self.meilisearch.index_name,
@@ -337,7 +416,7 @@ class SearchService:
             limit=limit,
             offset=offset,
             facets=facets,
-            sort=sort
+            sort=validated_sort
         )
 
     async def get_popular_products(self, limit: int = 10) -> List[Dict[str, Any]]:

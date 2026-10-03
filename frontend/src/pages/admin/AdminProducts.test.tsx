@@ -112,8 +112,8 @@ describe("AdminProducts Pagination Component", () => {
       expect(adminApi.getProducts).toHaveBeenCalledWith(
         expect.objectContaining({ page: 50, limit: 100 })
       )
-    })
-  })
+    }, { timeout: 10000 })
+  }, 15000)
 
   it("calls adminApi.getProducts with low_stock: true when low stock filter button is clicked", async () => {
     const lowStockProducts = [

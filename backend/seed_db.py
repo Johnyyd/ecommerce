@@ -1,6 +1,7 @@
 import asyncio
 import sys
 import os
+import secrets
 from sqlalchemy.ext.asyncio import create_async_engine, AsyncSession
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy import select, insert, func
@@ -19,6 +20,13 @@ from app.core.config import settings
 from app.core.utils import generate_uuidv7
 import random
 
+
+def generate_secure_password() -> str:
+    """Generate a cryptographically secure random password for seed data."""
+    # Generate a 16-character alphanumeric password with special chars
+    alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789!@#$%^&*"
+    return ''.join(secrets.choice(alphabet) for _ in range(16))
+
 DATABASE_URL = f"postgresql+asyncpg://{settings.POSTGRES_USER}:{settings.POSTGRES_PASSWORD}@{settings.POSTGRES_SERVER}:{settings.POSTGRES_PORT}/{settings.POSTGRES_DB}"
 
 async def seed():
@@ -32,27 +40,31 @@ async def seed():
         # Create tables if not exist
         async with engine.begin() as conn:
             await conn.run_sync(Base.metadata.create_all)
-            
+
         # 1. Seed Users
         result_users = await session.execute(select(User))
         users = result_users.scalars().all()
         if len(users) < 12:
             print("Seeding users (2 admins, 10 customers)...")
             user_data = []
-            # 2 admins
+            # 2 admins - generate secure passwords
             for i in range(1, 3):
+                admin_pw = generate_secure_password()
+                print(f"Generated admin{i} password: {admin_pw}")
                 user_data.append(User(
                     username=f"admin{i}",
                     email=f"admin{i}@example.com",
-                    hashed_password=get_password_hash("admin123"),
+                    hashed_password=get_password_hash(admin_pw),
                     role="admin"
                 ))
-            # 10 users
+            # 10 users - generate secure passwords
             for i in range(1, 11):
+                user_pw = generate_secure_password()
+                print(f"Generated user{i} password: {user_pw}")
                 user_data.append(User(
                     username=f"user{i}",
                     email=f"user{i}@example.com",
-                    hashed_password=get_password_hash("user123"),
+                    hashed_password=get_password_hash(user_pw),
                     role="customer"
                 ))
             session.add_all(user_data)
@@ -63,10 +75,12 @@ async def seed():
         manager_check = await session.execute(select(User).where(User.username == "manager1"))
         if not manager_check.scalars().first():
             print("Seeding manager1 user...")
+            manager_pw = generate_secure_password()
+            print(f"Generated manager1 password: {manager_pw}")
             session.add(User(
                 username="manager1",
                 email="manager1@example.com",
-                hashed_password=get_password_hash("manager123"),
+                hashed_password=get_password_hash(manager_pw),
                 role="manager"
             ))
 

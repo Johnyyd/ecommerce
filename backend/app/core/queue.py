@@ -1,7 +1,7 @@
 import logging
 import json
 from typing import Any, Optional, Dict
-from uuid import uuid4
+from uuid import uuid4, UUID
 from datetime import datetime, timezone
 from arq.connections import create_pool, RedisSettings, ArqRedis
 from arq.jobs import Job, JobStatus
@@ -115,12 +115,12 @@ async def enqueue_report_job(
 async def get_job_status(job_id: str) -> Dict[str, Any]:
     """Retrieve the status and metadata of a background job."""
     redis = get_redis_client()
-    
+
     # Check custom reports metadata first
     meta_raw = await redis.get(f"reports:meta:{job_id}")
     if meta_raw:
         return json.loads(meta_raw)
-        
+
     try:
         pool = await get_queue_pool()
         job = Job(job_id, pool)
@@ -134,6 +134,81 @@ async def get_job_status(job_id: str) -> Dict[str, Any]:
         }
     except Exception:
         return {"job_id": job_id, "status": "UNKNOWN"}
+
+
+async def enqueue_sync_job(product_id: UUID, task_type: str = "sync") -> str:
+    """
+    Enqueue a product sync job to Meilisearch with retry configuration.
+
+    Args:
+        product_id: UUID of the product to sync
+        task_type: Type of sync task ("sync" or "embedding")
+
+    Returns:
+        Job ID string
+    """
+    try:
+        pool = await get_queue_pool()
+        job = await pool.enqueue_job(
+            "sync_product_task",
+            str(product_id),
+            task_type,
+            _job_timeout=120,
+            _max_tries=3
+        )
+        return job.job_id if job else str(uuid4())
+    except Exception as e:
+        logger.error(f"Failed to enqueue sync job for product {product_id}: {e}")
+        # Return a fallback job ID - actual sync would need to be triggered manually
+        return f"sync_fallback_{uuid4()}"
+
+
+async def enqueue_delete_job(product_id: UUID) -> str:
+    """
+    Enqueue a product delete job from Meilisearch with retry configuration.
+
+    Args:
+        product_id: UUID of the product to delete
+
+    Returns:
+        Job ID string
+    """
+    try:
+        pool = await get_queue_pool()
+        job = await pool.enqueue_job(
+            "delete_product_task",
+            str(product_id),
+            _job_timeout=120,
+            _max_tries=3
+        )
+        return job.job_id if job else str(uuid4())
+    except Exception as e:
+        logger.error(f"Failed to enqueue delete job for product {product_id}: {e}")
+        # Return a fallback job ID - actual delete would need to be triggered manually
+        return f"delete_fallback_{uuid4()}"
+
+
+async def enqueue_cancel_expired_orders_job() -> str:
+    """
+    Enqueue the auto-cancel job for expired PENDING orders.
+
+    This task runs periodically (every 1-5 minutes) to cancel orders that
+    have been in PENDING status longer than the timeout threshold (15 min).
+
+    Returns:
+        Job ID string
+    """
+    try:
+        pool = await get_queue_pool()
+        job = await pool.enqueue_job(
+            "cancel_expired_orders_task",
+            _job_timeout=120,
+            _max_tries=3
+        )
+        return job.job_id if job else str(uuid4())
+    except Exception as e:
+        logger.error(f"Failed to enqueue cancel expired orders job: {e}")
+        return f"cancel_fallback_{uuid4()}"
 
 async def get_queue_metrics() -> Dict[str, Any]:
     """Get high-level statistics of the task queue for admin monitoring."""

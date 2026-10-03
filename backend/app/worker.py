@@ -5,6 +5,7 @@ These tasks handle:
 1. Generating embeddings for products without them using the Free LLM API
 2. Synchronizing products (with embeddings) to Meilisearch index
 3. Incremental sync based on product version/updated_at
+4. Individual product sync/delete with retry and DLQ
 
 Follows the same patterns as existing worker tasks: ctx parameter, logging,
 error handling, and returning result dictionaries.
@@ -13,19 +14,34 @@ error handling, and returning result dictionaries.
 import asyncio
 import logging
 from typing import Any, Dict, List, Optional
-from uuid import UUID
 
 from app.core.queue import get_redis_settings
 from app.crud.product import ProductRepository
 from app.services.embedding_service import get_embedding_service
 from app.services.search_service import SearchService
+from app.services.search_sync import (
+    sync_product_to_meilisearch,
+    delete_from_meilisearch,
+)
 from app.core.db import get_db_session
 from app.models.product import Product
+from app.models.search_sync import FailedSyncTask, SyncTaskType
 from app.services.media import optimize_image_task
 from app.services.reports import generate_sales_report_task
 from app.services.email import send_email
+from app.services.payment import PaymentService
+from arq import Retry
+from arq.cron import cron
 
 logger = logging.getLogger("worker")
+
+
+def retry_config(max_tries: int = 3, timeout: int = 120):
+    """Decorator to configure ARQ retry behavior."""
+    def decorator(func):
+        func.__arq_retry__ = {"max_tries": max_tries, "timeout": timeout}
+        return func
+    return decorator
 
 
 async def send_email_task(ctx: Any, recipient: str, subject: str, template: str, context: Dict[str, Any]) -> Dict[str, Any]:
@@ -59,7 +75,6 @@ async def generate_embeddings_task(ctx: Any, batch_size: int = 50) -> Dict[str, 
     try:
         # Get database session
         async for session in get_db_session():
-            repo = ProductRepository(session)
             embedding_service = get_embedding_service()
 
             # Get products without embeddings
@@ -169,7 +184,6 @@ async def sync_to_meilisearch_task(ctx: Any, batch_size: int = 100) -> Dict[str,
     try:
         # Get database session
         async for session in get_db_session():
-            repo = ProductRepository(session)
             search_service = SearchService()
 
             # Get products that have embeddings but may not be synced
@@ -286,7 +300,6 @@ async def incremental_sync_task(ctx: Any) -> Dict[str, Any]:
     try:
         # Get database session
         async for session in get_db_session():
-            repo = ProductRepository(session)
             search_service = SearchService()
 
             # TODO: Implement incremental sync based on version or updated_at
@@ -360,12 +373,195 @@ async def incremental_sync_task(ctx: Any) -> Dict[str, Any]:
     return stats
 
 
+@retry_config(max_tries=3, timeout=120)
+async def sync_product_task(ctx: Any, product_id: str, task_type: str = "sync") -> Dict[str, Any]:
+    """
+    ARQ Task for synchronizing a single product to Meilisearch with retry & DLQ.
+
+    Args:
+        ctx: ARQ context (contains retry info)
+        product_id: UUID string of the product to sync
+        task_type: Type of task ("sync" or "embedding")
+
+    Returns:
+        Dict with task result
+    """
+    from uuid import UUID as UUIDType
+
+    logger.info(f"Starting sync_product_task for product {product_id} (type: {task_type})")
+
+    try:
+        pid = UUIDType(product_id)
+    except ValueError:
+        logger.error(f"Invalid product_id format: {product_id}")
+        return {"status": "failed", "error": "Invalid product_id"}
+
+    try:
+        # Get database session
+        async for session in get_db_session():
+            repo = ProductRepository(session)
+            product = await repo.get_by_id(pid)
+
+            if not product:
+                logger.warning(f"Product {product_id} not found in database")
+                return {"status": "skipped", "reason": "Product not found"}
+
+            # Check if product has embedding (required for Meilisearch)
+            if product.embedding is None:
+                logger.info(f"Product {product_id} has no embedding, skipping sync")
+                return {"status": "skipped", "reason": "No embedding"}
+
+            # Attempt sync with Meilisearch
+            success = await sync_product_to_meilisearch(product)
+
+            if success:
+                logger.info(f"Successfully synced product {product_id} to Meilisearch")
+                return {"status": "success", "product_id": product_id}
+            else:
+                # This will trigger ARQ retry
+                logger.warning(f"Sync failed for product {product_id}, will retry")
+                raise Retry("Meilisearch sync failed")
+
+    except Retry:
+        raise
+    except Exception as e:
+        logger.error(f"Error in sync_product_task for {product_id}: {e}")
+        # Record to DLQ on final failure
+        await _record_dlq_failure(product_id, str(e), "sync_product_task_failure", SyncTaskType.SYNC)
+        return {"status": "failed", "error": str(e), "dlq_recorded": True}
+
+
+@retry_config(max_tries=3, timeout=120)
+async def delete_product_task(ctx: Any, product_id: str) -> Dict[str, Any]:
+    """
+    ARQ Task for deleting a product from Meilisearch with retry & DLQ.
+
+    Args:
+        ctx: ARQ context (contains retry info)
+        product_id: UUID string of the product to delete
+
+    Returns:
+        Dict with task result
+    """
+    from uuid import UUID as UUIDType
+
+    logger.info(f"Starting delete_product_task for product {product_id}")
+
+    try:
+        pid = UUIDType(product_id)
+    except ValueError:
+        logger.error(f"Invalid product_id format: {product_id}")
+        return {"status": "failed", "error": "Invalid product_id"}
+
+    try:
+        # Attempt delete from Meilisearch (idempotent)
+        success = await delete_from_meilisearch(pid)
+
+        if success:
+            logger.info(f"Successfully deleted product {product_id} from Meilisearch")
+            return {"status": "success", "product_id": product_id}
+        else:
+            # This will trigger ARQ retry
+            logger.warning(f"Delete failed for product {product_id}, will retry")
+            raise Retry("Meilisearch delete failed")
+
+    except Retry:
+        raise
+    except Exception as e:
+        logger.error(f"Error in delete_product_task for {product_id}: {e}")
+        # Record to DLQ on final failure
+        await _record_dlq_failure(product_id, str(e), "delete_product_task_failure", SyncTaskType.DELETE)
+        return {"status": "failed", "error": str(e), "dlq_recorded": True}
+
+
+async def _record_dlq_failure(
+    product_id: str,
+    error: str,
+    error_type: str,
+    task_type: SyncTaskType
+) -> None:
+    """
+    Record a failed sync task to the DLQ (failed_sync_tasks table).
+
+    This is called when a task has exhausted all retries.
+
+    Args:
+        product_id: UUID string of the product
+        error: Error message
+        error_type: Type of error for categorization
+        task_type: Type of task that failed
+    """
+    try:
+        from uuid import UUID as UUIDType
+        async for session in get_db_session():
+            # Prepare payload with product snapshot for debugging
+            payload = {"product_id": product_id, "task_type": task_type.value}
+
+            dlq_entry = FailedSyncTask(
+                product_id=UUIDType(product_id),
+                task_type=task_type,
+                payload=payload,
+                attempt=3,  # Max attempts reached
+                max_attempts=3,
+                error=error,
+                error_type=error_type,
+            )
+            session.add(dlq_entry)
+            await session.commit()
+            logger.info(f"Recorded DLQ entry for product {product_id} (type: {task_type.value})")
+            break
+    except Exception as e:
+        logger.error(f"Failed to record DLQ entry for {product_id}: {e}")
+
+
+async def cancel_expired_orders_task(ctx: Any) -> Dict[str, Any]:
+    """
+    ARQ Task for auto-cancelling expired PENDING orders.
+
+    This task should be run frequently (e.g., every 1-5 minutes) to cancel
+    orders that have been in PENDING status longer than the timeout threshold.
+
+    Args:
+        ctx: ARQ context
+
+    Returns:
+        Dict with cancellation statistics
+    """
+    logger.info("Starting cancel expired orders task")
+
+    stats = {
+        "checked": 0,
+        "cancelled": 0,
+        "failed": 0,
+    }
+
+    try:
+        # Get database session
+        async for session in get_db_session():
+            payment_service = PaymentService()
+            cancelled_count = await payment_service.auto_cancel_expired_orders(session)
+            stats["cancelled"] = cancelled_count
+            stats["checked"] = cancelled_count  # Only counted cancelled ones
+            logger.info(f"Auto-cancelled {cancelled_count} expired orders")
+            break
+
+    except Exception as e:
+        logger.error(f"Error in cancel expired orders task: {e}")
+        stats["error"] = str(e)
+        stats["failed"] += 1
+
+    logger.info(f"Cancel expired orders task completed: {stats}")
+    return stats
+
+
 async def startup(ctx: Any):
     logger.info("=== Enterprise ARQ Worker initializing background jobs ===")
-    logger.info("Registered tasks: send_email_task, optimize_image_task, generate_sales_report_task, generate_embeddings_task, sync_to_meilisearch_task, incremental_sync_task")
+    logger.info("Registered tasks: send_email_task, optimize_image_task, generate_sales_report_task, generate_embeddings_task, sync_to_meilisearch_task, incremental_sync_task, sync_product_task, delete_product_task, cancel_expired_orders_task")
+
 
 async def shutdown(ctx: Any):
     logger.info("=== Enterprise ARQ Worker shutting down gracefully ===")
+
 
 class WorkerSettings:
     """Configuration class consumed by `arq app.worker.WorkerSettings`."""
@@ -376,6 +572,13 @@ class WorkerSettings:
         generate_embeddings_task,
         sync_to_meilisearch_task,
         incremental_sync_task,
+        sync_product_task,
+        delete_product_task,
+        cancel_expired_orders_task,
+    ]
+    # Cron jobs run periodically - cancel_expired_orders every 2 minutes
+    cron_jobs = [
+        cron(cancel_expired_orders_task, minute="*/2"),
     ]
     redis_settings = get_redis_settings()
     on_startup = startup
@@ -384,7 +587,7 @@ class WorkerSettings:
     job_timeout = 600
     keep_result = 86400
 
+
 if __name__ == "__main__":
     from arq import run_worker
-    import asyncio
     asyncio.run(run_worker(WorkerSettings))

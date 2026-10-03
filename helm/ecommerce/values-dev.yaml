@@ -32,6 +32,10 @@ worker:
       cpu: "50m"
       memory: "64Mi"
 
+# CronJob for auto-cancelling expired orders (disabled in dev, use ARQ worker)
+cancelExpiredOrders:
+  enabled: false
+
 postgres:
   resources:
     limits:

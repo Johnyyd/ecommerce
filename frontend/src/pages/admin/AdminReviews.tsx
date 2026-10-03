@@ -9,7 +9,10 @@ import {
   Package,
   User as UserIcon,
   CheckCircle,
-  X
+  X,
+  EyeSlash,
+  ShieldCheck,
+  WarningOctagon
 } from "@phosphor-icons/react"
 import { toast } from "sonner"
 import { AdminReviewItem, ProductItem } from "@/types/admin"
@@ -29,6 +32,8 @@ export function AdminReviews({ products }: AdminReviewsProps) {
   const [searchQuery, setSearchQuery] = useState<string>("")
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [reviewToDelete, setReviewToDelete] = useState<AdminReviewItem | null>(null)
+  const [reviewToModerate, setReviewToModerate] = useState<AdminReviewItem | null>(null)
+  const [moderatingId, setModeratingId] = useState<string | null>(null)
 
   const fetchReviews = useCallback(async () => {
     setIsLoading(true)
@@ -62,6 +67,33 @@ export function AdminReviews({ products }: AdminReviewsProps) {
     } finally {
       setDeletingId(null)
     }
+  }
+
+  // Moderation handlers (placeholder for backend integration)
+  const handleModerateReview = async (reviewId: string, action: 'approve' | 'reject' | 'hide') => {
+    setModeratingId(reviewId)
+    try {
+      // TODO: Call backend moderation API when available
+      // await adminApi.moderateReview(reviewId, { action })
+
+      const actionLabels: Record<string, string> = {
+        approve: 'approved and published',
+        reject: 'rejected',
+        hide: 'hidden from public view'
+      }
+
+      toast.success(`Review ${actionLabels[action]} successfully`)
+      setReviewToModerate(null)
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : `Failed to ${action} review`
+      toast.error(msg)
+    } finally {
+      setModeratingId(null)
+    }
+  }
+
+  const openModerationModal = (review: AdminReviewItem) => {
+    setReviewToModerate(review)
   }
 
   // Filtered by search query locally
@@ -296,14 +328,51 @@ export function AdminReviews({ products }: AdminReviewsProps) {
 
                 {/* Moderation Actions */}
                 <div className="flex items-center gap-2 self-end md:self-start">
-                  <button
-                    onClick={() => setReviewToDelete(rev)}
-                    className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/50 text-xs font-semibold transition-colors cursor-pointer"
-                    title="Remove or moderate this review"
-                  >
-                    <Trash size={14} />
-                    Delete Review
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    {/* Approve - only show if not already approved/visible */}
+                    <button
+                      onClick={() => openModerationModal(rev)}
+                      disabled={moderatingId === rev.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-900/50 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                      title="Approve and publish this review"
+                    >
+                      <CheckCircle size={14} weight="fill" />
+                      <span className="hidden sm:inline">Approve</span>
+                    </button>
+
+                    {/* Hide */}
+                    <button
+                      onClick={() => openModerationModal(rev)}
+                      disabled={moderatingId === rev.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-900/50 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                      title="Hide this review from public view"
+                    >
+                      <EyeSlash size={14} />
+                      <span className="hidden sm:inline">Hide</span>
+                    </button>
+
+                    {/* Reject */}
+                    <button
+                      onClick={() => openModerationModal(rev)}
+                      disabled={moderatingId === rev.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-600 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/50 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                      title="Reject this review"
+                    >
+                      <X size={14} weight="bold" />
+                      <span className="hidden sm:inline">Reject</span>
+                    </button>
+
+                    {/* Delete */}
+                    <button
+                      onClick={() => setReviewToDelete(rev)}
+                      disabled={deletingId === rev.id}
+                      className="inline-flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700 border border-zinc-200 dark:border-zinc-700 text-xs font-semibold transition-colors cursor-pointer disabled:opacity-50"
+                      title="Permanently delete this review"
+                    >
+                      <Trash size={14} />
+                      <span className="hidden sm:inline">Delete</span>
+                    </button>
+                  </div>
                 </div>
               </div>
             ))}
@@ -363,6 +432,97 @@ export function AdminReviews({ products }: AdminReviewsProps) {
                 >
                   {deletingId === reviewToDelete.id ? "Deleting..." : "Confirm Delete"}
                 </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Moderation Confirmation Modal - Placeholder until backend supports it */}
+      <AnimatePresence>
+        {reviewToModerate && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setReviewToModerate(null)}
+              className="absolute inset-0 bg-zinc-900/40 dark:bg-black/60 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 12 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 12 }}
+              className="relative bg-white dark:bg-zinc-900 rounded-3xl border border-zinc-200/80 dark:border-zinc-800 shadow-2xl max-w-md w-full p-6 sm:p-8 z-10"
+            >
+              <div className="flex justify-between items-start mb-4">
+                <div className="flex items-center gap-2 text-zinc-900 dark:text-zinc-50">
+                  <ShieldCheck size={22} weight="bold" className="text-amber-600" />
+                  <h4 className="text-base font-bold">Moderate Review</h4>
+                </div>
+                <button
+                  onClick={() => setReviewToModerate(null)}
+                  className="w-7 h-7 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 flex items-center justify-center transition-colors"
+                >
+                  <X size={15} />
+                </button>
+              </div>
+
+              <p className="text-xs text-zinc-600 dark:text-zinc-400 mb-6">
+                Choose a moderation action for this {reviewToModerate.rating}-star review for{" "}
+                <span className="font-semibold text-zinc-900 dark:text-zinc-100">
+                  "{reviewToModerate.product_name}"
+                </span>
+              </p>
+
+              <div className="space-y-3 mb-6">
+                <button
+                  onClick={() => handleModerateReview(reviewToModerate.id, 'approve')}
+                  disabled={moderatingId === reviewToModerate.id}
+                  className="w-full px-4 py-3 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border border-emerald-200 dark:border-emerald-900/50 text-left text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-3"
+                >
+                  <CheckCircle size={20} weight="fill" />
+                  <div>
+                    <div className="font-medium">Approve & Publish</div>
+                    <div className="text-xs text-emerald-600 dark:text-emerald-400">Make review visible to all customers</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleModerateReview(reviewToModerate.id, 'hide')}
+                  disabled={moderatingId === reviewToModerate.id}
+                  className="w-full px-4 py-3 rounded-xl bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 hover:bg-amber-100 dark:hover:bg-amber-900/50 border border-amber-200 dark:border-amber-900/50 text-left text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-3"
+                >
+                  <EyeSlash size={20} />
+                  <div>
+                    <div className="font-medium">Hide from Public</div>
+                    <div className="text-xs text-amber-600 dark:text-amber-400">Keep review but hide from product page</div>
+                  </div>
+                </button>
+
+                <button
+                  onClick={() => handleModerateReview(reviewToModerate.id, 'reject')}
+                  disabled={moderatingId === reviewToModerate.id}
+                  className="w-full px-4 py-3 rounded-xl bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 hover:bg-rose-100 dark:hover:bg-rose-900/50 border border-rose-200 dark:border-rose-900/50 text-left text-sm font-semibold transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-3"
+                >
+                  <WarningOctagon size={20} weight="fill" />
+                  <div>
+                    <div className="font-medium">Reject Review</div>
+                    <div className="text-xs text-rose-600 dark:text-rose-400">Mark as inappropriate/spam (hidden permanently)</div>
+                  </div>
+                </button>
+              </div>
+
+              <div className="flex justify-end gap-3">
+                <button
+                  onClick={() => setReviewToModerate(null)}
+                  className="px-4 py-2 rounded-xl bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-300 text-xs font-semibold hover:bg-zinc-200 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <div className="text-xs text-zinc-400 italic self-center">
+                  Note: Backend moderation API integration pending
+                </div>
               </div>
             </motion.div>
           </div>

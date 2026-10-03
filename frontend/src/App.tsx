@@ -13,15 +13,14 @@ import { Cart } from "@/pages/Cart"
 import { PaymentResult } from "@/pages/PaymentResult"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useThemeStore } from "@/store/useThemeStore"
+import { ThemeInitializer } from "@/providers/ThemeInitializer"
 import { getAuthToken, clearAuthToken } from "@/lib/auth"
 
 function App() {
   const { setUser, setIsLoading } = useAuthStore()
-  const { isDark, initTheme } = useThemeStore()
+  const { isDark } = useThemeStore()
 
-  useEffect(() => {
-    initTheme()
-  }, [initTheme])
+  // Theme initialization is handled by ThemeInitializer component
 
   useEffect(() => {
     const checkAuth = async () => {

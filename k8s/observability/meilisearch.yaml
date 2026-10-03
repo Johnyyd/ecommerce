@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: ServiceMonitor
+metadata:
+  name: meilisearch
+  namespace: observability
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: meilisearch
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames:
+      - ecommerce
+---
+apiVersion: v1
+kind: PodMonitor
+metadata:
+  name: meilisearch
+  namespace: observability
+  labels:
+    release: prometheus
+spec:
+  selector:
+    matchLabels:
+      app: meilisearch
+  podMetricsEndpoints:
+    - port: http
+      path: /metrics
+      interval: 30s
+  namespaceSelector:
+    matchNames:
+      - ecommerce

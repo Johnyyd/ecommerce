@@ -70,7 +70,7 @@ metadata:
     component: observability
 data:
   local-config.yaml: |
-    auth_enabled: false
+    auth_enabled: true
     server:
       http_listen_port: 3100
       log_level: info

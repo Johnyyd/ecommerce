@@ -1,0 +1,1 @@
+import{j as e,K as s,L as r}from"./index-KC7t9mA1.js";function a(...t){return s(r(t))}function i({className:t,...n}){return e.jsx("div",{"data-testid":"skeleton",className:a("animate-pulse rounded-lg bg-zinc-200/80 dark:bg-zinc-800/80 transition-colors",t),...n})}export{i as S};

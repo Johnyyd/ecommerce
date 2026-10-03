@@ -9,6 +9,14 @@ from app.core.telemetry import init_telemetry, tracing_middleware, get_tracer
 
 def test_init_telemetry():
     """Test that telemetry initialization returns a TracerProvider."""
+    import os
+
+    # Set OTLP endpoint and environment to production to ensure secure OTLP exporter is used
+    os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = 'http://tempo:4317'
+    os.environ['ENVIRONMENT'] = 'production'
+    os.environ['OTEL_EXPORTER_OTLP_CERTIFICATE'] = '/path/to/cert.pem'
+    os.environ['OTEL_EXPORTER_OTLP_CLIENT_KEY'] = '/path/to/key.pem'
+
     with patch('opentelemetry.sdk.resources.Resource.create'), \
          patch('app.core.telemetry.TracerProvider') as mock_tracer_provider, \
          patch('app.core.telemetry.OTLPSpanExporter') as mock_otlp_exporter, \
@@ -47,6 +55,14 @@ def test_init_telemetry():
 
 def test_init_telemetry_with_app():
     """Test telemetry initialization with FastAPI app."""
+    import os
+
+    # Set OTLP endpoint and environment to production to ensure secure OTLP exporter is used
+    os.environ['OTEL_EXPORTER_OTLP_ENDPOINT'] = 'http://tempo:4317'
+    os.environ['ENVIRONMENT'] = 'production'
+    os.environ['OTEL_EXPORTER_OTLP_CERTIFICATE'] = '/path/to/cert.pem'
+    os.environ['OTEL_EXPORTER_OTLP_CLIENT_KEY'] = '/path/to/key.pem'
+
     app = FastAPI()
 
     with patch('opentelemetry.sdk.resources.Resource.create'), \

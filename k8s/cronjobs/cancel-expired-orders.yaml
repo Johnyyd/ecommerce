@@ -1,0 +1,52 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: cancel-expired-orders
+  labels:
+    app: cancel-expired-orders
+    component: cronjob
+spec:
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: cancel-expired-orders
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: cancel-orders
+            image: ecommerce-backend:latest
+            command: ["python", "-m", "app.worker.cancel_expired_orders_task"]
+            envFrom:
+            - secretRef:
+                name: app-secrets
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+          nodeSelector:
+            kubernetes.io/os: linux
+---
+# Alternative: If using ARQ worker (recommended), this CronJob is NOT needed.
+# The cancel_expired_orders_task is already scheduled as an ARQ cron job
+# in backend/app/worker.py (runs every 2 minutes).
+#
+# To use ARQ approach:
+# 1. Ensure worker Deployment has sufficient replicas (values-prod.yaml has replicaCount: 2)
+# 2. The ARQ worker will automatically run cancel_expired_orders_task every 2 minutes
+# 3. No additional CronJob required

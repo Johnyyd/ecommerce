@@ -43,20 +43,45 @@ def init_telemetry(app: Optional[FastAPI] = None) -> TracerProvider:
 
     # Configure OTLP exporter
     otlp_endpoint = os.getenv("OTEL_EXPORTER_OTLP_ENDPOINT")
+    environment = os.getenv("ENVIRONMENT", "development").lower()
 
-    if otlp_endpoint:
-        # Production: Use OTLP exporter to send traces to Tempo
-        otlp_exporter = OTLPSpanExporter(
-            endpoint=otlp_endpoint,
-            insecure=True,
-        )
+    if otlp_endpoint and environment not in ("development", "local", "test"):
+        # Production/Staging: Use secure OTLP exporter with TLS
+        # Requires OTEL_EXPORTER_OTLP_CERTIFICATE and OTEL_EXPORTER_OTLP_CLIENT_KEY env vars
+        cert_path = os.getenv("OTEL_EXPORTER_OTLP_CERTIFICATE")
+        key_path = os.getenv("OTEL_EXPORTER_OTLP_CLIENT_KEY")
+
+        if cert_path and key_path:
+            # Use mTLS with client certificate
+            otlp_exporter = OTLPSpanExporter(
+                endpoint=otlp_endpoint,
+                insecure=False,
+                certificate_file=cert_path,
+                client_key_file=key_path,
+            )
+        else:
+            # Use system CA certificates (standard TLS)
+            otlp_exporter = OTLPSpanExporter(
+                endpoint=otlp_endpoint,
+                insecure=False,
+            )
         span_processor = BatchSpanProcessor(otlp_exporter)
         tracer_provider.add_span_processor(span_processor)
     else:
         # Development/Local: Use console exporter for visibility without Tempo
-        console_exporter = ConsoleSpanExporter()
-        span_processor = SimpleSpanProcessor(console_exporter)
-        tracer_provider.add_span_processor(span_processor)
+        # For local testing with insecure endpoint, set OTEL_EXPORTER_OTLP_INSECURE=true
+        if otlp_endpoint and os.getenv("OTEL_EXPORTER_OTLP_INSECURE", "false").lower() == "true":
+            # Allow insecure for local development only
+            otlp_exporter = OTLPSpanExporter(
+                endpoint=otlp_endpoint,
+                insecure=True,
+            )
+            span_processor = BatchSpanProcessor(otlp_exporter)
+            tracer_provider.add_span_processor(span_processor)
+        else:
+            console_exporter = ConsoleSpanExporter()
+            span_processor = SimpleSpanProcessor(console_exporter)
+            tracer_provider.add_span_processor(span_processor)
 
     # Auto-instrument FastAPI if app provided
     if app:

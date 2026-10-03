@@ -89,9 +89,11 @@ describe("Admin Layout & Sub-components", () => {
       expect(adminApi.getUsers).toHaveBeenCalled()
     })
 
-    // In overview, we should see stat metrics
-    expect(screen.getByText(/Total Revenue/i)).toBeInTheDocument()
-    expect(screen.getByText(/Total Orders/i)).toBeInTheDocument()
+    // Wait for lazy-loaded AdminOverview to render (Suspense boundary)
+    await waitFor(() => {
+      expect(screen.getByText(/Total Revenue/i)).toBeInTheDocument()
+      expect(screen.getByText(/Total Orders/i)).toBeInTheDocument()
+    }, { timeout: 5000 })
   })
 
   it("switches to Products tab on click and renders products", async () => {
@@ -100,10 +102,11 @@ describe("Admin Layout & Sub-components", () => {
     const productsTab = screen.getByTestId("tab-products")
     fireEvent.click(productsTab)
 
+    // Wait for lazy-loaded AdminProducts to render (Suspense boundary)
     await waitFor(() => {
       expect(screen.getByText("Store Catalog")).toBeInTheDocument()
       expect(screen.getByText("Premium Shirt")).toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
   })
 
   it("switches to Orders tab on click and renders order list", async () => {
@@ -112,10 +115,11 @@ describe("Admin Layout & Sub-components", () => {
     const ordersTab = screen.getByTestId("tab-orders")
     fireEvent.click(ordersTab)
 
+    // Wait for lazy-loaded AdminOrders to render (Suspense boundary)
     await waitFor(() => {
       expect(screen.getByText("Order Management")).toBeInTheDocument()
       expect(screen.getByText("#o1")).toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
   })
 
   it("switches to Users tab on click and renders users table", async () => {
@@ -124,11 +128,12 @@ describe("Admin Layout & Sub-components", () => {
     const usersTab = screen.getByTestId("tab-users")
     fireEvent.click(usersTab)
 
+    // Wait for lazy-loaded AdminUsers to render (Suspense boundary)
     await waitFor(() => {
       expect(screen.getByText("User Accounts")).toBeInTheDocument()
       expect(screen.getByText("johndoe")).toBeInTheDocument()
       expect(screen.getByText("john@example.com")).toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
   })
 
   it("switches to Backups tab on click and renders database backup snapshots", async () => {
@@ -137,10 +142,11 @@ describe("Admin Layout & Sub-components", () => {
     const backupsTab = screen.getByTestId("tab-backups")
     fireEvent.click(backupsTab)
 
+    // Wait for lazy-loaded AdminBackups to render (Suspense boundary)
     await waitFor(() => {
       expect(screen.getByText("Database Backup & Recovery")).toBeInTheDocument()
       expect(screen.getByText("db_snapshot_2026.dump")).toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
   })
 
   it("denies access to customer role and redirects to login", async () => {
@@ -166,9 +172,10 @@ describe("Admin Layout & Sub-components", () => {
     expect(lowStockCard).toBeInTheDocument()
     fireEvent.click(lowStockCard)
 
+    // Wait for lazy-loaded AdminProducts to render (Suspense boundary)
     await waitFor(() => {
       expect(screen.getByText("Store Catalog")).toBeInTheDocument()
       expect(screen.getByTestId("filter-low-stock-products")).toBeInTheDocument()
-    })
+    }, { timeout: 5000 })
   })
 })

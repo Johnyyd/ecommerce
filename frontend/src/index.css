@@ -27,10 +27,61 @@
     -moz-osx-font-smoothing: grayscale;
     transition: background-color 0.2s ease, color 0.2s ease;
   }
+
+  /* Theme transition utilities */
+  .theme-transitioning,
+  .theme-transitioning *,
+  .theme-transitioning *::before,
+  .theme-transitioning *::after {
+    transition: background-color 0.2s ease, color 0.2s ease, border-color 0.2s ease, fill 0.2s ease, stroke 0.2s ease !important;
+  }
 }
 
 @layer utilities {
   .text-balance {
     text-wrap: balance;
+  }
+
+  /* Skeleton shimmer effect */
+  .skeleton-shimmer {
+    background: linear-gradient(
+      90deg,
+      hsl(var(--border)) 25%,
+      hsl(var(--card)) 50%,
+      hsl(var(--border)) 75%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s linear infinite;
+  }
+
+  @keyframes shimmer {
+    0% {
+      background-position: -200% 0;
+    }
+    100% {
+      background-position: 200% 0;
+    }
+  }
+
+  /* Touch-specific styles */
+  .touch-active:active {
+    transform: scale(0.97);
+    opacity: 0.8;
+  }
+
+  .min-h-touch {
+    min-height: 44px;
+  }
+
+  .min-w-touch {
+    min-width: 44px;
+  }
+
+  .min-h-touch-lg {
+    min-height: 56px;
+  }
+
+  .min-w-touch-lg {
+    min-width: 56px;
   }
 }

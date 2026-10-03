@@ -1,0 +1,43 @@
+{{- if .Values.cancelExpiredOrders.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-cancel-expired-orders
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: cancel-expired-orders
+    component: cronjob
+spec:
+  schedule: {{ .Values.cancelExpiredOrders.schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.cancelExpiredOrders.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.cancelExpiredOrders.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "ecommerce.selectorLabels" . | nindent 12 }}
+            app: cancel-expired-orders
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: cancel-orders
+            image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+            imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+            command: ["python", "-m", "app.worker.cancel_expired_orders_task"]
+            envFrom:
+            - secretRef:
+                name: app-secrets
+            resources:
+              {{- toYaml .Values.cancelExpiredOrders.resources | nindent 14 }}
+          nodeSelector:
+            kubernetes.io/os: linux
+{{- end }}
