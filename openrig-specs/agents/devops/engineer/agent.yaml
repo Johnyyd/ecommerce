@@ -1,0 +1,29 @@
+name: devops_engineer
+version: "1.0"
+description: "DevOps Engineer agent for managing CI/CD and infrastructure"
+
+defaults:
+  runtime: claude-code
+
+imports:
+  - ref: local:../../shared
+
+profiles:
+  default:
+    uses:
+      skills: []
+      guidance: []
+      subagents: []
+      permission_policy:
+      launch_posture: "floor"
+      permissions: []
+  guidance:
+    - id: role
+      path: guidance/role.md
+
+startup:
+  files:
+    - path: guidance/role.md
+      delivery_hint: send_text
+      required: true
+  actions: []

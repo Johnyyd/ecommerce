@@ -75,7 +75,7 @@ The locked restore-outcome vocabulary:
 | `attention_required` | Recoverable blocker (provider auth refused, etc.); needs operator action |
 | `n-a` | Not applicable (terminal nodes, etc.) |
 
-Codex auth-refusal returns `attention_required` (recoverable); Claude
+claude-code auth-refusal returns `attention_required` (recoverable); Claude
 `looksLikeClaudeLoginPrompt` returns `failed/login_required` (terminal).
 Cross-runtime alignment is an open follow-up question.
 
@@ -89,7 +89,7 @@ not only daemon-unit evidence. The minimum useful matrix covers:
 | Clean start | Boot from spec into known state |
 | Warm resume | `rig down` → `rig up <name>` resumes seats |
 | Host reboot / tmux socket absence | Recovery from lost tmux connection |
-| Provider auth loss | Codex/Claude auth refusal handled honestly |
+| Provider auth loss | claude-code/Claude auth refusal handled honestly |
 | Partial boot / partial failure | Some seats up, some failed; honest reporting |
 | Intentional operator recovery | Operator-initiated restore from snapshot |
 

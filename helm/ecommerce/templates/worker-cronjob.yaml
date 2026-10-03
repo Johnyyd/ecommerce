@@ -1,0 +1,49 @@
+{{- if .Values.worker.enabled -}}
+{{- if .Values.worker.cronJob.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-worker-cancel-expired
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: worker-cancel-expired
+    component: cronjob
+spec:
+  schedule: "{{ .Values.worker.cronJob.schedule }}"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: {{ .Values.worker.cronJob.successfulJobsHistoryLimit }}
+  failedJobsHistoryLimit: {{ .Values.worker.cronJob.failedJobsHistoryLimit }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: worker-cancel-expired
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: cancel-expired-orders
+            image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
+            imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
+            command: ["python", "-c", "from app.worker import cancel_expired_orders_task; import asyncio; asyncio.run(cancel_expired_orders_task(None))"]
+            envFrom:
+            - secretRef:
+                name: app-secrets
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+          nodeSelector:
+            kubernetes.io/os: linux
+{{- end }}
+{{- end }}

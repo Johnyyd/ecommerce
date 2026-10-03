@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react"
+import { useEffect, useState, useCallback, Suspense, lazy } from "react"
 import { useLocation, Link } from "wouter"
 import { motion, AnimatePresence } from "motion/react"
 import {
@@ -31,17 +31,33 @@ import {
   TabType
 } from "@/types/admin"
 
-// Domain sub-components
-import { AdminOverview } from "./admin/AdminOverview"
-import { AdminProducts } from "./admin/AdminProducts"
-import { AdminCategories } from "./admin/AdminCategories"
-import { AdminBrands } from "./admin/AdminBrands"
-import { AdminVouchers } from "./admin/AdminVouchers"
-import { AdminOrders } from "./admin/AdminOrders"
-import { AdminUsers } from "./admin/AdminUsers"
-import { AdminBackups } from "./admin/AdminBackups"
-import { AdminAsyncJobs } from "./admin/AdminAsyncJobs"
-import { AdminReviews } from "./admin/AdminReviews"
+// Domain sub-components - Code-split with React.lazy for bundle size reduction
+const AdminOverview = lazy(() => import("./admin/AdminOverview").then(m => ({ default: m.AdminOverview })))
+const AdminProducts = lazy(() => import("./admin/AdminProducts").then(m => ({ default: m.AdminProducts })))
+const AdminCategories = lazy(() => import("./admin/AdminCategories").then(m => ({ default: m.AdminCategories })))
+const AdminBrands = lazy(() => import("./admin/AdminBrands").then(m => ({ default: m.AdminBrands })))
+const AdminVouchers = lazy(() => import("./admin/AdminVouchers").then(m => ({ default: m.AdminVouchers })))
+const AdminOrders = lazy(() => import("./admin/AdminOrders").then(m => ({ default: m.AdminOrders })))
+const AdminUsers = lazy(() => import("./admin/AdminUsers").then(m => ({ default: m.AdminUsers })))
+const AdminBackups = lazy(() => import("./admin/AdminBackups").then(m => ({ default: m.AdminBackups })))
+const AdminAsyncJobs = lazy(() => import("./admin/AdminAsyncJobs").then(m => ({ default: m.AdminAsyncJobs })))
+const AdminReviews = lazy(() => import("./admin/AdminReviews").then(m => ({ default: m.AdminReviews })))
+
+// Loading fallback component
+const AdminTabSkeleton = () => (
+  <div className="space-y-6">
+    <div className="h-8 bg-zinc-200/50 dark:bg-zinc-800/50 rounded-xl animate-pulse max-w-xs" />
+    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      {[1, 2, 3, 4].map(i => (
+        <div key={i} className="p-6 bg-white dark:bg-zinc-900 border border-zinc-200/80 dark:border-zinc-800/80 rounded-2xl">
+          <div className="h-4 bg-zinc-200/50 dark:bg-zinc-800/50 rounded animate-pulse w-1/2 mb-2" />
+          <div className="h-8 bg-zinc-200/50 dark:bg-zinc-800/50 rounded animate-pulse w-3/4" />
+        </div>
+      ))}
+    </div>
+    <div className="h-96 bg-zinc-200/50 dark:bg-zinc-800/50 rounded-2xl animate-pulse" />
+  </div>
+)
 
 export function Admin() {
   const { user, isLoading, logout } = useAuthStore()
@@ -297,76 +313,78 @@ export function Admin() {
             exit={{ opacity: 0, y: -8 }}
             transition={{ duration: 0.18, ease: "easeOut" }}
           >
-            {activeTab === "overview" && (
-              <AdminOverview
-                products={products}
-                orders={orders}
-                users={users}
-                isFetching={isFetching}
-                onNavigateTab={handleTabChange}
-              />
-            )}
-            {activeTab === "products" && (
-              <AdminProducts
-                products={products}
-                categories={categories}
-                isFetching={isFetching}
-                onRefresh={fetchAllData}
-                totalCount={productsTotal || products.length}
-                stockFilter={productStockFilter}
-                onStockFilterChange={setProductStockFilter}
-              />
-            )}
-            {activeTab === "categories" && (
-              <AdminCategories
-                categories={categories}
-                isFetching={isFetching}
-                onRefresh={fetchAllData}
-              />
-            )}
-            {activeTab === "brands" && (
-              <AdminBrands
-                brands={brands}
-                isFetching={isFetching}
-                onRefresh={fetchAllData}
-              />
-            )}
-            {activeTab === "vouchers" && (
-              <AdminVouchers
-                vouchers={vouchers}
-                isFetching={isFetching}
-                onRefresh={fetchAllData}
-              />
-            )}
-            {activeTab === "orders" && (
-              <AdminOrders
-                orders={orders}
-                isFetching={isFetching}
-                onRefresh={fetchAllData}
-              />
-            )}
-            {activeTab === "users" && (
-              <AdminUsers
-                users={users}
-                isFetching={isFetching}
-                currentUserRole={user?.role}
-                onRefresh={fetchAllData}
-              />
-            )}
-            {activeTab === "backups" && (
-              <AdminBackups
-                backups={backups}
-                isFetching={isFetching}
-                currentUserRole={user?.role}
-                onRefresh={fetchAllData}
-              />
-            )}
-            {activeTab === "async_jobs" && (
-              <AdminAsyncJobs />
-            )}
-            {activeTab === "reviews" && (
-              <AdminReviews products={products} onRefreshAll={fetchAllData} />
-            )}
+            <Suspense fallback={<AdminTabSkeleton />}>
+              {activeTab === "overview" && (
+                <AdminOverview
+                  products={products}
+                  orders={orders}
+                  users={users}
+                  isFetching={isFetching}
+                  onNavigateTab={handleTabChange}
+                />
+              )}
+              {activeTab === "products" && (
+                <AdminProducts
+                  products={products}
+                  categories={categories}
+                  isFetching={isFetching}
+                  onRefresh={fetchAllData}
+                  totalCount={productsTotal || products.length}
+                  stockFilter={productStockFilter}
+                  onStockFilterChange={setProductStockFilter}
+                />
+              )}
+              {activeTab === "categories" && (
+                <AdminCategories
+                  categories={categories}
+                  isFetching={isFetching}
+                  onRefresh={fetchAllData}
+                />
+              )}
+              {activeTab === "brands" && (
+                <AdminBrands
+                  brands={brands}
+                  isFetching={isFetching}
+                  onRefresh={fetchAllData}
+                />
+              )}
+              {activeTab === "vouchers" && (
+                <AdminVouchers
+                  vouchers={vouchers}
+                  isFetching={isFetching}
+                  onRefresh={fetchAllData}
+                />
+              )}
+              {activeTab === "orders" && (
+                <AdminOrders
+                  orders={orders}
+                  isFetching={isFetching}
+                  onRefresh={fetchAllData}
+                />
+              )}
+              {activeTab === "users" && (
+                <AdminUsers
+                  users={users}
+                  isFetching={isFetching}
+                  currentUserRole={user?.role}
+                  onRefresh={fetchAllData}
+                />
+              )}
+              {activeTab === "backups" && (
+                <AdminBackups
+                  backups={backups}
+                  isFetching={isFetching}
+                  currentUserRole={user?.role}
+                  onRefresh={fetchAllData}
+                />
+              )}
+              {activeTab === "async_jobs" && (
+                <AdminAsyncJobs />
+              )}
+              {activeTab === "reviews" && (
+                <AdminReviews products={products} onRefreshAll={fetchAllData} />
+              )}
+            </Suspense>
           </motion.div>
         </AnimatePresence>
       </main>

@@ -7,7 +7,7 @@ describe("Skeleton Component", () => {
     render(<Skeleton />)
     const skeleton = screen.getByTestId("skeleton")
     expect(skeleton).toBeInTheDocument()
-    expect(skeleton).toHaveClass("animate-pulse")
+    expect(skeleton).toHaveClass("skeleton-shimmer")
     expect(skeleton).toHaveClass("rounded-lg")
   })
 

@@ -1,0 +1,47 @@
+{{- if and .Values.observability.enabled .Values.observability.grafana.enabled -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-grafana-datasources
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: grafana
+    component: observability
+data:
+  datasources.yaml: |
+    apiVersion: 1
+    datasources:
+      - name: Prometheus
+        type: prometheus
+        access: proxy
+        url: http://{{ include "ecommerce.fullname" . }}-prometheus:9090
+        isDefault: true
+        editable: true
+      {{- if .Values.observability.loki.enabled }}
+      - name: Loki
+        type: loki
+        access: proxy
+        url: http://{{ include "ecommerce.fullname" . }}-loki:3100
+        editable: true
+        jsonData:
+          maxLines: 1000
+          derivedFields:
+            - name: traceID
+              matcherRegex: "trace_id=([a-f0-9]+)"
+              url: "http://{{ include "ecommerce.fullname" . }}-tempo:3200/tempo/traces/$1"
+              urlLabel: "Trace ID"
+      {{- end }}
+      {{- if .Values.observability.tempo.enabled }}
+      - name: Tempo
+        type: tempo
+        access: proxy
+        url: http://{{ include "ecommerce.fullname" . }}-tempo:3200
+        editable: true
+        jsonData:
+          traceToLogsV2:
+            datasourceUid: loki
+            tags:
+              traceID: trace_id
+        secureJsonData: {}
+      {{- end }}
+{{- end }}

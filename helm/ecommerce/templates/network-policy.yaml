@@ -1,0 +1,114 @@
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-pgbouncer-isolation
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: pgbouncer-isolation
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: pgbouncer
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backend
+    ports:
+    - protocol: TCP
+      port: 6432
+  - from:
+    - podSelector:
+        matchLabels:
+          app: worker
+    ports:
+    - protocol: TCP
+      port: 6432
+  egress:
+  # Allow pgbouncer to connect to postgres
+  - to:
+    - podSelector:
+        matchLabels:
+          app: postgres
+    ports:
+    - protocol: TCP
+      port: 5432
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-postgres-isolation
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: postgres-isolation
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: postgres
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Only allow pgbouncer to connect to postgres
+  - from:
+    - podSelector:
+        matchLabels:
+          app: pgbouncer
+    ports:
+    - protocol: TCP
+      port: 5432
+  egress:
+  # Allow DNS resolution (required for SSL cert validation, hostname resolution, etc.)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+  # Allow NTP time synchronization (critical for database operations and replication)
+  - to:
+    - namespaceSelector: {}
+    ports:
+    - protocol: UDP
+      port: 123
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-redis-isolation
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: redis-isolation
+    component: security
+spec:
+  podSelector:
+    matchLabels:
+      app: redis
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  # Only allow backend and worker to connect to redis
+  - from:
+    - podSelector:
+        matchLabels:
+          app: backend
+    ports:
+    - protocol: TCP
+      port: 6379
+  - from:
+    - podSelector:
+        matchLabels:
+          app: worker
+    ports:
+    - protocol: TCP
+      port: 6379
+  egress: []
+{{- end }}

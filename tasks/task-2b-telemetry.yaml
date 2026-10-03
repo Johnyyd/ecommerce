@@ -1,0 +1,119 @@
+task_id: task-2b-telemetry
+title: "Distributed Tracing - Backend OpenTelemetry Integration"
+phase: 1
+priority: P1
+status: READY
+assigned_to: development.developer_backend
+reviewed_by: devops.devops_architect
+estimated_effort: 2 days
+
+description: |
+  Integrate OpenTelemetry SDK into FastAPI backend to create distributed traces
+  from Ingress → FastAPI Controller → SQLAlchemy → Redis → PgBouncer → PostgreSQL.
+  Enable trace context propagation and add Trace-ID to response headers.
+
+requirements:
+  - Add OpenTelemetry packages to backend/requirements.txt
+  - Create backend/app/core/telemetry.py with:
+    - TracerProvider initialization
+    - FastAPI middleware for automatic instrumentation
+    - SQLAlchemy query instrumentation
+    - Redis cache span creation
+    - Trace-ID propagation via X-Trace-ID header
+  - Instrument: FastAPI, SQLAlchemy, Redis
+
+files_to_create:
+  - backend/app/core/telemetry.py (NEW)
+
+files_to_update:
+  - backend/requirements.txt (ADD OpenTelemetry packages)
+
+files_to_reference:
+  - backend/app/core/logging.py (existing logging patterns)
+  - W3C Trace Context standard (traceparent header)
+  - k8s/observability/tempo.yaml (for Tempo integration reference)
+
+packages_to_add:
+  - opentelemetry-api
+  - opentelemetry-sdk
+  - opentelemetry-instrumentation-fastapi
+  - opentelemetry-instrumentation-sqlalchemy
+  - opentelemetry-instrumentation-redis
+  - opentelemetry-exporter-otlp
+  - opentelemetry-distro  # optionally
+
+trace_configuration:
+  tracer_provider:
+    - name: "ecommerce-tracer"
+    - provider: "BATCH"
+    - scheduler: {"interval": 60000}  # 1 minute
+  samplers:
+    - "parent based": {"ratio": 1.0}  # Always sample
+    - "traceidratio": {"ratio": 1.0}  # 100% sampling
+  processors:
+    - batch: {"schedule_delay_millis": 10000}
+  exporter:
+    otlp:
+      endpoint: "http://tempo:4317"  # gRPC
+      # or: endpoint: "http://tempo:4318"  # HTTP
+
+trace_middleware:
+  - add_traceparent_header: true
+  - include_extras: ["sqlalchemy", "redis"]
+  - propagate_context: true
+
+response_header:
+  name: "X-Trace-ID"
+  value: "{{ trace_id }}"  # Auto-injected into all responses
+
+span_attributes:
+  - "http.method"
+  - "http.url"
+  - "http.status_code"
+  - "db.system"
+  - "db.query"
+  - "cache.redis.key"
+
+acceptance_criteria:
+  - backend/requirements.txt includes all opentelemetry packages
+  - backend/app/core/telemetry.py imports and configures TracerProvider
+  - FastAPI middleware automatically creates spans for all requests
+  - SQLAlchemy queries have spans showing execution time
+  - Redis cache lookups have spans
+  - X-Trace-ID header present in all HTTP responses
+  - Traces visible in Tempo with proper span hierarchy
+
+validation_commands:
+  - pip install -r backend/requirements.txt  # Should install without errors
+  - python -c "from backend.app.core.telemetry import tracer, tracer_provider; print('OK')"
+  - FastAPI test client → Check X-Trace-ID header present
+  - Make a test API call → Verify trace appears in Tempo at http://localhost:4317
+  - python -c "
+    import opentelemetry.sdk.trace as ot_sdk
+    from opentelemetry.sdk.trace.export import BatchSpanProcessor
+    from opentelemetry.exporter.otlp.proto.grpc import OTLPSpanExporter
+    assert hasattr(ot_sdk, 'TracerProvider')
+    print('OTLP exporter available')
+  "
+
+dependencies: []
+parallel_with: ["task-1-loki-promtail", "task-3-helm-charts"]
+
+notes: |
+  W3C Trace Context standard:
+  - traceparent header format: version-traceid-spanid-traceflags
+  - Example: 00-4bf92f3577b34da6a3ce929d0e0e47a4-b7ad6b7169203331-01-01
+  - Must propagate via HTTP headers between: Ingress → FastAPI → SQLAlchemy → Redis → PgBouncer → PostgreSQL
+  
+  Telemetry module should:
+  1. Initialize TracerProvider on module import
+  2. Create FastAPI middleware that:
+     - Extracts traceparent from request headers
+     - Creates new spans for each request
+     - Adds Trace-ID to response headers
+  3. Instrument SQLAlchemy engine creation
+  4. Instrument Redis client creation
+  5. Export otlp protocol to Tempo
+  
+  Reference k8s/observability/tempo.yaml for Tempo deployment details
+  when ready for full integration.

@@ -123,7 +123,7 @@ to the absolute code repository. Verify its existing `dev` pod and choose unused
 member names. When the user has authorized the added capacity and cost, run:
 
 ```sh
-rig grow "$RIG_ID" a b --pod dev --runtime codex --cwd "$PROJECT_ROOT" --json
+rig grow "$RIG_ID" a b --pod dev --runtime claude-code --cwd "$PROJECT_ROOT" --json
 rig ps --nodes --rig first-project --json
 ```
 
@@ -135,14 +135,14 @@ To put those seats in a **new** pod instead, choose this alternative once, with 
 unused pod ID; do not run both examples for the same desired capacity:
 
 ```sh
-rig grow "$RIG_ID" a b --new-pod build --runtime codex --cwd "$PROJECT_ROOT" --json
+rig grow "$RIG_ID" a b --new-pod build --runtime claude-code --cwd "$PROJECT_ROOT" --json
 ```
 
 That alternative produces `build.a`/`build.b` and corresponding `build-...`
 addresses. `--pod` and `--new-pod` are mutually exclusive. With one existing pod,
 `--pod` can be inferred; select it explicitly when the intended target matters.
 The runtime defaults to `claude-code` and cwd defaults to the caller's current
-directory, so these examples select Codex and the repository deliberately.
+directory, so these examples select claude-code and the repository deliberately.
 
 `grow` resolves the shipped builtin `orchestrator` agent and its `default`
 profile. It does not copy the owner's custom agent, model, context, native
@@ -472,7 +472,7 @@ The CLI implementation interface and check commands are repository-derived facts
 
 1. **Current agent:** inspect the selected installation, repository instructions and existing project catalog. Use `rig --help`, `rig config get workspace.root`, `rig config get workspace.catalog_path`, `rig config get workspace.slices_root` and `rig workspace doctor` as appropriate. Preview an additive `rig config init-workspace --root <chosen-root> --dry-run` if no work tree exists. That scaffolder does not bind the roots or supply the metadata/lifecycle graph above. When setting up the intended instance, use ordinary config help to bind only the intended instance to the selected workspace/catalog/slices root; preserve other catalog entries. Do not silently point a shared daemon at a different project. Scope creation helpers may write the skeleton, but inspect and complete the actual manifests before compiling.
 2. **Current agent, with the user's existing authority:** follow the public guide's prerequisite and permission choice once, preview `first-project`, plan it with the real code cwd, then deliberately launch it. Derive both live addresses and native readiness. Reuse existing appropriate seats; do not start duplicates just to clear prompts. Daemon/kernel readiness and each native seat's readiness are separate facts.
-3. **Owner and checker:** read the repository instructions and relevant intent; derive their own identity and queue. For example, the owner can run `rig context work-install --project csv-tool --mission csv-validation --slice 01-inspect --deliver --runtime codex --cwd <actual-code-root> --json`; use `02-cli` for the dependent work and give the checker both exact slice addresses. `--deliver` returns composed bytes to its caller: it is not a transport acknowledgment. Do not use `--apply-skills` merely to make this example work. `install.skills: []` adds no private or invented skill requirement; discover applicable public skills normally.
+3. **Owner and checker:** read the repository instructions and relevant intent; derive their own identity and queue. For example, the owner can run `rig context work-install --project csv-tool --mission csv-validation --slice 01-inspect --deliver --runtime claude-code --cwd <actual-code-root> --json`; use `02-cli` for the dependent work and give the checker both exact slice addresses. `--deliver` returns composed bytes to its caller: it is not a transport acknowledgment. Do not use `--apply-skills` merely to make this example work. `install.skills: []` adds no private or invented skill requirement; discover applicable public skills normally.
 4. **Bootstrap context delivery:** send the two seats a short instruction naming the exact work root and addressed files to retrieve; obtain their scope/role reaction before assigning implementation. A registered context pack can be sent with `rig send --context <discovered-ref>`; an arbitrary filesystem address is not automatically a context-pack ref. Deliver the actual composed bytes when a receiver cannot retrieve them. Keep instruction delivery separate from queue ownership.
 5. **Minimal durable topology context:** derive `topology.root`, then preserve existing chain files. In a new dedicated example instance, put purpose/root pointers in `LEARNED.md`, the two-seat relationship in `rigs/first-project/LEARNED.md`, and short duties in `rigs/first-project/seats/dev-owner/LEARNED.md` and `.../dev-check/LEARNED.md`. Owner text: “Own the user's bounded outcome, implementation, exact check handoff, result and next-work custody; derive the current packet.” Checker text: “Independently judge the supplied candidate against project/mission/slice acceptance, record evidence and limits, and return judgment without self-assigning broader work.” Rig text points to the user's `SPEC.md#working-agreement` and active mission; instance text points to the configured work root. Do not copy a status roster into these files. Optional pod files and eight-region trees are unnecessary.
 6. **Refocus delivery:** use the public `refocus-channel.md` and `chain-file-convention.md`, discovered under the selected instance reference directory. The ordinary hook derives roots and emits pointers at its supported prompt/compaction boundaries; it does not mean an edited file has been read. Ask each seat to run the discovered public refocusing procedure and read the relevant named sources once as part of bootstrap, recording any trace gap. Existing running seats do not inherit shell environment edits. Any explicit `OPENRIG_REFOCUS_WORK_NODE` or content override belongs in an intentionally configured launch context, not a claim that setting it in the sender changed another seat.

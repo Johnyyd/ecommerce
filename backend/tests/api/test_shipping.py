@@ -8,7 +8,7 @@ from app.api.deps import get_current_user, get_current_staff
 from app.models.user import User
 from app.models.order import Order, OrderItem
 from app.models.product import Product
-from app.models.review import Review
+from app.models.review import Review, ModerationStatus
 from app.core.utils import generate_uuidv7
 
 @pytest.fixture
@@ -139,6 +139,8 @@ async def test_admin_all_reviews_endpoint(admin_user):
         rating=5,
         comment="Great material!",
         is_verified_purchase=True,
+        is_approved=True,
+        moderation_status=ModerationStatus.APPROVED,
         created_at=datetime.now(timezone.utc)
     )
     mock_review.product = Product(

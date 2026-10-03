@@ -30,8 +30,20 @@ logger = logging.getLogger("reconcile_search")
 
 
 async def reconcile(dry_run: bool = True, batch_size: int = 100) -> Dict[str, Any]:
-    search_service = SearchService()
-    await search_service.ensure_index_initialized()
+    try:
+        search_service = SearchService()
+        await search_service.ensure_index_initialized()
+    except Exception as e:
+        logger.error(f"Failed to initialize search service: {e}")
+        return {
+            "error": str(e),
+            "postgres_total": 0,
+            "meilisearch_total": 0,
+            "missing_in_search": 0,
+            "stale_in_search": 0,
+            "repaired": 0,
+            "failed": 0
+        }
 
     stats = {
         "postgres_total": 0,

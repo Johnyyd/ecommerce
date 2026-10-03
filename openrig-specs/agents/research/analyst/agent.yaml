@@ -1,4 +1,4 @@
-name: analyst
+name: research_analyst
 version: "1.0"
 description: Research analyst — deep-dive investigation and evidence gathering
 
@@ -14,10 +14,9 @@ profiles:
       skills: []
       guidance: []
       subagents: []
-      plugins: [shared:openrig-core]
-      runtime_resources: [shared:claude-default-settings, shared:claude-default-mcp, shared:codex-default-config, shared:claude-activity-hooks]
-
-resources:
+      permission_policy:
+      launch_posture: "floor"
+      permissions: []
   guidance:
     - id: role
       path: guidance/role.md

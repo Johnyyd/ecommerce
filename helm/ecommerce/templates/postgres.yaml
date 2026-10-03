@@ -1,0 +1,62 @@
+{{- if .Values.postgres.enabled -}}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-postgres
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: postgres
+spec:
+  serviceName: {{ include "ecommerce.fullname" . }}-postgres
+  replicas: {{ .Values.postgres.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "ecommerce.selectorLabels" . | nindent 6 }}
+      app: postgres
+  template:
+    metadata:
+      labels:
+        {{- include "ecommerce.selectorLabels" . | nindent 8 }}
+        app: postgres
+    spec:
+      automountServiceAccountToken: false
+      securityContext:
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: postgres
+          image: "{{ .Values.postgres.image.repository }}:{{ .Values.postgres.image.tag }}"
+          envFrom:
+            - secretRef:
+                name: db-secrets
+          ports:
+            - containerPort: {{ .Values.postgres.service.port }}
+          volumeMounts:
+            - name: data
+              mountPath: /var/lib/postgresql/data
+          resources:
+            {{- toYaml .Values.postgres.resources | nindent 12 }}
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ "ReadWriteOnce" ]
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-postgres
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: postgres
+spec:
+  ports:
+    - port: {{ .Values.postgres.service.port }}
+      targetPort: {{ .Values.postgres.service.port }}
+  selector:
+    {{- include "ecommerce.selectorLabels" . | nindent 4 }}
+    app: postgres
+{{- end }}

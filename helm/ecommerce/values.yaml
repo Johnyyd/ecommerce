@@ -1,0 +1,195 @@
+backend:
+  enabled: true
+  env:
+    BACKUP_DIR: /backups
+    # POSTGRES_PORT is actually the pgbouncer port (6432) for connection pooling
+    POSTGRES_PORT: '6432'
+    POSTGRES_SERVER: pgbouncer
+    REDIS_HOST: redis
+    REDIS_PORT: '6379'
+    WEB_CONCURRENCY: '5'
+  image:
+    pullPolicy: IfNotPresent
+    repository: ecommerce-backend
+    tag: latest
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: '1'
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+    fsGroup: 102
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  service:
+    port: 8000
+    type: ClusterIP
+frontend:
+  enabled: true
+  image:
+    pullPolicy: IfNotPresent
+    repository: ecommerce-frontend
+    tag: latest
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  service:
+    port: 3000
+    type: ClusterIP
+fullnameOverride: ecommerce
+global:
+  imageRegistry: ''
+  imageRepository: ecommerce
+  imageTag: latest
+  pullPolicy: IfNotPresent
+hpa:
+  enabled: true
+  maxReplicas: 8
+  minReplicas: 2
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+ingress:
+  className: nginx
+  enabled: true
+  hosts:
+  - host: localhost
+    paths:
+    - path: /
+      pathType: Prefix
+  tls: []
+networkPolicy:
+  enabled: true
+observability:
+  enabled: true
+  grafana:
+    enabled: true
+  loki:
+    enabled: true
+    retentionDays: 7
+  prometheus:
+    enabled: true
+  promtail:
+    enabled: true
+  tempo:
+    enabled: true
+    tls:
+      enabled: false
+pgbouncer:
+  enabled: true
+  image:
+    repository: bitnami/pgbouncer
+    tag: '1.21'
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  service:
+    port: 6432
+postgres:
+  enabled: true
+  image:
+    repository: postgres
+    tag: 15-alpine
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  service:
+    port: 5432
+redis:
+  enabled: true
+  image:
+    repository: redis
+    tag: 7-alpine
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  service:
+    port: 6379
+worker:
+  enabled: true
+  image:
+    pullPolicy: IfNotPresent
+    repository: ecommerce-worker
+    tag: latest
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: '1'
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # Cron job configuration for periodic tasks
+  cronJob:
+    enabled: true
+    schedule: "*/5 * * * *"  # Every 5 minutes
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 5
+
+# CronJob for auto-cancelling expired orders (alternative to ARQ cron)
+# Set enabled: true to use Kubernetes CronJob approach
+# Set enabled: false (default) to use ARQ worker cron (recommended)
+cancelExpiredOrders:
+  enabled: false
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+meilisearch:
+  enabled: true
+  image:
+    pullPolicy: IfNotPresent
+    repository: getmeili/meilisearch
+    tag: v1.11
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: '1'
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  service:
+    port: 7700
+    type: ClusterIP
+  persistence:
+    storageClass: standard
+    size: 5Gi
+  environment: production

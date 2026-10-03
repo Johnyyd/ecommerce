@@ -1,0 +1,47 @@
+{{- if .Values.backend.enabled -}}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-reconcile-search
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: reconcile-search
+    component: cronjob
+spec:
+  schedule: "0 2 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            app: reconcile-search
+        spec:
+          automountServiceAccountToken: false
+          restartPolicy: OnFailure
+          securityContext:
+            runAsNonRoot: true
+            runAsUser: 1000
+            runAsGroup: 1000
+            seccompProfile:
+              type: RuntimeDefault
+          containers:
+          - name: reconcile
+            image: "{{ .Values.backend.image.repository }}:{{ .Values.backend.image.tag }}"
+            imagePullPolicy: {{ .Values.backend.image.pullPolicy }}
+            command: ["python", "scripts/reconcile_search.py", "--fix"]
+            envFrom:
+            - secretRef:
+                name: app-secrets
+            resources:
+              requests:
+                cpu: 100m
+                memory: 128Mi
+              limits:
+                cpu: 500m
+                memory: 512Mi
+          nodeSelector:
+            kubernetes.io/os: linux
+{{- end }}

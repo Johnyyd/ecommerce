@@ -1,0 +1,17 @@
+{{- if and .Values.observability.enabled .Values.observability.prometheus.enabled -}}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ecommerce.fullname" . }}-prometheus
+  labels:
+    {{- include "ecommerce.labels" . | nindent 4 }}
+    app: prometheus
+    component: observability
+spec:
+  type: ClusterIP
+  ports:
+    - port: 9090
+      targetPort: 9090
+  selector:
+    app: prometheus
+{{- end }}

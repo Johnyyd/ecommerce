@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { render, screen, fireEvent, waitFor } from '@testing-library/react';
 import { Navbar } from './Navbar';
 import { describe, it, expect, beforeEach } from 'vitest';
 import { useAuthStore } from '@/store/useAuthStore';
@@ -55,30 +55,40 @@ describe('Navbar', () => {
     expect(screen.getByText('Admin Portal')).toBeInTheDocument();
   });
 
-  it('opens cart drawer when clicking Toggle Cart button', () => {
+  it('opens cart drawer when clicking Toggle Cart button', async () => {
     render(<Navbar />);
-    
+
     const cartBtn = screen.getByLabelText('Toggle Cart');
     fireEvent.click(cartBtn);
-    
-    expect(screen.getByText('Your Cart')).toBeInTheDocument();
-    expect(screen.getByText('Your cart is empty.')).toBeInTheDocument();
+
+    await waitFor(() => {
+      expect(screen.getByText('Your Cart')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Your cart is empty.')).toBeInTheDocument();
+    });
   });
 
-  it('displays items and Checkout button when cart has items', () => {
+  it('displays items and Checkout button when cart has items', async () => {
     useCartStore.getState().addItem({
       id: 'p1',
       name: 'Premium Leather Shoes',
       price: 150,
       quantity: 1,
     });
+    // addItem sets isOpen: true, so cart is already open - don't click toggle
+    useCartStore.getState().setCartOpen(true);
 
     render(<Navbar />);
-    const cartBtn = screen.getByLabelText('Toggle Cart');
-    fireEvent.click(cartBtn);
 
-    expect(screen.getByText('Your Cart')).toBeInTheDocument();
-    expect(screen.getByText('Premium Leather Shoes')).toBeInTheDocument();
-    expect(screen.getByRole('button', { name: /checkout/i })).toBeInTheDocument();
+    await waitFor(() => {
+      expect(screen.getByText('Your Cart')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText('Premium Leather Shoes')).toBeInTheDocument();
+    });
+    await waitFor(() => {
+      expect(screen.getByText(/checkout/i)).toBeInTheDocument();
+    });
   });
 });

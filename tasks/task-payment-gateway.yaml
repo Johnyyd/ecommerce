@@ -1,0 +1,90 @@
+task_id: task-payment-gateway
+title: "Payment Gateway Integration - PayOS/VietQR + Auto-Cancel (FINALIZATION)"
+phase: 1
+priority: P1
+status: READY
+assigned_to: development.developer_payment
+reviewed_by: development.developer_backend
+estimated_effort: 1 day
+
+description: |
+  **MAJOR UPDATE: Payment Gateway is ~90% COMPLETE.**
+  
+  Finalize PayOS sandbox integration testing and verify end-to-end flow.
+  
+  ALREADY DONE:
+  - Backend webhook with HMAC-SHA256 verification (payments.py:71-183)
+  - Idempotency deduplication with PaymentTransaction model
+  - Amount anti-tampering verification (±1 VND tolerance)
+  - Mock fallback for development (Branch B, disabled in production)
+  - Schemas: PayOSWebhookPayload, PaymentCreateRequest/Response
+  - **Auto-cancel: 15-min timeout implemented** (PaymentService.auto_cancel_expired_orders)
+  - **ARQ task: cancel_expired_orders_task runs every 2 min** (worker.py cron)
+  - **CronJob: cancel-expired-orders.yaml runs every 5 min** (k8s/cronjobs/)
+  - **Queue: enqueue_cancel_expired_orders_job()** (queue.py)
+  - **Frontend: VietQRModal.tsx** - QR display, 3s polling, 15-min countdown, cancel order
+  - **Frontend: paymentApi.ts** - createPaymentLink, getPaymentStatus, simulateWebhookPayment
+  - **Frontend: payment types** - PaymentCreateResponse, PaymentStatusResponse
+
+YOUR WORK (1 day):
+1. **PayOS Sandbox Integration Testing** - Register/configure PayOS sandbox credentials
+2. **Test PayOSService.create_payment_link()** with real API (currently uses VietQR image generation fallback)
+3. **End-to-end flow test**: Create order → Payment link → Webhook → Auto-cancel
+4. **Verify HMAC signature** works with real PayOS webhooks
+5. **Test auto-cancel via PayOS API** (cancel_payment_link)
+6. **Document PayOS credentials** in .env.example
+
+files_to_reference:
+  - backend/app/services/payment.py (PayOSService, PaymentService)
+  - backend/app/api/v1/endpoints/payments.py (webhook, auto-cancel endpoint)
+  - backend/app/worker.py (cancel_expired_orders_task cron)
+  - backend/app/core/queue.py (enqueue_cancel_expired_orders_job)
+  - frontend/src/components/payment/VietQRModal.tsx
+  - frontend/src/services/paymentApi.ts
+  - k8s/cronjobs/cancel-expired-orders.yaml
+
+acceptance_criteria:
+  - PayOS sandbox credentials configured and working
+  - create_payment_link() returns real PayOS checkoutUrl + qrCode
+  - Webhook receives real PayOS callbacks with valid HMAC
+  - Auto-cancel triggers PayOS cancel_payment_link() for expired orders
+  - Frontend VietQRModal displays PayOS QR code (not just VietQR image)
+  - End-to-end test: Order → Payment → Webhook success → Order PROCESSING
+  - Auto-cancel test: Create PENDING order, wait 15+ min → Order CANCELLED, stock restored
+
+clarifications_needed:
+  - PayOS sandbox credentials: Available? (client_id, api_key, checksum_key)
+  - Test environment: Use staging PayOS or dedicated test merchant?
+  - PayOS webhook URL: Need ngrok/tunnel for local testing?
+
+validation_commands:
+  - pytest backend/tests/api/test_payments_api.py -v
+  - Frontend: npm test -- --testPathPattern=VietQRModal
+  - Integration: docker compose up && test with PayOS sandbox
+  - Auto-cancel: Create PENDING order, verify CANCELLED after 15+ min
+
+dependencies: []
+parallel_with: ["task-4a-dlq-reconciliation", "task-reviews-frontend"]
+
+notes: |
+  **KEY FINDING**: Payment gateway is essentially complete - just needs PayOS sandbox credentials for final testing.
+  
+  Backend implementation:
+  - PayOSService.create_payment_link() - calls real PayOS API (line 50-127)
+  - PayOSService.cancel_payment_link() - cancels expired payments (line 129-164)
+  - PaymentService.auto_cancel_expired_orders() - 15 min timeout, restores stock, calls PayOS cancel (line 473-560)
+  
+  ARQ Worker already has cron: cron(cancel_expired_orders_task, minute="*/2")
+  
+  CronJob alternative exists at k8s/cronjobs/cancel-expired-orders.yaml (every 5 min)
+  
+  Frontend VietQRModal.tsx already has:
+  - Dynamic QR display from paymentData.qr_code_url
+  - 3-second polling via paymentApi.getPaymentStatus()
+  - 15-minute countdown timer
+  - Copy-to-clipboard for account info
+  - Sandbox simulation button
+  - Change payment method flow
+  - Cancel order flow
+  
+  TASK SCOPE REDUCED: From 3 days → 1 day (final integration testing only)

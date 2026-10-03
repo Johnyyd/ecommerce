@@ -170,7 +170,8 @@ export function OrderHistory() {
         if (updatedOrder.payment_url) {
           window.location.href = updatedOrder.payment_url;
         } else {
-          window.location.href = `http://localhost/payment?order_id=${targetId}&amount=${updatedOrder.total_amount}&method=${selectedMethod}&mock_secret=mock_secret_123`;
+          // Test-only placeholder secret for development - replace with real payment gateway integration
+          window.location.href = `http://localhost/payment?order_id=${targetId}&amount=${updatedOrder.total_amount}&method=${selectedMethod}&mock_secret=test_placeholder`;
         }
       }
     } catch (err: any) {

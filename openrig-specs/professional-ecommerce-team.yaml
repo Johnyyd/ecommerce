@@ -1,0 +1,361 @@
+version: "0.2"
+name: professional-ecommerce-team
+summary: "A professional ecommerce development team"
+
+pods:
+  # Product Management
+  - id: product_owner
+    label: Product Owner
+    members:
+      - id: product_owner
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/product/product_owner"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: product_inventory_manager
+    label: Product Inventory Manager
+    members:
+      - id: product_inventory_manager
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/product/inventory_manager"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # Development
+  - id: developer_owner
+    label: Development Owner
+    members:
+      - id: developer_owner
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/development/owner"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: developer_backend
+    label: Backend Developer
+    members:
+      - id: developer_backend
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/development/backend"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce/backend"
+
+  - id: developer_frontend
+    label: Frontend Developer
+    members:
+      - id: developer_frontend
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/development/frontend"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce/frontend"
+
+  - id: developer_qa
+    label: QA Developer
+    members:
+      - id: developer_qa
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/development/qa"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: developer_implementer
+    label: Implementer
+    members:
+      - id: developer_implementer
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/development/implementer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: developer_uiux
+    label: UI/UX Developer
+    members:
+      - id: developer_uiux
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/development/uiux"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: developer_payment
+    label: Payment Developer
+    members:
+      - id: developer_payment
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/development/payment"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce/backend"
+
+  # Testing
+  - id: qa_engineer
+    label: QA Engineer
+    members:
+      - id: qa_engineer
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/testing/qa_engineer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: compliance_officer
+    label: Compliance Officer
+    members:
+      - id: compliance_officer
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/testing/compliance_officer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # Security
+  - id: security_analyst
+    label: Security Analyst
+    members:
+      - id: security_analyst
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/security/security_analyst"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: security_auditor
+    label: Security Auditor
+    members:
+      - id: security_auditor
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/security/security_auditor"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # DevOps
+  - id: devops_engineer
+    label: DevOps Engineer
+    members:
+      - id: devops_engineer
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/devops/engineer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: devops_architect
+    label: DevOps Architect
+    members:
+      - id: devops_architect
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/devops/architect"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # Documentation
+  - id: documentation_writer
+    label: Documentation Writer
+    members:
+      - id: documentation_writer
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/documentation/documentation_writer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: tech_writer
+    label: Technical Writer
+    members:
+      - id: tech_writer
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/documentation/tech-writer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # Performance
+  - id: performance_analyst
+    label: Performance Analyst
+    members:
+      - id: performance_analyst
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/performance/analyst"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: performance_engineer
+    label: Performance Engineer
+    members:
+      - id: performance_engineer
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/performance/engineer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: performance_data_analyst
+    label: Performance Data Analyst
+    members:
+      - id: performance_data_analyst
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/performance/data_analyst"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # Factory RSI
+  - id: factory_rsi_dogfood
+    label: Factory RSI Dogfood
+    members:
+      - id: factory_rsi_dogfood
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/factory-rsi/dogfood"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: factory_rsi_release_manager
+    label: Factory RSI Release Manager
+    members:
+      - id: factory_rsi_release_manager
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/factory-rsi/release-manager"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # Orchestration
+  - id: orchestration_orchestrator
+    label: Orchestration Orchestrator
+    members:
+      - id: orchestration_orchestrator
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/orchestration/orchestrator"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # Research
+  - id: research_analyst
+    label: Research Analyst
+    members:
+      - id: research_analyst
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/research/analyst"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  - id: research_synthesizer
+    label: Research Synthesizer
+    members:
+      - id: research_synthesizer
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/research/synthesizer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+  # Review
+  - id: review_independent
+    label: Independent Reviewer
+    members:
+      - id: review_independent
+        agent_ref: "path:/home/tringuyen/Documents/GitHub/openrig-config/agents/review/independent-reviewer"
+        runtime: claude-code
+        model: auto
+        profile: default
+        cwd: "/home/tringuyen/Documents/GitHub/ecommerce"
+
+edges:
+  - kind: delegates_to
+    from: product_owner.product_owner
+    to: developer_owner.developer_owner
+  - kind: delegates_to
+    from: product_owner.product_owner
+    to: product_inventory_manager.product_inventory_manager
+  - kind: delegates_to
+    from: product_inventory_manager.product_inventory_manager
+    to: developer_owner.developer_owner
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: developer_implementer.developer_implementer
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: developer_backend.developer_backend
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: developer_frontend.developer_frontend
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: developer_uiux.developer_uiux
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: developer_payment.developer_payment
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: developer_qa.developer_qa
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: qa_engineer.qa_engineer
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: documentation_writer.documentation_writer
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: tech_writer.tech_writer
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: performance_analyst.performance_analyst
+  - kind: delegates_to
+    from: qa_engineer.qa_engineer
+    to: devops_engineer.devops_engineer
+  - kind: delegates_to
+    from: qa_engineer.qa_engineer
+    to: documentation_writer.documentation_writer
+  - kind: delegates_to
+    from: qa_engineer.qa_engineer
+    to: tech_writer.tech_writer
+  - kind: delegates_to
+    from: qa_engineer.qa_engineer
+    to: compliance_officer.compliance_officer
+  - kind: delegates_to
+    from: developer_owner.developer_owner
+    to: security_analyst.security_analyst
+  - kind: delegates_to
+    from: security_analyst.security_analyst
+    to: security_auditor.security_auditor
+  - kind: delegates_to
+    from: devops_engineer.devops_engineer
+    to: devops_architect.devops_architect
+  - kind: delegates_to
+    from: performance_analyst.performance_analyst
+    to: performance_data_analyst.performance_data_analyst
+  - kind: delegates_to
+    from: performance_analyst.performance_analyst
+    to: performance_engineer.performance_engineer
+  - kind: delegates_to
+    from: factory_rsi_dogfood.factory_rsi_dogfood
+    to: factory_rsi_release_manager.factory_rsi_release_manager
+  - kind: delegates_to
+    from: factory_rsi_release_manager.factory_rsi_release_manager
+    to: orchestration_orchestrator.orchestration_orchestrator
+  - kind: delegates_to
+    from: orchestration_orchestrator.orchestration_orchestrator
+    to: research_analyst.research_analyst
+  - kind: delegates_to
+    from: research_analyst.research_analyst
+    to: research_synthesizer.research_synthesizer
+  - kind: delegates_to
+    from: research_synthesizer.research_synthesizer
+    to: review_independent.review_independent
+  - kind: delegates_to
+    from: review_independent.review_independent
+    to: developer_owner.developer_owner

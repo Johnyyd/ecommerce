@@ -1,0 +1,75 @@
+task_id: task-async-workers-complete
+title: "Async Workers - Order Cancellation Task & Production Deployment"
+phase: 1
+priority: P2
+status: READY
+assigned_to: development.developer_backend
+reviewed_by: devops.devops_engineer
+estimated_effort: 1 day
+
+description: |
+  Complete async worker implementation by adding order cancellation task
+  (needed for payment gateway auto-cancel) and production deployment configuration.
+
+requirements:
+  - Add cancel_expired_orders_task to ARQ worker with scheduling
+  - Implement order cancellation logic (restore stock, update statuses)
+  - Create production Dockerfile.worker
+  - Add worker deployment to Helm chart
+  - Configure worker health checks and resource limits
+
+files_to_create:
+  - backend/app/worker.py (ADD cancel_expired_orders_task)
+  - backend/Dockerfile.worker
+  - helm/ecommerce/templates/worker.yaml (update if needed)
+
+files_to_update:
+  - backend/app/crud/order.py (ADD cancel_expired_orders method)
+  - backend/app/core/queue.py (ADD enqueue_cancel_job if needed)
+  - helm/ecommerce/values.yaml (worker config)
+  - helm/ecommerce/values-prod.yaml (worker HA config)
+
+acceptance_criteria:
+  - cancel_expired_orders_task runs every 5 minutes (configurable)
+  - Finds PENDING orders older than threshold (15 min default)
+  - Restores stock quantities for cancelled orders
+  - Updates order status to CANCELLED
+  - Updates payment status to CANCELLED
+  - Invalidates Redis product caches
+  - Worker runs in production with proper resource limits
+  - Health checks pass
+  - Logs show task execution
+
+clarifications_needed:
+  - Auto-cancel mechanism: CronJob (k8s) vs ARQ scheduled worker task?
+  - Schedule: Every 1-5 minutes?
+  - Timeout threshold: 15 minutes exact? Configurable per env?
+
+validation_commands:
+  - docker build -f backend/Dockerfile.worker -t ecommerce/worker backend/
+  - docker compose up worker && check logs for "cancel_expired_orders_task"
+  - pytest backend/tests/ -k "cancel" -v
+  - helm template ecommerce ./helm/ecommerce -f ./helm/ecommerce/values-prod.yaml | grep -A 20 worker
+
+dependencies: ["task-payment-gateway"]
+parallel_with: []
+
+notes: |
+  ARQ worker already has:
+  - send_email_task
+  - optimize_image_task
+  - generate_sales_report_task
+  - generate_embeddings_task
+  - sync_to_meilisearch_task
+  - incremental_sync_task
+  - sync_product_task
+  - delete_product_task
+
+  Need to add:
+  - cancel_expired_orders_task (with scheduling via ARQ cron or separate cron job)
+
+  Order cancellation logic pattern from crud/order.py:114-147 (cancel_order method)
+  - Uses SELECT FOR UPDATE for concurrency
+  - Restores stock
+  - Updates order and payment status
+  - Invalidates caches

@@ -1,3 +1,5 @@
+"use client"
+
 import * as React from "react"
 import { motion, AnimatePresence } from "motion/react"
 import { ShoppingBag, Sun, Moon } from "@phosphor-icons/react"
@@ -5,7 +7,7 @@ import { useCartStore } from "@/store/useCartStore"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useThemeStore } from "@/store/useThemeStore"
 import { useLocation } from "wouter"
-import { Cart } from "@/components/layout/Cart"
+import { CartDrawer } from "@/components/layout/CartDrawer"
 
 export function Navbar() {
   const [isOpen, setIsOpen] = React.useState(false)
@@ -13,11 +15,11 @@ export function Navbar() {
   const { user, isAuthenticated, logout } = useAuthStore()
   const { isDark, toggleTheme } = useThemeStore()
   const [, setLocation] = useLocation()
-  
+
   const cartItemCount = items.reduce((acc, item) => acc + item.quantity, 0)
 
   const hasAdminSession = user?.role === 'admin' || user?.role === 'manager'
-  
+
   const handleNav = (path: string) => {
     setIsOpen(false)
     if (path === '/logout') {
@@ -127,7 +129,7 @@ export function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
-      <Cart />
+      <CartDrawer />
     </>
   )
 }

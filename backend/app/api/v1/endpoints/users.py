@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db_session
 from app.schemas.user import UserCreate, UserResponse, UserAdminUpdate
@@ -28,8 +28,8 @@ async def create_user(
 
 @router.get("/", response_model=List[UserResponse])
 async def list_users(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     current_staff: User = Depends(get_current_staff),
     service: UserService = Depends(get_user_service)
 ):

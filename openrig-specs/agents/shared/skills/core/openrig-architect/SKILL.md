@@ -69,7 +69,7 @@ Before touching YAML, understand what the user actually needs:
 - **What is the goal?** Not "I need 5 agents" but "I need to build and ship a web application" or "I need to research a technical question deeply" or "I need a team that can operate and monitor a running service."
 - **What are the workflows?** How does work flow from intent to completion? Who does what? Where are the handoffs?
 - **What is the project?** What codebase, what tech stack, what domain? This shapes agent specialization and startup content.
-- **What runtimes are available?** Does the user have Claude Code? Codex? Both? Runtime availability constrains topology design.
+- **What runtimes are available?** Does the user have Claude Code? claude-code? Both? Runtime availability constrains topology design.
 - **How autonomous should it be?** Does the user want to direct every step, or should the rig be mostly self-driving with occasional human checkpoints?
 
 Ask clarifying questions if the intent is ambiguous. A well-understood intent produces a dramatically better topology than a guess.
@@ -142,7 +142,7 @@ To verify the current builtin set on this host, run `rig specs ls` and look for 
 Each member needs a `runtime` and optionally a `model`.
 
 Choose from the installed, authenticated runtimes and the project's current
-execution policy. `claude-code` and `codex` are agent runtimes; `terminal` is an
+execution policy. `claude-code` and `claude-code` are agent runtimes; `terminal` is an
 infrastructure process. Their model availability, hooks, approval behavior and
 continuation support differ. Check the relevant installed interfaces rather
 than ranking vendors permanently in a reusable role skill.
@@ -310,7 +310,7 @@ pods:
         cwd: "."
       - id: qa
         agent_ref: "local:agents/development/qa"
-        runtime: codex
+        runtime: claude-code
         profile: default
         cwd: "."
     edges:

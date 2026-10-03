@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from uuid import UUID
 from typing import List
@@ -6,10 +6,10 @@ from typing import List
 from app.core.db import get_db_session
 from app.models.user import User
 from app.schemas.voucher import (
-    VoucherCreate, 
-    VoucherUpdate, 
-    VoucherResponse, 
-    VoucherValidateRequest, 
+    VoucherCreate,
+    VoucherUpdate,
+    VoucherResponse,
+    VoucherValidateRequest,
     VoucherValidateResponse
 )
 from app.crud.voucher import VoucherRepository
@@ -22,8 +22,8 @@ def get_voucher_repo(session: AsyncSession = Depends(get_db_session)) -> Voucher
 
 @router.get("/", response_model=List[VoucherResponse])
 async def list_vouchers(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     current_staff: User = Depends(get_current_staff),
     repo: VoucherRepository = Depends(get_voucher_repo)
 ):

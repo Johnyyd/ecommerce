@@ -31,7 +31,7 @@ context:
   - ref: world-public
     profiles:
       claude: guided
-      codex: codex-coverage
+      claude-code: claude-code-coverage
 skills: []
 `;
 
@@ -249,8 +249,8 @@ function readLibraryConfig(home, issues) {
   const configuredLegacyRoot = context.packsRoot
     ? path.resolve(context.packsRoot)
     : context.root
-    ? path.resolve(context.root)
-    : defaultLegacyRoot;
+      ? path.resolve(context.root)
+      : defaultLegacyRoot;
   if (context.packsRoot !== undefined && context.root !== undefined
     && path.resolve(context.packsRoot) !== path.resolve(context.root)) {
     issues.push(issue("context_root_conflict", configPath, "choose the one context library that must stay authoritative during activation", {
@@ -466,11 +466,13 @@ function atomicWrite(destination, bytes, mode) {
 
 function storePreimage(preimage, records) {
   if (fs.existsSync(preimage)) {
-    emit({ schema: SCHEMA, phase: "apply-state", ok: false, issues: [issue(
-      "preimage_exists",
-      preimage,
-      "choose a new preimage path; this helper never overwrites one",
-    )] }, 1);
+    emit({
+      schema: SCHEMA, phase: "apply-state", ok: false, issues: [issue(
+        "preimage_exists",
+        preimage,
+        "choose a new preimage path; this helper never overwrites one",
+      )]
+    }, 1);
   }
   fs.mkdirSync(preimage, { recursive: true });
   const files = records.map((record, index) => {
@@ -488,11 +490,13 @@ function loadManifest(preimage, home, phase) {
   const manifestPath = path.join(preimage, "manifest.json");
   const manifest = readJson(manifestPath);
   if (manifest?.schema !== SCHEMA || manifest.home !== home || !Array.isArray(manifest.files)) {
-    emit({ schema: SCHEMA, phase, ok: false, issues: [issue(
-      "preimage_manifest_mismatch",
-      manifestPath,
-      "use the exact preimage emitted by this home's apply-state receipt",
-    )] }, 1);
+    emit({
+      schema: SCHEMA, phase, ok: false, issues: [issue(
+        "preimage_manifest_mismatch",
+        manifestPath,
+        "use the exact preimage emitted by this home's apply-state receipt",
+      )]
+    }, 1);
   }
   return manifest;
 }
@@ -526,11 +530,13 @@ function contextFilenameForSession(home, preimage, manifest, sessionName) {
 
 function applyState(home, preimage) {
   if (!preimage) {
-    emit({ schema: SCHEMA, phase: "apply-state", ok: false, issues: [issue(
-      "preimage_required",
-      null,
-      "pass --preimage with a new path under a protected backup root",
-    )] }, 1);
+    emit({
+      schema: SCHEMA, phase: "apply-state", ok: false, issues: [issue(
+        "preimage_required",
+        null,
+        "pass --preimage with a new path under a protected backup root",
+      )]
+    }, 1);
   }
   const plan = buildPlan(home);
   if (plan.issues.length > 0) emit({ ...publicPlan(home, plan), phase: "apply-state", ok: false }, 1);
@@ -862,8 +868,8 @@ function verificationReceipt(home, preimage, verificationPath) {
       && Number.isInteger(tail.mode))
     && (expectsSystemWorld
       ? receipt.managedSystemWorld && typeof receipt.managedSystemWorld.path === "string"
-        && typeof receipt.managedSystemWorld.sha256 === "string"
-        && Number.isInteger(receipt.managedSystemWorld.mode)
+      && typeof receipt.managedSystemWorld.sha256 === "string"
+      && Number.isInteger(receipt.managedSystemWorld.mode)
       : receipt.managedSystemWorld === null);
   return valid
     ? { receipt }
@@ -1104,21 +1110,25 @@ function applyLibrary(home, preimage, verificationPath) {
   try {
     sourceTreeSnapshot = treeSnapshot(library.sourceRoot);
   } catch (error) {
-    emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
-      "library_source_invalid",
-      library.sourceRoot,
-      "preserve the unsupported entry and extend the bounded migration before retrying",
-      { diagnostic: error.message },
-    )] }, 1);
+    emit({
+      schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
+        "library_source_invalid",
+        library.sourceRoot,
+        "preserve the unsupported entry and extend the bounded migration before retrying",
+        { diagnostic: error.message },
+      )]
+    }, 1);
   }
   const systemEntry = sourceTreeSnapshot.entries.find((entry) => entry.path === "system");
   const systemWorldEntry = sourceTreeSnapshot.entries.find((entry) => entry.path === "system/system-world.yaml");
   if (systemEntry?.type === "symlink" || systemWorldEntry?.type === "symlink") {
-    emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
-      "system_world_conflict",
-      path.join(library.sourceRoot, "system"),
-      "preserve the opaque entry at the reserved System World path and reconcile it before migration",
-    )] }, 1);
+    emit({
+      schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
+        "system_world_conflict",
+        path.join(library.sourceRoot, "system"),
+        "preserve the opaque entry at the reserved System World path and reconcile it before migration",
+      )]
+    }, 1);
   }
   const sourceSystemWorld = path.join(library.sourceRoot, "system", "system-world.yaml");
   const sourceSystemEntries = systemEntry?.type === "directory"
@@ -1128,34 +1138,40 @@ function applyLibrary(home, preimage, verificationPath) {
     && sha256(fs.readFileSync(sourceSystemWorld)) === sha256(DEFAULT_SYSTEM_WORLD)
     && sourceSystemEntries.length === 2;
   if (systemEntry && !sourceSystemWorldIsDefault) {
-    emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
-      "system_world_conflict",
-      path.join(library.sourceRoot, "system"),
-      "preserve the legacy library's reserved system entry and explicitly reconcile it before finalization",
-    )] }, 1);
+    emit({
+      schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
+        "system_world_conflict",
+        path.join(library.sourceRoot, "system"),
+        "preserve the legacy library's reserved system entry and explicitly reconcile it before finalization",
+      )]
+    }, 1);
   }
 
   try {
     assertTreeSnapshot(library.sourceRoot, sourceTreeSnapshot);
   } catch (error) {
     const libraryDrift = error.migrationIssueCode === "library_source_drift";
-    emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
-      libraryDrift ? "library_source_drift" : "preimage_mismatch",
-      libraryDrift ? error.migrationPath : preimage,
-      libraryDrift
-        ? "preserve the changed context library and rerun from a fresh inventory"
-        : "restore a writeable byte-matching preimage before finalization",
-      { diagnostic: error.message },
-    )] }, 1);
+    emit({
+      schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
+        libraryDrift ? "library_source_drift" : "preimage_mismatch",
+        libraryDrift ? error.migrationPath : preimage,
+        libraryDrift
+          ? "preserve the changed context library and rerun from a fresh inventory"
+          : "restore a writeable byte-matching preimage before finalization",
+        { diagnostic: error.message },
+      )]
+    }, 1);
   }
 
   const targetStat = lstatOrNull(library.targetRoot);
   if (targetStat && (!targetStat.isDirectory() || targetStat.isSymbolicLink())) {
-    emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
-      "library_target_conflict",
-      library.targetRoot,
-      "preserve the opaque target and select the intended canonical context root before finalization",
-    )] }, 1);
+    emit({
+      schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
+        "library_target_conflict",
+        library.targetRoot,
+        "preserve the opaque target and select the intended canonical context root before finalization",
+      )]
+    }, 1);
   }
   const sourceTopLevel = sourceTreeSnapshot.digest === null
     ? []
@@ -1167,11 +1183,13 @@ function applyLibrary(home, preimage, verificationPath) {
     for (const name of sourceTopLevel) {
       const destination = path.join(library.targetRoot, name);
       if (lstatOrNull(destination)) {
-        emit({ schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
-          "library_target_conflict",
-          destination,
-          "preserve both entries and reconcile the collision before finalization; no existing target is overwritten",
-        )] }, 1);
+        emit({
+          schema: SCHEMA, phase: "apply-library", ok: false, applied: false, complete: false, issues: [issue(
+            "library_target_conflict",
+            destination,
+            "preserve both entries and reconcile the collision before finalization; no existing target is overwritten",
+          )]
+        }, 1);
       }
     }
   }
@@ -1281,8 +1299,8 @@ function applyLibrary(home, preimage, verificationPath) {
         libraryDrift
           ? "preserve the changed context library and run --rollback with this preimage before retrying"
           : sourceDrift
-          ? "preserve the changed legacy telemetry source and obtain a fresh verification receipt"
-          : "run --rollback with this preimage before retrying; copied roots remain recorded and the source was not removed",
+            ? "preserve the changed legacy telemetry source and obtain a fresh verification receipt"
+            : "run --rollback with this preimage before retrying; copied roots remain recorded and the source was not removed",
         { diagnostic: error.message },
       )],
     }, 1);

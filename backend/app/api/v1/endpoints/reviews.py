@@ -1,11 +1,12 @@
 from uuid import UUID
 from typing import Any, List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 from app.core.db import get_db_session
 from app.api.deps import get_current_user, get_current_staff
 from app.models.user import User
-from app.schemas.review import ReviewCreate, ReviewResponse, ProductReviewSummary, AdminReviewResponse
+from app.models.review import ModerationStatus
+from app.schemas.review import ReviewCreate, ReviewResponse, ProductReviewSummary, AdminReviewResponse, ReviewModerateRequest
 from app.crud.review import ReviewRepository
 
 router = APIRouter()
@@ -13,19 +14,69 @@ router = APIRouter()
 def get_review_repo(session: AsyncSession = Depends(get_db_session)) -> ReviewRepository:
     return ReviewRepository(session)
 
+
 @router.get("/admin/all", response_model=List[AdminReviewResponse])
 async def get_all_reviews_admin(
     product_id: Optional[UUID] = None,
     rating: Optional[int] = None,
-    skip: int = 0,
-    limit: int = 100,
+    moderation_status: Optional[ModerationStatus] = None,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     current_staff: User = Depends(get_current_staff),
     repo: ReviewRepository = Depends(get_review_repo)
 ) -> Any:
     """
     Admin/Manager endpoint: List all reviews across the platform with product & user information.
+    Supports filtering by moderation_status (pending, approved, rejected, flagged).
     """
-    return await repo.get_all_admin(product_id=product_id, rating=rating, skip=skip, limit=limit)
+    return await repo.get_all_admin(
+        product_id=product_id,
+        rating=rating,
+        moderation_status=moderation_status,
+        skip=skip,
+        limit=limit
+    )
+
+
+@router.patch("/admin/{review_id}/moderate", response_model=AdminReviewResponse)
+async def moderate_review(
+    review_id: UUID,
+    moderate_in: ReviewModerateRequest,
+    current_staff: User = Depends(get_current_staff),
+    repo: ReviewRepository = Depends(get_review_repo)
+) -> Any:
+    """
+    Admin/Manager endpoint: Moderate a review (approve/reject/flag).
+    """
+    try:
+        review = await repo.moderate_review(
+            review_id=review_id,
+            moderator=current_staff,
+            action=moderate_in.action,
+            note=moderate_in.moderation_note
+        )
+        return AdminReviewResponse(
+            id=review.id,
+            product_id=review.product_id,
+            product_name=review.product.name if review.product else "Unknown Product",
+            user_id=review.user_id,
+            username=review.user.username if review.user else "Anonymous",
+            user_email=review.user.email if review.user else None,
+            order_id=review.order_id,
+            rating=review.rating,
+            comment=review.comment,
+            is_verified_purchase=review.is_verified_purchase,
+            is_approved=review.is_approved,
+            moderation_status=review.moderation_status,
+            moderated_by=review.moderated_by,
+            moderated_at=review.moderated_at,
+            moderation_note=review.moderation_note,
+            created_at=review.created_at
+        )
+    except ValueError as e:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
+    except Exception as e:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to moderate review: {str(e)}")
 
 
 @router.get("/product/{product_id}", response_model=ProductReviewSummary)

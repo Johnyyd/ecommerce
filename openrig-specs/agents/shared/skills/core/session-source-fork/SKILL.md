@@ -1,7 +1,7 @@
 ---
 name: session-source-fork
 description: |
-  Use when authoring a rig spec member or `rig expand` payload that needs to start a new managed seat from a prior runtime conversation source — `session_source: { mode: fork, ref: { kind, value } }`. v1 supports `mode: fork` with `ref.kind: native_id` for Claude and Codex. The new seat persists a NEW post-fork token; the parent token is NEVER written onto the new seat. NOT for restoring an existing seat or for artifact-backed mental-model rebuild.
+  Use when authoring a rig spec member or `rig expand` payload that needs to start a new managed seat from a prior runtime conversation source — `session_source: { mode: fork, ref: { kind, value } }`. v1 supports `mode: fork` with `ref.kind: native_id` for Claude and claude-code. The new seat persists a NEW post-fork token; the parent token is NEVER written onto the new seat. NOT for restoring an existing seat or for artifact-backed mental-model rebuild.
 metadata:
   openrig:
     stage: factory-approved
@@ -29,7 +29,7 @@ prior native runtime conversation source without claiming the original
 seat continued.
 
 The schema is runtime-neutral; implementation is runtime-specific (Claude
-and Codex have their own native fork commands).
+and claude-code have their own native fork commands).
 
 ## Use this when
 
@@ -49,7 +49,7 @@ and Codex have their own native fork commands).
 ```yaml
 members:
   - id: reviewer-2
-    runtime: claude-code        # or "codex"; not valid on terminal
+    runtime: claude-code        # or "claude-code"; not valid on terminal
     agent_ref: specs/agents/reviewer.yaml
     profile: reviewer
     cwd: .
@@ -75,7 +75,7 @@ through existing rig spec and expansion pathways.
 
 1. **Declared** — present in member config or expansion payload
 2. **Resolved** — at launch time, OpenRig resolves the `ref` against the runtime
-3. **Realized** — runtime fork succeeds; new managed seat receives a **NEW** native continuity token (Claude session id or Codex thread id). OpenRig persists that NEW token. **Parent token is NEVER written onto the new seat.**
+3. **Realized** — runtime fork succeeds; new managed seat receives a **NEW** native continuity token (Claude session id or claude-code thread id). OpenRig persists that NEW token. **Parent token is NEVER written onto the new seat.**
 4. **Failed** — resolution or fork failed; seat not launched as a fork; clear error names the resolution step that failed
 
 Once realized, `session_source` is essentially history. Restoring the
@@ -86,7 +86,7 @@ seat later is `restore` of the new seat, not re-fork-from-parent.
 1. **Source session id not found** — runtime cannot resolve `native_id`. **Action**: emit error naming runtime + missing id; do NOT silently launch fresh. (Future-state note: when `artifact_path` is supported in a follow-up slice, it could become a candidate fallback for Claude; in v1 schema rejects `artifact_path` pre-launch so no fallback path exists.)
 2. **Source artifact path missing** *(out of v1 scope)* — would apply once `ref.kind: artifact_path` becomes schema-accepted. v1 schema rejects this kind pre-launch.
 3. **Unsupported runtime/kind combination** *(largely pre-empted in v1 by schema rejection)* — schema rejects all non-`native_id` kinds upfront. Adapter-level refusal exists as defensive handling but is not reached in v1.
-4. **Fork launch failed after source resolution** — runtime command (`claude --resume <parent> --fork-session` or `codex fork <id>`) returned non-zero or hung. Preserve runtime stderr; do not record new seat as launched; do not write parent token onto seat.
+4. **Fork launch failed after source resolution** — runtime command (`claude --resume <parent> --fork-session` or `claude-code fork <id>`) returned non-zero or hung. Preserve runtime stderr; do not record new seat as launched; do not write parent token onto seat.
 5. **Persistence inconsistency** — fork succeeded but seat-token persistence cannot record new continuity token. **Internal failure**: seat is not considered launched until new token is durably written.
 
 ## Honest UX rule (verbatim)
@@ -110,7 +110,7 @@ does not prove the intended continuity was created.
 | Runtime | Command shape |
 |---|---|
 | Claude (`mode: fork` + `ref.kind: native_id`) | `claude --resume <parent-id> --fork-session` |
-| Codex (`mode: fork` + `ref.kind: native_id`) | `codex... fork <parent-id>` |
+| claude-code (`mode: fork` + `ref.kind: native_id`) | `claude-code... fork <parent-id>` |
 | Terminal | Rejected at schema level |
 
 Mutual exclusion between `resumeToken` (restore path) and `forkSource`
@@ -146,7 +146,7 @@ Shipped at openrig `c7b6df1` (2026-04-30):
 - Schema accept/reject for full Honest Refusal Matrix
 - Codec roundtrip (serialize → parse → normalize preserves `session_source` faithfully)
 - Expansion path through `rig expand` member-input
-- Adapter command shape for Claude + Codex `native_id`
+- Adapter command shape for Claude + claude-code `native_id`
 - Persistence honesty (seat's `resume_token` is the NEW post-fork token; parent token NEVER written)
 - Honest UX literal contract (`continuityOutcome: forked`)
 

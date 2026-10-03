@@ -21,8 +21,8 @@ class ProductRepository:
         return result.scalars().first()
 
     async def get_multi(
-        self, 
-        skip: int = 0, 
+        self,
+        skip: int = 0,
         limit: int = 100,
         category_id: Optional[UUID] = None,
         brand: Optional[str] = None,
@@ -44,7 +44,7 @@ class ProductRepository:
             stmt = stmt.where(Product.stock_quantity <= 5)
         if q:
             stmt = stmt.where(or_(Product.name.ilike(f"%{q}%"), Product.brand.ilike(f"%{q}%")))
-            
+
         stmt = stmt.order_by(Product.created_at.desc(), Product.id.desc())
         stmt = stmt.offset(skip).limit(limit)
         result = await self.session.execute(stmt)
@@ -73,7 +73,7 @@ class ProductRepository:
             stmt = stmt.where(Product.stock_quantity <= 5)
         if q:
             stmt = stmt.where(or_(Product.name.ilike(f"%{q}%"), Product.brand.ilike(f"%{q}%")))
-            
+
         result = await self.session.execute(stmt)
         return result.scalar() or 0
 
@@ -82,32 +82,62 @@ class ProductRepository:
         self.session.add(db_obj)
         await self.session.commit()
         await self.session.refresh(db_obj)
-        
+
         from app.services.cache_invalidation import invalidate_product_caches
         await invalidate_product_caches([db_obj.id])
+
+        # Enqueue sync job for new product
+        try:
+            from app.core.queue import enqueue_sync_job
+            await enqueue_sync_job(db_obj.id, "sync")
+        except Exception as e:
+            # Log but don't fail the create operation
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to enqueue sync job for product {db_obj.id}: {e}")
+
         return db_obj
 
     async def update(self, db_obj: Product, obj_in: ProductUpdate) -> Product:
         update_data = obj_in.model_dump(exclude_unset=True)
         for field, value in update_data.items():
             setattr(db_obj, field, value)
-        
+
         self.session.add(db_obj)
         await self.session.commit()
         await self.session.refresh(db_obj)
 
         from app.services.cache_invalidation import invalidate_product_caches
         await invalidate_product_caches([db_obj.id])
+
+        # Enqueue sync job for updated product
+        try:
+            from app.core.queue import enqueue_sync_job
+            await enqueue_sync_job(db_obj.id, "sync")
+        except Exception as e:
+            # Log but don't fail the update operation
+            import logging
+            logging.getLogger(__name__).warning(f"Failed to enqueue sync job for product {db_obj.id}: {e}")
+
         return db_obj
 
     async def delete(self, product_id: UUID) -> bool:
         stmt = delete(Product).where(Product.id == product_id)
         result = await self.session.execute(stmt)
         await self.session.commit()
-        
+
         if result.rowcount > 0:
             from app.services.cache_invalidation import invalidate_product_caches
             await invalidate_product_caches([product_id])
+
+            # Enqueue delete job for Meilisearch
+            try:
+                from app.core.queue import enqueue_delete_job
+                await enqueue_delete_job(product_id)
+            except Exception as e:
+                # Log but don't fail the delete operation
+                import logging
+                logging.getLogger(__name__).warning(f"Failed to enqueue delete job for product {product_id}: {e}")
+
             return True
         return False
 

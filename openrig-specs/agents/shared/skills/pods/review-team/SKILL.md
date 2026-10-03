@@ -200,7 +200,7 @@ The host writes the final roundtable document with:
 - You verify the happy path thoroughly but may miss failure-mode gaps
 - You should deliberately check: "What happens when this fails? What happens with bad input? What about the release-then-remove sequence?"
 
-### If you are Codex (R2)
+### If you are claude-code (R2)
 - You catch edge cases that Claude misses
 - You are thorough at empirical verification
 - You may over-weight severity on issues that are real but minor

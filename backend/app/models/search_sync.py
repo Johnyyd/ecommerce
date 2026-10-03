@@ -1,11 +1,19 @@
 from datetime import datetime
 from uuid import UUID
 from typing import Optional, Any
-from sqlalchemy import String, Integer, DateTime, Text, Index, CheckConstraint, JSON
+from sqlalchemy import String, Integer, DateTime, Text, Index, CheckConstraint, JSON, Enum as SQLEnum
 from sqlalchemy.orm import Mapped, mapped_column
 from sqlalchemy.dialects.postgresql import UUID as PGUUID
 from sqlalchemy.sql import func
 from app.models.base import Base
+import enum
+
+
+class SyncTaskType(str, enum.Enum):
+    """Type of sync task that failed."""
+    SYNC = "sync"
+    DELETE = "delete"
+    EMBEDDING = "embedding"
 
 
 class FailedSyncTask(Base):
@@ -13,6 +21,8 @@ class FailedSyncTask(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
+    task_type: Mapped[SyncTaskType] = mapped_column(SQLEnum(SyncTaskType), default=SyncTaskType.SYNC, nullable=False)
+    payload: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
     attempt: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     error: Mapped[str] = mapped_column(Text, nullable=False)
@@ -25,6 +35,7 @@ class FailedSyncTask(Base):
     __table_args__ = (
         Index("ix_failed_sync_product_attempt", "product_id", "attempt"),
         Index("ix_failed_sync_unresolved", "product_id", postgresql_where="resolved_at IS NULL"),
+        Index("ix_failed_sync_task_type", "task_type"),
     )
 
 

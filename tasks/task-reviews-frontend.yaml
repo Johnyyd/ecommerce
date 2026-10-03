@@ -1,0 +1,62 @@
+task_id: task-reviews-frontend
+title: "Verified Reviews & Ratings - Frontend Components"
+phase: 1
+priority: P2
+status: READY
+assigned_to: development.developer_frontend
+reviewed_by: development.developer_backend
+estimated_effort: 2 days
+
+description: |
+  Build frontend components for the verified customer reviews system.
+  Backend API is 90% complete with verified purchase enforcement.
+
+requirements:
+  - Product review display component (stars, distribution, comments)
+  - Review submission form (only for verified purchasers)
+  - Admin review management (list, filter, moderate)
+  - Image upload for reviews (3-5 images per review)
+  - Review moderation workflow (approve/reject before publish)
+
+files_to_create:
+  - frontend/src/components/ProductReviews.tsx
+  - frontend/src/components/ReviewForm.tsx
+  - frontend/src/components/ReviewList.tsx
+  - frontend/src/components/ReviewImageUpload.tsx
+  - frontend/src/pages/admin/AdminReviews.tsx (verify/update existing)
+
+files_to_update:
+  - frontend/src/services/reviewApi.ts (API client)
+  - frontend/src/store/useReviewStore.ts (state management)
+
+acceptance_criteria:
+  - Product page shows rating distribution, average score, and review list
+  - Only users with DELIVERED/COMPLETED orders can submit reviews
+  - Review form validates rating (1-5) and optional comment
+  - Image upload allows 3-5 images, shows previews
+  - Admin can view all reviews with filters (product, rating, date)
+  - Admin can moderate reviews (approve/reject/hide)
+  - "Verified Purchase" badge shown for eligible reviews
+
+clarifications_needed:
+  - Image upload: Required for P2 or defer to P3?
+  - Moderation: Auto-publish or admin approval first?
+  - Review sorting: Most recent, highest rated, most helpful?
+  - Pagination: How many reviews per page?
+
+validation_commands:
+  - npm test -- --testPathPattern=ProductReviews
+  - npm test -- --testPathPattern=ReviewForm
+  - Backend API: pytest backend/tests/api/test_reviews.py -v
+
+dependencies: []
+parallel_with: ["task-payment-gateway", "task-4a-dlq-reconciliation"]
+
+notes: |
+  Backend already has:
+  - Review model with is_verified_purchase, unique constraint (user+product+order)
+  - GET /reviews/product/{id} - public endpoint with rating distribution
+  - POST /reviews/ - verified purchase only (DELIVERED/COMPLETED/PROCESSING)
+  - DELETE /reviews/{id} - BOLA/IDOR protected
+  - GET /admin/all - admin list with filters
+  - Product rating auto-recalculation on create/delete

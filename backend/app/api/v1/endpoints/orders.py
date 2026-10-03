@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import List, Any, Optional
 from pydantic import BaseModel
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 # pyrefly: ignore [missing-import]
 from redis.asyncio import Redis
@@ -37,8 +37,8 @@ async def create_order(
 
 @router.get("/", response_model=List[OrderResponse])
 async def list_user_orders(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     current_user: User = Depends(get_current_user),
     repo: OrderRepository = Depends(get_order_repository)
 ) -> Any:
@@ -80,8 +80,8 @@ async def update_order_payment_method(
 
 @router.get("/admin", response_model=List[OrderResponse])
 async def list_all_orders_admin(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     status: Optional[str] = None,
     current_staff: User = Depends(get_current_staff),
     repo: OrderRepository = Depends(get_order_repository)

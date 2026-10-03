@@ -238,7 +238,7 @@ class SearchService:
         await self.meilisearch.close()
 
     async def ensure_index_initialized(self) -> bool:
-        """Initialize index and its searchable/filterable/sortable settings."""
+        """Initialize index and its searchable/filterable/sortable settings with Vietnamese support."""
         try:
             exists = await self.meilisearch.index_exists()
             if not exists:
@@ -249,9 +249,50 @@ class SearchService:
             await self.meilisearch.update_settings(
                 index_name=self.meilisearch.index_name,
                 settings={
-                    "searchableAttributes": ["name", "description", "brand"],
-                    "filterableAttributes": ["category_id", "brand", "price"],
-                    "sortableAttributes": ["price", "updated_at"],
+                    # Searchable attributes (weighted for relevance)
+                    "searchableAttributes": [
+                        "name",
+                        "description",
+                        "brand"
+                    ],
+                    # Filterable attributes for faceted search
+                    "filterableAttributes": [
+                        "category_id",
+                        "brand",
+                        "price",
+                        "is_active"
+                    ],
+                    # Sortable attributes
+                    "sortableAttributes": [
+                        "price",
+                        "updated_at",
+                        "created_at"
+                    ],
+                    # Vietnamese tokenizer support (Meilisearch v1.11+)
+                    "tokenizer": "vi",
+                    # Typo tolerance settings for Vietnamese
+                    "typoTolerance": {
+                        "enabled": True,
+                        "minWordSizeForTypos": {
+                            "oneTypo": 4,
+                            "twoTypos": 8
+                        }
+                    },
+                    # Ranking rules for better relevance
+                    "rankingRules": [
+                        "words",
+                        "typo",
+                        "proximity",
+                        "attribute",
+                        "sort",
+                        "exactness"
+                    ],
+                    # Distinct attribute for deduplication (e.g., same product different variants)
+                    "distinctAttribute": "id",
+                    # Faceting for advanced filtering
+                    "faceting": {
+                        "maxValuesPerFacet": 100
+                    }
                 }
             )
             return True
@@ -303,6 +344,17 @@ class SearchService:
         )
         return result
 
+    # Allowed filter fields to prevent Meilisearch filter injection
+    _ALLOWED_FILTER_FIELDS = frozenset({
+        "category_id", "brand", "price", "is_active", "stock_quantity",
+        "rating", "created_at", "updated_at"
+    })
+
+    # Allowed sort fields to prevent sort injection
+    _ALLOWED_SORT_FIELDS = frozenset({
+        "price", "created_at", "updated_at", "rating", "popularity"
+    })
+
     async def search_products(
         self,
         query: str,
@@ -313,22 +365,49 @@ class SearchService:
         sort: Optional[List[str]] = None
     ) -> Dict[str, Any]:
         """Search products using Meilisearch with optional filters and facets."""
-        # Build filter string from filters dict
+        # Build filter string from filters dict with validation
         filter_str = None
         if filters:
             filter_parts = []
             for key, value in filters.items():
+                # Validate filter field against whitelist
+                if key not in self._ALLOWED_FILTER_FIELDS:
+                    logger.warning(f"Rejected filter field: {key} (not in whitelist)")
+                    continue
                 if value is not None:
                     if isinstance(value, list):
-                        # Handle IN clauses
-                        formatted_values = ", ".join(f'"{v}"' if isinstance(v, str) else str(v) for v in value)
-                        filter_parts.append(f"{key} IN [{formatted_values}]")
+                        # Handle IN clauses - validate each value
+                        formatted_values = []
+                        for v in value:
+                            if isinstance(v, str):
+                                # Escape quotes in string values
+                                escaped = v.replace('"', '\\"')
+                                formatted_values.append(f'"{escaped}"')
+                            else:
+                                formatted_values.append(str(v))
+                        filter_parts.append(f"{key} IN [{', '.join(formatted_values)}]")
                     else:
-                        # Handle equality
-                        formatted_value = f'"{value}"' if isinstance(value, str) else str(value)
+                        # Handle equality - escape string values
+                        if isinstance(value, str):
+                            escaped = value.replace('"', '\\"')
+                            formatted_value = f'"{escaped}"'
+                        else:
+                            formatted_value = str(value)
                         filter_parts.append(f"{key} = {formatted_value}")
             if filter_parts:
                 filter_str = " AND ".join(filter_parts)
+
+        # Validate sort fields
+        validated_sort = None
+        if sort:
+            validated_sort = []
+            for s in sort:
+                # Extract base field name (remove direction suffix like :asc, :desc and leading -)
+                base_field = s.lstrip('-').split(':')[0]
+                if base_field in self._ALLOWED_SORT_FIELDS:
+                    validated_sort.append(s)
+                else:
+                    logger.warning(f"Rejected sort field: {base_field} (not in whitelist)")
 
         return await self.meilisearch.search(
             index_name=self.meilisearch.index_name,
@@ -337,16 +416,16 @@ class SearchService:
             limit=limit,
             offset=offset,
             facets=facets,
-            sort=sort
+            sort=validated_sort
         )
 
     async def get_popular_products(self, limit: int = 10) -> List[Dict[str, Any]]:
-        """Get popular products as a list of product dicts."""
+        """Get popular products as a list of product dicts, sorted by interaction count (popularity)."""
         try:
             res = await self.meilisearch.search(
                 index_name=self.meilisearch.index_name,
                 query="",
-                sort=["price:desc"],
+                sort=["popularity:desc"],  # Sort by popularity instead of price
                 limit=limit
             )
             hits = res.get("hits", [])
@@ -359,21 +438,27 @@ class SearchService:
         try:
             from app.core.db import AsyncSessionLocal
             from app.models.product import Product
-            from sqlalchemy import select, desc
+            from app.models.order import OrderItem
+            from sqlalchemy import select, desc, func
             async with AsyncSessionLocal() as session:
-                stmt = select(Product).order_by(desc(Product.created_at)).limit(limit)
+                # Try to get products with most order interactions first
+                stmt = select(Product, func.count(OrderItem.id).label('order_count'))\
+                    .select_from(Product.join(OrderItem, Product.id == OrderItem.product_id, isouter=True))\
+                    .group_by(Product.id)\
+                    .order_by(desc('order_count'), desc(Product.created_at))\
+                    .limit(limit)
                 result = await session.execute(stmt)
-                products = result.scalars().all()
+                products = result.all()
                 return [
                     {
-                        "id": str(p.id),
-                        "name": p.name,
-                        "description": p.description or "",
-                        "price": float(p.price) if p.price else 0.0,
-                        "brand": p.brand or "",
-                        "category_id": str(p.category_id) if p.category_id else "",
+                        "id": str(product.Product.id),
+                        "name": product.Product.name,
+                        "description": product.Product.description or "",
+                        "price": float(product.Product.price) if product.Product.price else 0.0,
+                        "brand": product.Product.brand or "",
+                        "category_id": str(product.Product.category_id) if product.Product.category_id else "",
                     }
-                    for p in products
+                    for product in products
                 ]
         except Exception as db_err:
             logger.error(f"Database fallback in get_popular_products failed: {db_err}")

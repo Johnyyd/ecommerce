@@ -5,7 +5,7 @@ from app.main import app
 from app.core.db import get_db_session
 from app.api.deps import get_current_user
 from app.models.user import User
-from app.models.review import Review
+from app.models.review import Review, ModerationStatus
 from app.models.order import Order, OrderItem
 from app.models.product import Product
 from app.core.utils import generate_uuidv7
@@ -34,7 +34,7 @@ def other_user():
 async def test_get_product_reviews_public():
     mock_session = AsyncMock()
     product_id = generate_uuidv7()
-    
+
     from datetime import datetime, timezone
     mock_review = Review(
         id=generate_uuidv7(),
@@ -44,6 +44,8 @@ async def test_get_product_reviews_public():
         rating=5,
         comment="Incredible craftsmanship and texture!",
         is_verified_purchase=True,
+        is_approved=True,
+        moderation_status=ModerationStatus.APPROVED,
         created_at=datetime.now(timezone.utc)
     )
     mock_review.user = User(id=mock_review.user_id, username="alice", email="a@test.com", role="customer", is_active=True)
@@ -67,6 +69,8 @@ async def test_get_product_reviews_public():
     assert data["reviews"][0]["comment"] == "Incredible craftsmanship and texture!"
     assert data["reviews"][0]["is_verified_purchase"] is True
     assert data["reviews"][0]["username"] == "alice"
+    assert data["reviews"][0]["is_approved"] is True
+    assert data["reviews"][0]["moderation_status"] == "approved"
 
     app.dependency_overrides.clear()
 

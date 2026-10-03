@@ -1,5 +1,6 @@
 import os
 import base64
+import secrets
 from pathlib import Path
 from typing import Any, Optional, Dict, List
 from pydantic import BaseModel, Field
@@ -180,12 +181,15 @@ async def trigger_test_email(
     current_staff: User = Depends(get_current_staff)
 ) -> Any:
     """Manually dispatch a test email via background worker."""
+    import secrets
+    # Generate a random 6-digit test token (not a real password - test only)  # nosec B105
+    test_token = ''.join(secrets.choice('0123456789') for _ in range(6))
     context: Dict[str, Any] = {
         "username": current_staff.username,
         "order_id": str(generate_uuidv7()),
         "total_amount": 129.99,
         "payment_method": "VIETQR",
-        "token": "TEST_OTP_123456",
+        "token": test_token,
         "items": [
             {"name": "Apple Studio Display 27-inch 5K", "quantity": 1, "unit_price": 129.99}
         ]

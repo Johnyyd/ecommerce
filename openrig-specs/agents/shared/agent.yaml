@@ -57,10 +57,10 @@ resources:
       path: runtime/claude-mcp.fragment.json
       runtime: claude-code
       type: claude_mcp_fragment
-    - id: codex-default-config
-      path: runtime/codex-config.fragment.toml
-      runtime: codex
-      type: codex_config_fragment
+    - id: claude-code-default-config
+      path: runtime/claude-code-config.fragment.toml
+      runtime: claude-code
+      type: claude-code_config_fragment
     - id: claude-activity-hooks
       path: runtime/claude-activity-hooks.json
       runtime: claude-code

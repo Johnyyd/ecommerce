@@ -1,7 +1,7 @@
 import json
 from uuid import UUID
 from typing import List, Annotated, Any, Optional
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 # pyrefly: ignore [missing-import]
 from redis.asyncio import Redis
@@ -47,8 +47,8 @@ async def search_products_endpoint(
     brand: Optional[str] = None,
     min_price: Optional[float] = None,
     max_price: Optional[float] = None,
-    page: int = 1,
-    limit: int = 12,
+    page: int = Query(1, ge=1, le=10000),
+    limit: int = Query(12, ge=1, le=100),
     sort: Optional[str] = None,
     facets: Optional[str] = None,
     search_service: SearchService = Depends(get_search_service),
@@ -116,8 +116,8 @@ async def search_products_endpoint(
 @router.get("", response_model=PaginatedProductResponse, include_in_schema=False)
 @router.get("/", response_model=PaginatedProductResponse)
 async def list_products(
-    skip: int = 0,
-    limit: int = 100,
+    skip: int = Query(0, ge=0),
+    limit: int = Query(100, ge=1, le=100),
     category_id: Optional[UUID] = None,
     brand: Optional[str] = None,
     min_price: Optional[float] = None,
