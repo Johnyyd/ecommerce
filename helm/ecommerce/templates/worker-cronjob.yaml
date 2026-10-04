@@ -33,6 +33,26 @@ spec:
             image: "{{ .Values.worker.image.repository }}:{{ .Values.worker.image.tag }}"
             imagePullPolicy: {{ .Values.worker.image.pullPolicy }}
             command: ["python", "-c", "from app.worker import cancel_expired_orders_task; import asyncio; asyncio.run(cancel_expired_orders_task(None))"]
+            env:
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: MEILISEARCH_URL
+              value: "http://meilisearch:7700"
+            - name: PAYOS_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PAYOS_CLIENT_ID
+            - name: PAYOS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PAYOS_API_KEY
+            - name: PAYOS_CHECKSUM_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PAYOS_CHECKSUM_KEY
             envFrom:
             - secretRef:
                 name: app-secrets

@@ -13,6 +13,7 @@ export const CartDrawer = () => {
   const { isAuthenticated } = useAuthStore()
   const [, setLocation] = useLocation()
   const [isMobile, setIsMobile] = useState(false)
+  const [touchStartX, setTouchStartX] = useState<number | null>(null)
   const total = getTotal()
 
   useEffect(() => {
@@ -34,9 +35,11 @@ export const CartDrawer = () => {
     setLocation("/checkout")
   }
 
-  const handleSwipeClose = () => {
-    if (isMobile) {
-      toggleCart()
+  const handleSwipeClose = (e: React.TouchEvent) => {
+    if (!isMobile) return;
+    const endX = e.touches[0].clientX;
+    if (touchStartX !== null && endX < touchStartX - 50) {
+      toggleCart();
     }
   }
 
@@ -59,7 +62,7 @@ export const CartDrawer = () => {
             className={`fixed top-0 right-0 bottom-0 z-50 flex flex-col bg-white dark:bg-zinc-900 shadow-2xl border-l border-zinc-100 dark:border-zinc-800 text-zinc-900 dark:text-zinc-50 ${
               isMobile ? "w-full" : "w-full md:w-[480px]"
             }`}
-            onTouchStart={(e) => { /* Track touch start for swipe detection */ }}
+            onTouchStart={(e) => { setTouchStartX(e.touches[0].clientX); /* Track touch start for swipe detection */ }}
             onTouchEnd={handleSwipeClose}
           >
             {/* Mobile drag handle */}

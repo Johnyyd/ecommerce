@@ -1,0 +1,14 @@
+{
+  "timestamp": "2026-10-04T04:29:56.677256",
+  "target_host": "http://localhost:8000",
+  "total_requests": 847,
+  "total_failures": 0,
+  "failure_rate": 0.0,
+  "avg_response_time_ms": 26.72347244626364,
+  "p50_ms": 21,
+  "p95_ms": 59,
+  "p99_ms": 160,
+  "max_response_time_ms": 214.89853900129674,
+  "requests_per_second": 14.233514194684918,
+  "endpoints": {}
+}

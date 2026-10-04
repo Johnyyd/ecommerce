@@ -64,11 +64,16 @@ async def create_payment_link(
             amount=result["amount"],
             currency=result["currency"],
             qr_code_url=result["qr_code_url"],
+            checkout_url=result.get("payment_url"),
+            payment_link_id=result.get("payment_link_id"),
+            expires_at=result.get("expires_at"),
             account_number=result["account_number"],
             account_name=result["account_name"],
             bank_name=result["bank_name"],
             description=result["description"],
-            payment_url=result["payment_url"],
+            payment_url=result.get("payment_url"),
+            transfer_memo=result.get("transfer_memo"),
+            bank_account_number=result.get("bank_account_number"),
         )
 
     except ValueError as e:

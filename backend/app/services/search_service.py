@@ -44,7 +44,8 @@ class MeilisearchService:
         settings_dict = settings or {}
         try:
             # Create index with optional settings
-            task = self.client.create_index(index_name, **settings_dict)
+            # Meilisearch Python client v0.43+ uses 'options' parameter
+            task = self.client.create_index(index_name, options=settings_dict)
             # Wait for task to complete
             self.client.wait_for_task(task.task_uid)
             return {"taskUid": task.task_uid, "status": "succeeded"}
@@ -147,7 +148,7 @@ class MeilisearchService:
         try:
             index_name = index_name or self.index_name
             index = self.client.index(index_name)
-            search_params = {"q": query}
+            search_params = {}
 
             if filter is not None:
                 search_params["filter"] = filter
@@ -162,18 +163,23 @@ class MeilisearchService:
             if attributesToHighlight is not None:
                 search_params["attributesToHighlight"] = attributesToHighlight
 
-            # Add any additional parameters
-            search_params.update(kwargs)
+            # Add any additional parameters (exclude query, index_name which are handled separately)
+            for k, v in kwargs.items():
+                if k not in ("query", "index_name"):
+                    search_params[k] = v
 
-            result = index.search(**search_params)
+            if search_params:
+                result = index.search(query, search_params)
+            else:
+                result = index.search(query)
 
-            # Convert result to dict format
+            # Convert result to dict format (Meilisearch Python client v0.43+ returns dict)
             return {
-                "hits": result.hits,
-                "estimatedTotalHits": result.estimated_total_hits,
-                "processingTimeMs": result.processing_time_ms,
-                "query": result.query,
-                "facetDistribution": getattr(result, 'facet_distribution', None)
+                "hits": result.get("hits", []),
+                "estimatedTotalHits": result.get("estimatedTotalHits", 0),
+                "processingTimeMs": result.get("processingTimeMs", 0),
+                "query": result.get("query", query),
+                "facetDistribution": result.get("facetDistribution")
             }
         except MeilisearchApiError as e:
             logger.error(f"Search failed for {index_name}: {e}")
@@ -244,7 +250,7 @@ class SearchService:
             if not exists:
                 await self.meilisearch.create_index(
                     index_name=self.meilisearch.index_name,
-                    settings={"primary_key": "id"}
+                    settings={"primaryKey": "id"}
                 )
             await self.meilisearch.update_settings(
                 index_name=self.meilisearch.index_name,
@@ -268,8 +274,6 @@ class SearchService:
                         "updated_at",
                         "created_at"
                     ],
-                    # Vietnamese tokenizer support (Meilisearch v1.11+)
-                    "tokenizer": "vi",
                     # Typo tolerance settings for Vietnamese
                     "typoTolerance": {
                         "enabled": True,
@@ -292,7 +296,9 @@ class SearchService:
                     # Faceting for advanced filtering
                     "faceting": {
                         "maxValuesPerFacet": 100
-                    }
+                    },
+                    # Performance: limit search time to return partial results faster
+                    "searchCutoffMs": 50
                 }
             )
             return True
