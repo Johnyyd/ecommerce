@@ -227,6 +227,17 @@ class MeilisearchService:
             self.client.wait_for_task(task.task_uid)
             return {"taskUid": task.task_uid, "status": "succeeded"}
         except MeilisearchApiError as e:
+            # Handle Meilisearch < v1.11 where 'tokenizer' field is not supported
+            if "tokenizer" in settings and "tokenizer" in str(e).lower():
+                logger.warning(f"Tokenizer not supported by Meilisearch version. Retrying without tokenizer for {index_name}.")
+                clean_settings = {k: v for k, v in settings.items() if k != "tokenizer"}
+                try:
+                    task = index.update_settings(clean_settings)
+                    self.client.wait_for_task(task.task_uid)
+                    return {"taskUid": task.task_uid, "status": "succeeded"}
+                except Exception as inner_e:
+                    logger.error(f"Failed to update settings without tokenizer for {index_name}: {inner_e}")
+                    raise
             logger.error(f"Failed to update settings for {index_name}: {e}")
             raise Exception(f"Meilisearch API error: {e.message}")
         except MeilisearchCommunicationError as e:

@@ -1,4 +1,4 @@
-import random
+import secrets
 import re
 import logging
 from typing import Dict, Any
@@ -10,6 +10,9 @@ logger = logging.getLogger(__name__)
 # Character pool excluding confusing characters (0, O, 1, I, l)
 CHAR_POOL = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
 
+# Use cryptographically secure random generator for security/compliance
+_rng = secrets.SystemRandom()
+
 # Fallback in-memory cache if Redis is temporarily unreachable
 _memory_captcha_store: Dict[str, str] = {}
 
@@ -20,8 +23,8 @@ def _generate_svg_captcha(text: str) -> str:
     height = 46
 
     # Random pastel background colors
-    bg_h1 = random.randint(180, 260)
-    bg_h2 = random.randint(140, 220)
+    bg_h1 = _rng.randint(180, 260)
+    bg_h2 = _rng.randint(140, 220)
     bg_gradient = f"""
     <defs>
       <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -36,11 +39,11 @@ def _generate_svg_captcha(text: str) -> str:
     noise_lines = []
     line_colors = ["#94a3b8", "#cbd5e1", "#64748b", "#38bdf8", "#34d399"]
     for _ in range(4):
-        x1, y1 = random.randint(0, 30), random.randint(5, 40)
-        x2, y2 = random.randint(110, 140), random.randint(5, 40)
-        cx, cy = random.randint(40, 100), random.randint(5, 40)
-        stroke = random.choice(line_colors)
-        stroke_w = random.uniform(1.2, 2.2)
+        x1, y1 = _rng.randint(0, 30), _rng.randint(5, 40)
+        x2, y2 = _rng.randint(110, 140), _rng.randint(5, 40)
+        cx, cy = _rng.randint(40, 100), _rng.randint(5, 40)
+        stroke = _rng.choice(line_colors)
+        stroke_w = _rng.uniform(1.2, 2.2)
         noise_lines.append(
             f'<path d="M {x1} {y1} Q {cx} {cy} {x2} {y2}" stroke="{stroke}" stroke-width="{stroke_w:.1f}" fill="none" opacity="0.6"/>'
         )
@@ -48,10 +51,10 @@ def _generate_svg_captcha(text: str) -> str:
     # Random noise dots
     dots = []
     for _ in range(25):
-        cx = random.randint(5, width - 5)
-        cy = random.randint(5, height - 5)
-        r = random.uniform(0.8, 2.0)
-        c = random.choice(line_colors)
+        cx = _rng.randint(5, width - 5)
+        cy = _rng.randint(5, height - 5)
+        r = _rng.uniform(0.8, 2.0)
+        c = _rng.choice(line_colors)
         dots.append(f'<circle cx="{cx}" cy="{cy}" r="{r:.1f}" fill="{c}" opacity="0.5"/>')
 
     # Character rendering with distortion & rotation
@@ -60,11 +63,11 @@ def _generate_svg_captcha(text: str) -> str:
     char_spacing = (width - 24) / len(text)
 
     for i, char in enumerate(text):
-        x = 14 + (i * char_spacing) + random.uniform(-2, 2)
-        y = 31 + random.uniform(-3, 3)
-        angle = random.randint(-22, 22)
-        font_size = random.randint(22, 26)
-        color = random.choice(char_colors)
+        x = 14 + (i * char_spacing) + _rng.uniform(-2, 2)
+        y = 31 + _rng.uniform(-3, 3)
+        angle = _rng.randint(-22, 22)
+        font_size = _rng.randint(22, 26)
+        color = _rng.choice(char_colors)
         char_elements.append(
             f'<text x="{x:.1f}" y="{y:.1f}" font-size="{font_size}" font-family="Arial, Helvetica, sans-serif" '
             f'font-weight="bold" fill="{color}" transform="rotate({angle}, {x:.1f}, {y:.1f})">{char}</text>'
@@ -81,7 +84,7 @@ def _generate_svg_captcha(text: str) -> str:
 
 async def generate_captcha() -> Dict[str, str]:
     """Generate a fresh captcha challenge with a 5-minute TTL in Redis."""
-    code = "".join(random.choices(CHAR_POOL, k=5))
+    code = "".join(_rng.choices(CHAR_POOL, k=5))
     captcha_id = str(generate_uuidv7())
     svg = _generate_svg_captcha(code)
 

@@ -43,7 +43,7 @@ def meilisearch_client():
     index = client.index(index_name)
     # Update settings to match expected test configuration
     task = index.update_settings({
-        "tokenizer": "vi",
+        # "tokenizer": "vi",  # Only available in Meilisearch v1.11+ (not supported in v1.8)
         "searchableAttributes": ["name", "description", "brand"],
         "filterableAttributes": ["category_id", "brand", "price", "is_active"],
         "sortableAttributes": ["price", "updated_at", "created_at"],

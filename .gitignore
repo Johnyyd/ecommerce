@@ -59,3 +59,4 @@ tests/__pycache__
 /__pycache__
 /.codex
 /backend/scripts/__pycache__
+/backend/tests/load/__pycache__
