@@ -58,23 +58,32 @@ def meilisearch_client():
             "dt": ["dien thoai", "điện thoại"],
             "dien thoai": ["dt", "smartphone"],
             "ao": ["áo", "áo thun"],
-            "quan": ["quần", "quần jean"]
+            "quan": ["quần", "quần jean"],
+            "giay": ["giày", "giày thể thao"],
+            "giay the thao": ["giày thể thao"],
+            "tui": ["túi", "túi xách"],
+            "tui xach": ["túi xách"],
+            "dong ho": ["đồng hồ"],
+            "kinh": ["kính", "kính mắt"],
+            "kinh mat": ["kính mắt"]
         }
     })
     client.wait_for_task(task.task_uid)
 
-    # Seed sample documents if index is empty
-    stats = index.get_stats()
-    if stats.number_of_documents == 0:
-        sample_docs = [
-            {"id": "1", "name": "Áo thun cotton nam basic", "description": "Áo thun nam chất liệu cotton 100%", "price": 150000, "brand": "Viet T-Shirt", "category_id": "1", "is_active": True},
-            {"id": "2", "name": "Áo thun polo nam cao cấp", "description": "Áo polo nam cổ lật", "price": 280000, "brand": "Canifa", "category_id": "1", "is_active": True},
-            {"id": "3", "name": "Quần jean nam slim fit", "description": "Quần jean nam form slim fit", "price": 450000, "brand": "Kangaroo", "category_id": "2", "is_active": True},
-            {"id": "4", "name": "Điện thoại iPhone 15 Pro Max", "description": "iPhone 15 Pro Max 256GB", "price": 29990000, "brand": "Apple", "category_id": "3", "is_active": True},
-            {"id": "5", "name": "Điện thoại Samsung Galaxy S24 Ultra", "description": "Galaxy S24 Ultra AI", "price": 30990000, "brand": "Samsung", "category_id": "3", "is_active": True},
-        ]
-        task = index.add_documents(sample_docs)
-        client.wait_for_task(task.task_uid)
+    # Seed sample documents
+    sample_docs = [
+        {"id": "1", "name": "Áo thun cotton nam basic", "description": "Áo thun nam chất liệu cotton 100%", "price": 150000, "brand": "Viet T-Shirt", "category_id": "1", "is_active": True},
+        {"id": "2", "name": "Áo thun polo nam cao cấp", "description": "Áo polo nam cổ lật", "price": 280000, "brand": "Canifa", "category_id": "1", "is_active": True},
+        {"id": "3", "name": "Quần jean nam slim fit", "description": "Quần jean nam form slim fit", "price": 450000, "brand": "Kangaroo", "category_id": "2", "is_active": True},
+        {"id": "4", "name": "Điện thoại iPhone 15 Pro Max", "description": "iPhone 15 Pro Max 256GB", "price": 29990000, "brand": "Apple", "category_id": "3", "is_active": True},
+        {"id": "5", "name": "Điện thoại Samsung Galaxy S24 Ultra", "description": "Galaxy S24 Ultra AI", "price": 30990000, "brand": "Samsung", "category_id": "3", "is_active": True},
+        {"id": "6", "name": "Giày thể thao nam chạy bộ", "description": "Giày thể thao chuyên dụng chạy bộ", "price": 750000, "brand": "Nike", "category_id": "4", "is_active": True},
+        {"id": "7", "name": "Túi xách nữ da thật", "description": "Túi xách da thật cao cấp", "price": 1200000, "brand": "Coach", "category_id": "5", "is_active": True},
+        {"id": "8", "name": "Đồng hồ nam dây da", "description": "Đồng hồ đeo tay nam chính hãng", "price": 2500000, "brand": "Rolex", "category_id": "6", "is_active": True},
+        {"id": "9", "name": "Kính mắt thời trang UV", "description": "Kính mắt bảo vệ tia UV", "price": 350000, "brand": "Ray-Ban", "category_id": "7", "is_active": True},
+    ]
+    task = index.add_documents(sample_docs)
+    client.wait_for_task(task.task_uid)
 
     yield client
 
