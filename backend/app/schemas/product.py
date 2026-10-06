@@ -1,6 +1,8 @@
+from typing import List
 from typing import Optional
 from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
+
 
 class ProductBase(BaseModel):
     name: str = Field(..., max_length=255)
@@ -12,8 +14,10 @@ class ProductBase(BaseModel):
     rating: Optional[float] = Field(default=0.0, ge=0.0, le=5.0)
     image_url: Optional[str] = None
 
+
 class ProductCreate(ProductBase):
     pass
+
 
 class ProductUpdate(BaseModel):
     name: Optional[str] = Field(None, max_length=255)
@@ -25,13 +29,14 @@ class ProductUpdate(BaseModel):
     rating: Optional[float] = Field(None, ge=0.0, le=5.0)
     image_url: Optional[str] = None
 
+
 class ProductResponse(ProductBase):
     id: UUID
     version: int
 
     model_config = ConfigDict(from_attributes=True)
 
-from typing import List
+
 class PaginatedProductResponse(BaseModel):
     items: List[ProductResponse]
     total: int

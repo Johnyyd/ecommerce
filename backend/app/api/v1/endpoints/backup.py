@@ -14,6 +14,7 @@ from app.api.deps import get_current_admin
 
 router = APIRouter()
 
+
 def get_backup_dir() -> Path:
     env_dir = os.environ.get("BACKUP_DIR")
     if env_dir:
@@ -27,14 +28,17 @@ def get_backup_dir() -> Path:
     fallback.mkdir(parents=True, exist_ok=True)
     return fallback
 
+
 class BackupInfo(BaseModel):
     filename: str
     size_bytes: int
     size_human: str
     created_at: str
 
+
 class RestoreRequest(BaseModel):
     filename: str
+
 
 def format_size(bytes_num: int) -> str:
     for unit in ['B', 'KB', 'MB', 'GB']:
@@ -42,6 +46,7 @@ def format_size(bytes_num: int) -> str:
             return f"{bytes_num:.1f} {unit}"
         bytes_num /= 1024.0
     return f"{bytes_num:.1f} TB"
+
 
 @router.get("/", response_model=List[BackupInfo])
 async def list_backups(current_admin: User = Depends(get_current_admin)):
@@ -61,6 +66,7 @@ async def list_backups(current_admin: User = Depends(get_current_admin)):
             created_at=mtime
         ))
     return backups
+
 
 @router.post("/create", response_model=BackupInfo, status_code=status.HTTP_201_CREATED)
 async def create_backup(current_admin: User = Depends(get_current_admin)):
@@ -85,7 +91,8 @@ async def create_backup(current_admin: User = Depends(get_current_admin)):
     ]
 
     try:
-        process = subprocess.run(cmd, env=env, capture_output=True, text=True, check=True)  # nosec B603
+        subprocess.run(cmd, env=env, capture_output=True,
+                       text=True, check=True)  # nosec B603
         stat = filepath.stat()
         return BackupInfo(
             filename=filename,
@@ -107,6 +114,7 @@ async def create_backup(current_admin: User = Depends(get_current_admin)):
         )
     except subprocess.CalledProcessError as e:
         raise HTTPException(status_code=500, detail=f"Backup failed: {e.stderr}")
+
 
 @router.post("/restore")
 async def restore_backup(
@@ -159,4 +167,3 @@ async def restore_backup(
         return {"status": "success", "message": f"Database restore simulated from {safe_filename}"}
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Restore failed: {str(e)}")
-

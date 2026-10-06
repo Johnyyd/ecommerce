@@ -4,6 +4,7 @@ from uuid import UUID
 from datetime import datetime
 from typing import Optional
 
+
 class UserCreate(BaseModel):
     username: str = Field(..., min_length=3, max_length=50)
     email: EmailStr
@@ -26,14 +27,17 @@ class UserCreate(BaseModel):
             raise ValueError("Mật khẩu phải chứa ít nhất 1 ký tự đặc biệt (!@#$%^&*...)")
         return v
 
+
 class UserRegisterRequest(UserCreate):
     captcha_id: Optional[str] = None
     captcha_code: Optional[str] = None
+
 
 class CaptchaResponse(BaseModel):
     captcha_id: str
     captcha_svg: str
     expires_in_seconds: int = 300
+
 
 class UserResponse(BaseModel):
     id: UUID
@@ -46,9 +50,7 @@ class UserResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-from typing import Optional
 
 class UserAdminUpdate(BaseModel):
     role: Optional[str] = None
     is_active: Optional[bool] = None
-

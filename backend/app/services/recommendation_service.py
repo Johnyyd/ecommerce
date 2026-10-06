@@ -2,11 +2,10 @@ import logging
 from typing import List, Dict, Any, Optional
 from uuid import UUID
 from sqlalchemy import select, desc, func
-from app.core.config import settings
 from app.core.db import AsyncSessionLocal
 from app.models.product import Product
 from app.models.order import OrderItem
-from app.services.search_service import SearchService, MEILISEARCH_INDEX_NAME
+from app.services.search_service import SearchService
 
 logger = logging.getLogger(__name__)
 

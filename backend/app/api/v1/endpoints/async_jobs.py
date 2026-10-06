@@ -1,15 +1,12 @@
 import os
 import base64
-import secrets
-from pathlib import Path
-from typing import Any, Optional, Dict, List
+from typing import Any, Optional, Dict
 from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Query, status, Response
 from fastapi.responses import FileResponse
 
 from app.api.deps import get_current_user, get_current_staff
 from app.models.user import User
-from app.core.config import settings
 from app.core.redis import get_redis_client
 from app.core.utils import generate_uuidv7
 from app.core.queue import (
@@ -24,17 +21,22 @@ from app.services.email import get_sandbox_outbox
 
 router = APIRouter()
 
+
 class ReportExportRequest(BaseModel):
-    report_type: str = Field(default="sales", description="Type of report, e.g., sales, revenue, orders")
+    report_type: str = Field(
+        default="sales", description="Type of report, e.g., sales, revenue, orders")
     date_from: Optional[str] = Field(default=None, description="ISO datetime start filter")
     date_to: Optional[str] = Field(default=None, description="ISO datetime end filter")
     format: str = Field(default="xlsx", description="File format: xlsx or csv")
 
+
 class TestEmailRequest(BaseModel):
     recipient: str
-    template: str = Field(default="welcome", description="welcome, order_invoice, or password_reset")
+    template: str = Field(
+        default="welcome", description="welcome, order_invoice, or password_reset")
 
 # ----------------- REPORTS ENDPOINTS -----------------
+
 
 @router.post("/reports/export")
 async def trigger_report_export(
@@ -62,6 +64,7 @@ async def trigger_report_export(
         "check_status_url": f"/api/v1/reports/{job_id}/status"
     }
 
+
 @router.get("/reports/{job_id}/status")
 async def get_report_job_status(
     job_id: str,
@@ -70,6 +73,7 @@ async def get_report_job_status(
     """Check live status of an asynchronous report generation job."""
     info = await get_job_status(job_id)
     return info
+
 
 @router.get("/reports/{job_id}/download")
 async def download_report_file(
@@ -86,7 +90,8 @@ async def download_report_file(
 
     file_path = info.get("file_path")
     filename = info.get("file_name", f"{job_id}.xlsx")
-    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if filename.endswith(".xlsx") else "text/csv"
+    media_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" if filename.endswith(
+        ".xlsx") else "text/csv"
 
     if file_path and os.path.exists(file_path):
         return FileResponse(file_path, filename=filename, media_type=media_type)
@@ -105,6 +110,7 @@ async def download_report_file(
     raise HTTPException(status_code=404, detail="Generated report file not found on server")
 
 # ----------------- MEDIA OPTIMIZATION ENDPOINTS -----------------
+
 
 @router.post("/media/upload")
 async def upload_and_optimize_media(
@@ -136,7 +142,7 @@ async def upload_and_optimize_media(
 
     # Trigger async WebP generation
     job_id = await enqueue_image_optimization_job(str(raw_path), file_id)
-    
+
     # Also run immediate sync fallback variant generation so image is immediately previewable
     try:
         variants_info = process_image_sync(str(raw_path), file_id)
@@ -160,12 +166,14 @@ async def upload_and_optimize_media(
 
 # ----------------- QUEUE & EMAIL MONITORING ENDPOINTS -----------------
 
+
 @router.get("/admin/queue/status")
 async def get_worker_queue_status(
     current_staff: User = Depends(get_current_staff)
 ) -> Any:
     """Real-time observability endpoint for background task queue and worker pods."""
     return await get_queue_metrics()
+
 
 @router.get("/admin/emails/outbox")
 async def get_admin_email_outbox(
@@ -174,6 +182,7 @@ async def get_admin_email_outbox(
 ) -> Any:
     """Inspect recent transactional emails dispatched by background workers."""
     return await get_sandbox_outbox(limit=limit)
+
 
 @router.post("/admin/emails/test")
 async def trigger_test_email(

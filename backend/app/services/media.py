@@ -1,15 +1,14 @@
-import os
 import io
 import logging
 from typing import Dict, Any, Tuple
 from pathlib import Path
 from PIL import Image, ImageOps
 from app.core.config import settings
-from app.core.utils import generate_uuidv7
 
 logger = logging.getLogger(__name__)
 
 MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024  # 10 MB
+
 
 def get_media_dir() -> Path:
     """Ensure media storage directory exists and return Path object."""
@@ -19,6 +18,7 @@ def get_media_dir() -> Path:
     except Exception as e:
         logger.warning("Could not create media directory: %s", e)
     return media_path
+
 
 def validate_image_security(data: bytes, content_type: str) -> Tuple[bool, str]:
     """
@@ -52,6 +52,7 @@ def validate_image_security(data: bytes, content_type: str) -> Tuple[bool, str]:
 
     return True, "Valid"
 
+
 def process_image_sync(source_path: str, filename_base: str) -> Dict[str, Any]:
     """
     Converts source image to modern WebP and produces 3 responsive sizes:
@@ -61,7 +62,7 @@ def process_image_sync(source_path: str, filename_base: str) -> Dict[str, Any]:
     """
     media_dir = get_media_dir()
     src = Path(source_path)
-    
+
     if not src.exists():
         raise FileNotFoundError(f"Source file {source_path} not found")
 
@@ -95,7 +96,8 @@ def process_image_sync(source_path: str, filename_base: str) -> Dict[str, Any]:
         full_img.save(full_path, "WEBP", quality=85, method=6)
 
     full_size = full_path.stat().st_size
-    savings_pct = max(0, round(((original_size - full_size) / original_size) * 100, 1)) if original_size > 0 else 0
+    savings_pct = max(0, round(((original_size - full_size) / original_size)
+                      * 100, 1)) if original_size > 0 else 0
 
     return {
         "filename_base": filename_base,
@@ -109,6 +111,7 @@ def process_image_sync(source_path: str, filename_base: str) -> Dict[str, Any]:
             "full": f"/media/{full_filename}"
         }
     }
+
 
 async def optimize_image_task(ctx: Any, original_path: str, filename: str) -> Dict[str, Any]:
     """ARQ background worker task for non-blocking image optimization."""

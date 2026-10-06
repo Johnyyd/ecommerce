@@ -1,18 +1,13 @@
-import json
 import logging
 import hashlib
 from uuid import UUID
-from typing import Any, Optional, Dict
-from fastapi import APIRouter, Depends, HTTPException, Query, status, Request
+from typing import Any, Optional
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select
-from sqlalchemy.orm import selectinload
 
 from app.core.db import get_db_session
 from app.core.config import settings
 from app.core.security_crypto import verify_payos_signature
-from app.models.order import Order, Payment
-from app.models.payment_transaction import PaymentTransaction
 from app.schemas.payment import (
     PaymentCreateRequest,
     PaymentCreateResponse,
@@ -80,7 +75,8 @@ async def create_payment_link(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error creating payment link: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Failed to create payment link")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Failed to create payment link")
 
 
 @router.post("/webhook")
@@ -121,7 +117,8 @@ async def payment_webhook(
             raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
         except Exception as e:
             logger.error(f"Error processing PayOS webhook: {e}")
-            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Webhook processing failed")
+            raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                                detail="Webhook processing failed")
 
     # Reject any other payload format
     raise HTTPException(
@@ -162,7 +159,8 @@ async def trigger_auto_cancel(
         }
     except Exception as e:
         logger.error(f"Error in auto-cancel: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Auto-cancel failed")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Auto-cancel failed")
 
 
 @router.post("/{order_id}/refund")
@@ -181,4 +179,5 @@ async def refund_payment(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
         logger.error(f"Error processing refund: {e}")
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Refund failed")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail="Refund failed")

@@ -4,10 +4,10 @@ from datetime import datetime, timezone
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
-from app.models.product import Product
 from app.models.order import Order, OrderItem, Payment
 from app.schemas.order import OrderCreate
 from app.crud.product import ProductRepository
+
 
 class OrderRepository:
     def __init__(self, session: AsyncSession):
@@ -27,7 +27,8 @@ class OrderRepository:
         from app.services.payment import PaymentService
         for order in orders:
             if order.status == "PENDING":
-                order.payment_url = PaymentService.generate_payment_url(order.id, float(order.total_amount), order.payment_method)
+                order.payment_url = PaymentService.generate_payment_url(
+                    order.id, float(order.total_amount), order.payment_method)
         return orders
 
     async def create_order_with_transaction(self, user_id: UUID, order_in: OrderCreate) -> Order:
@@ -38,33 +39,34 @@ class OrderRepository:
         # 1. Pessimistic Locking: Deduplicate and sort products to avoid deadlocks
         merged_quantities = {}
         for item in order_in.items:
-            merged_quantities[item.product_id] = merged_quantities.get(item.product_id, 0) + item.quantity
+            merged_quantities[item.product_id] = merged_quantities.get(
+                item.product_id, 0) + item.quantity
 
         sorted_product_ids = sorted(merged_quantities.keys())
         affected_product_ids = []
-        
+
         for pid in sorted_product_ids:
             qty = merged_quantities[pid]
             product = await product_repo.get_by_id_for_update(pid)
             if not product:
                 raise ValueError(f"Product {pid} not found")
-            
+
             if product.stock_quantity < qty:
                 raise ValueError(f"Insufficient stock for product {product.name}")
-                
+
             product.stock_quantity -= qty
             self.session.add(product)
             affected_product_ids.append(pid)
-            
+
             item_total = float(product.price) * qty
             total_amount += item_total
-            
+
             order_items.append(OrderItem(
                 product_id=product.id,
                 quantity=qty,
                 unit_price=product.price
             ))
-            
+
         # 2. Create Order
         db_order = Order(
             user_id=user_id,
@@ -74,8 +76,8 @@ class OrderRepository:
             status="PENDING"
         )
         self.session.add(db_order)
-        await self.session.flush() # To get db_order.id
-        
+        await self.session.flush()  # To get db_order.id
+
         # 3. Create Payment
         db_payment = Payment(
             order_id=db_order.id,
@@ -88,39 +90,43 @@ class OrderRepository:
         for order_item in order_items:
             order_item.order_id = db_order.id
             self.session.add(order_item)
-            
+
         # Commit the transaction
         await self.session.commit()
-        
+
         # Invalidate Redis caches immediately after commit
         from app.services.cache_invalidation import invalidate_product_caches
         await invalidate_product_caches(affected_product_ids)
-        
+
         # Refresh and eager load relationships
-        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).where(Order.id == db_order.id)
+        stmt = select(Order).options(selectinload(Order.items).selectinload(
+            OrderItem.product), selectinload(Order.payment)).where(Order.id == db_order.id)
         result = await self.session.execute(stmt)
         final_order = result.scalars().first()
-        
+
         from app.services.payment import PaymentService
-        final_order.payment_url = PaymentService.generate_payment_url(final_order.id, float(final_order.total_amount), final_order.payment_method)
-        
+        final_order.payment_url = PaymentService.generate_payment_url(
+            final_order.id, float(final_order.total_amount), final_order.payment_method)
+
         return final_order
 
     async def get_by_id(self, order_id: UUID, user_id: UUID) -> Optional[Order]:
-        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).where(Order.id == order_id, Order.user_id == user_id)
+        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(
+            Order.payment)).where(Order.id == order_id, Order.user_id == user_id)
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
     async def cancel_order(self, order_id: UUID, user_id: UUID) -> Order:
-        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).where(Order.id == order_id, Order.user_id == user_id).with_for_update()
+        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(
+            Order.payment)).where(Order.id == order_id, Order.user_id == user_id).with_for_update()
         result = await self.session.execute(stmt)
         order = result.scalars().first()
-        
+
         if not order:
             raise ValueError("Order not found")
         if order.status not in ["PENDING", "PROCESSING"]:
             raise ValueError("Order cannot be cancelled in its current state")
-        
+
         # Restore stock
         product_repo = ProductRepository(self.session)
         affected_product_ids = []
@@ -130,12 +136,12 @@ class OrderRepository:
                 product.stock_quantity += item.quantity
                 self.session.add(product)
                 affected_product_ids.append(item.product_id)
-        
+
         order.status = "CANCELLED"
         order.completed_at = datetime.now(timezone.utc)
         if order.payment:
             order.payment.status = "REFUNDED" if order.payment.status == "SUCCESS" else "CANCELLED"
-        
+
         self.session.add(order)
         await self.session.commit()
         await self.session.refresh(order)
@@ -155,14 +161,14 @@ class OrderRepository:
         )
         result = await self.session.execute(stmt)
         order = result.scalars().first()
-        
+
         if not order:
             raise ValueError("Order not found")
         if order.status != "PENDING":
             raise ValueError(f"Cannot change payment method for order in {order.status} state")
         if order.payment and order.payment.status in ["PAID", "SUCCESS"]:
             raise ValueError("Order has already been paid")
-            
+
         order.payment_method = new_payment_method
         if order.payment:
             order.payment.provider = new_payment_method
@@ -175,29 +181,32 @@ class OrderRepository:
                 provider=new_payment_method
             )
             self.session.add(db_payment)
-            
+
         self.session.add(order)
         await self.session.commit()
         await self.session.refresh(order)
-        
+
         from app.services.payment import PaymentService
-        order.payment_url = PaymentService.generate_payment_url(order.id, float(order.total_amount), order.payment_method)
+        order.payment_url = PaymentService.generate_payment_url(
+            order.id, float(order.total_amount), order.payment_method)
         return order
 
     async def get_all_orders(self, skip: int = 0, limit: int = 100, status: Optional[str] = None) -> List[Order]:
-        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).order_by(Order.created_at.desc()).offset(skip).limit(limit)
+        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(
+            Order.payment)).order_by(Order.created_at.desc()).offset(skip).limit(limit)
         if status:
             stmt = stmt.where(Order.status == status)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
     async def admin_update_status(self, order_id: UUID, new_status: str) -> Order:
-        stmt = select(Order).options(selectinload(Order.items).selectinload(OrderItem.product), selectinload(Order.payment)).where(Order.id == order_id).with_for_update()
+        stmt = select(Order).options(selectinload(Order.items).selectinload(
+            OrderItem.product), selectinload(Order.payment)).where(Order.id == order_id).with_for_update()
         result = await self.session.execute(stmt)
         order = result.scalars().first()
         if not order:
             raise ValueError("Order not found")
-            
+
         old_status = order.status
         order.status = new_status
         affected_product_ids = []
@@ -221,7 +230,7 @@ class OrderRepository:
                         affected_product_ids.append(item.product_id)
             if order.payment:
                 order.payment.status = "REFUNDED" if order.payment.status == "SUCCESS" else "CANCELLED"
-                
+
         self.session.add(order)
         await self.session.commit()
         await self.session.refresh(order)
@@ -231,4 +240,3 @@ class OrderRepository:
             await invalidate_product_caches(affected_product_ids)
 
         return order
-

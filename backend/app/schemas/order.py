@@ -3,14 +3,17 @@ from pydantic import BaseModel, ConfigDict, Field
 from uuid import UUID
 from datetime import datetime
 
+
 class OrderItemCreate(BaseModel):
     product_id: UUID
     quantity: int = Field(..., gt=0)
+
 
 class OrderCreate(BaseModel):
     items: List[OrderItemCreate] = Field(..., min_length=1)
     address_id: UUID
     payment_method: str = Field(..., description="e.g., COD, CREDIT_CARD, VNPAY, MOMO")
+
 
 class OrderItemResponse(BaseModel):
     id: UUID
@@ -22,6 +25,7 @@ class OrderItemResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class PaymentResponse(BaseModel):
     id: UUID
     transaction_id: Optional[str]
@@ -29,6 +33,7 @@ class PaymentResponse(BaseModel):
     provider: str
 
     model_config = ConfigDict(from_attributes=True)
+
 
 class OrderResponse(BaseModel):
     id: UUID
@@ -50,6 +55,7 @@ class OrderResponse(BaseModel):
 
     model_config = ConfigDict(from_attributes=True)
 
-class OrderPaymentMethodUpdate(BaseModel):
-    payment_method: str = Field(..., description="New payment method, e.g., COD, VIETQR, VNPAY, MOMO, CREDIT_CARD")
 
+class OrderPaymentMethodUpdate(BaseModel):
+    payment_method: str = Field(...,
+                                description="New payment method, e.g., COD, VIETQR, VNPAY, MOMO, CREDIT_CARD")

@@ -11,8 +11,10 @@ from app.api.deps import get_current_staff
 
 router = APIRouter()
 
+
 def get_brand_repo(session: AsyncSession = Depends(get_db_session)) -> BrandRepository:
     return BrandRepository(session)
+
 
 @router.get("/", response_model=List[BrandResponse])
 async def list_brands(
@@ -21,6 +23,7 @@ async def list_brands(
     repo: BrandRepository = Depends(get_brand_repo)
 ):
     return await repo.get_multi(skip=skip, limit=limit)
+
 
 @router.post("/", response_model=BrandResponse, status_code=status.HTTP_201_CREATED)
 async def create_brand(
@@ -33,6 +36,7 @@ async def create_brand(
         raise HTTPException(status_code=400, detail="Brand slug already exists")
     return await repo.create(brand_in)
 
+
 @router.patch("/{id}", response_model=BrandResponse)
 async def update_brand(
     id: UUID,
@@ -44,6 +48,7 @@ async def update_brand(
     if not brand:
         raise HTTPException(status_code=404, detail="Brand not found")
     return await repo.update(brand, brand_in)
+
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_brand(

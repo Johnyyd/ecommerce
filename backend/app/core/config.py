@@ -1,6 +1,6 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from pydantic import SecretStr, field_validator
-import os
+from pydantic import field_validator
+
 
 class Settings(BaseSettings):
     PROJECT_NAME: str = "E-Commerce API"
@@ -82,7 +82,8 @@ class Settings(BaseSettings):
         # Validate required secrets are not empty in non-test environments
         if self.ENVIRONMENT != "test":
             if not self.MEILISEARCH_MASTER_KEY or self.MEILISEARCH_MASTER_KEY.startswith("test-"):
-                raise ValueError("MEILISEARCH_MASTER_KEY must be set to a real value (not test default)")
+                raise ValueError(
+                    "MEILISEARCH_MASTER_KEY must be set to a real value (not test default)")
 
     @field_validator("POSTGRES_PASSWORD")
     @classmethod
@@ -91,7 +92,8 @@ class Settings(BaseSettings):
             raise ValueError("POSTGRES_PASSWORD must be set in environment")
         return v
 
-    model_config = SettingsConfigDict(env_file=(".env", "backend/.env"), env_file_encoding="utf-8", extra="ignore")
+    model_config = SettingsConfigDict(
+        env_file=(".env", "backend/.env"), env_file_encoding="utf-8", extra="ignore")
 
 
 settings = Settings()

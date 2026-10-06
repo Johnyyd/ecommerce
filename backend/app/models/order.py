@@ -6,36 +6,46 @@ from app.core.utils import generate_uuidv7
 from uuid import UUID
 from datetime import datetime
 
+
 class Order(Base):
     __tablename__ = "orders"
-    
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"), nullable=False)
-    address_id: Mapped[UUID] = mapped_column(ForeignKey("addresses.id", ondelete="RESTRICT"), nullable=False)
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey(
+        "users.id", ondelete="RESTRICT"), nullable=False)
+    address_id: Mapped[UUID] = mapped_column(ForeignKey(
+        "addresses.id", ondelete="RESTRICT"), nullable=False)
     total_amount: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
     payment_method: Mapped[str] = mapped_column(String(50), nullable=False)
-    
+
     # Logistics / Shipping fields
     tracking_code: Mapped[str | None] = mapped_column(String(100), nullable=True)
     shipping_provider: Mapped[str] = mapped_column(String(50), default="GHN", nullable=False)
     shipping_fee: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0, nullable=False)
     estimated_delivery: Mapped[str | None] = mapped_column(String(100), nullable=True)
-    shipping_status: Mapped[str | None] = mapped_column(String(50), default="PENDING", nullable=True)
-    
+    shipping_status: Mapped[str | None] = mapped_column(
+        String(50), default="PENDING", nullable=True)
+
     # Order completion timestamp (Ngày hoàn tất/kết thúc đơn hàng)
     completed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
-    
-    items: Mapped[list["OrderItem"]] = relationship("OrderItem", lazy="selectin", cascade="all, delete-orphan")
+
+    items: Mapped[list["OrderItem"]] = relationship(
+        "OrderItem", lazy="selectin", cascade="all, delete-orphan")
     payment = relationship("Payment", back_populates="order", uselist=False)
     address = relationship("Address", lazy="selectin")
 
+
 class OrderItem(Base):
     __tablename__ = "order_items"
-    
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
-    order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False)
-    product_id: Mapped[UUID] = mapped_column(ForeignKey("products.id", ondelete="RESTRICT"), nullable=False)
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
+    order_id: Mapped[UUID] = mapped_column(ForeignKey(
+        "orders.id", ondelete="CASCADE"), nullable=False)
+    product_id: Mapped[UUID] = mapped_column(ForeignKey(
+        "products.id", ondelete="RESTRICT"), nullable=False)
     quantity: Mapped[int] = mapped_column(Integer, nullable=False)
     unit_price: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
 
@@ -45,13 +55,16 @@ class OrderItem(Base):
     def product_name(self) -> str | None:
         return self.product.name if self.product else None
 
+
 class Payment(Base):
     __tablename__ = "payments"
-    
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
-    order_id: Mapped[UUID] = mapped_column(ForeignKey("orders.id", ondelete="CASCADE"), nullable=False, unique=True)
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
+    order_id: Mapped[UUID] = mapped_column(ForeignKey(
+        "orders.id", ondelete="CASCADE"), nullable=False, unique=True)
     transaction_id: Mapped[str] = mapped_column(String(255), nullable=True)
     status: Mapped[str] = mapped_column(String(50), default="PENDING", nullable=False)
     provider: Mapped[str] = mapped_column(String(50), nullable=False)
-    
+
     order = relationship("Order", back_populates="payment")

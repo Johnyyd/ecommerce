@@ -5,11 +5,14 @@ from app.models.base import Base
 from app.core.utils import generate_uuidv7
 from uuid import UUID
 
+
 class Address(Base):
     __tablename__ = "addresses"
-    
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
-    user_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), nullable=False)
+
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
+    user_id: Mapped[UUID] = mapped_column(ForeignKey(
+        "users.id", ondelete="CASCADE"), nullable=False)
     province: Mapped[str] = mapped_column(String(100), nullable=False)
     district: Mapped[str] = mapped_column(String(100), nullable=False)
     ward: Mapped[str] = mapped_column(String(100), nullable=False)

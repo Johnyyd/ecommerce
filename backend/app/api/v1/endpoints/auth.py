@@ -1,6 +1,9 @@
+from app.core.config import settings
+from app.services.captcha import generate_captcha, verify_captcha
+from app.schemas.user import UserRegisterRequest, CaptchaResponse
 from fastapi import APIRouter, Depends, HTTPException, status, Response, Cookie, Header, Request
 from sqlalchemy.ext.asyncio import AsyncSession
-from typing import Annotated, Optional
+from typing import Optional
 import logging
 import secrets
 
@@ -18,25 +21,26 @@ from app.core.rate_limiter import limiter
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
+
 class LoginData(BaseModel):
     username: str
     password: str
+
 
 def get_user_service(session: AsyncSession = Depends(get_db_session)) -> UserService:
     repo = UserRepository(session)
     return UserService(repo)
 
+
 token_service = TokenService()
 
-from app.schemas.user import UserCreate, UserRegisterRequest, CaptchaResponse
-from app.services.captcha import generate_captcha, verify_captcha
-from app.core.config import settings
 
 @router.get("/captcha", response_model=CaptchaResponse)
 async def get_captcha_challenge():
     """Generate an internal single-use SVG captcha challenge."""
     challenge = await generate_captcha()
     return challenge
+
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
@@ -116,7 +120,7 @@ async def login(
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=7*24*3600
+        max_age=7 * 24 * 3600
     )
 
     # Set CSRF token cookie (accessible by JavaScript for double-submit)
@@ -126,10 +130,12 @@ async def login(
         httponly=False,  # Must be readable by JavaScript
         secure=True,
         samesite="lax",
-        max_age=7*24*3600
+        max_age=7 * 24 * 3600
     )
 
-    return {"access_token": access_token, "token_type": "bearer", "csrf_token": csrf_token}  # nosec B105 - standard OAuth2 token type
+    # nosec B105 - standard OAuth2 token type
+    return {"access_token": access_token, "token_type": "bearer", "csrf_token": csrf_token}
+
 
 @router.post("/refresh")
 async def refresh_token(
@@ -175,7 +181,7 @@ async def refresh_token(
         httponly=True,
         secure=True,
         samesite="lax",
-        max_age=7*24*3600
+        max_age=7 * 24 * 3600
     )
 
     # Update CSRF token cookie
@@ -185,10 +191,12 @@ async def refresh_token(
         httponly=False,
         secure=True,
         samesite="lax",
-        max_age=7*24*3600
+        max_age=7 * 24 * 3600
     )
 
-    return {"access_token": new_at, "token_type": "bearer", "csrf_token": new_csrf_token}  # nosec B105 - standard OAuth2 token type
+    # nosec B105 - standard OAuth2 token type
+    return {"access_token": new_at, "token_type": "bearer", "csrf_token": new_csrf_token}
+
 
 @router.get("/me", response_model=UserResponse)
 async def read_users_me(

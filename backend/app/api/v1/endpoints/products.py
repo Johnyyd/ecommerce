@@ -1,7 +1,7 @@
 import json
 import logging
 from uuid import UUID
-from typing import List, Annotated, Any, Optional, Dict
+from typing import Any, Optional, Dict
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 # pyrefly: ignore [missing-import]
@@ -14,7 +14,7 @@ from app.services.product import ProductService
 from app.services.search_service import SearchService
 from app.services.recommendation_service import RecommendationService
 from app.crud.product import ProductRepository
-from app.api.deps import get_current_admin, get_current_staff
+from app.api.deps import get_current_staff
 from app.models.user import User
 
 
@@ -22,15 +22,19 @@ router = APIRouter()
 
 logger = logging.getLogger(__name__)
 
+
 def get_product_service(session: AsyncSession = Depends(get_db_session)) -> ProductService:
     repo = ProductRepository(session)
     return ProductService(repo)
 
+
 def get_search_service() -> SearchService:
     return SearchService()
 
+
 def get_recommendation_service() -> RecommendationService:
     return RecommendationService()
+
 
 @router.get("/presigned-url")
 async def get_presigned_url(
@@ -42,6 +46,7 @@ async def get_presigned_url(
     """
     presigned_url = f"https://my-ecommerce-bucket.s3.amazonaws.com/{filename}?AWSAccessKeyId=MOCK&Signature=MOCK&Expires=3600"
     return {"url": presigned_url, "method": "PUT"}
+
 
 @router.get("/search")
 async def search_products_endpoint(
@@ -75,7 +80,8 @@ async def search_products_endpoint(
     if brand:
         filters["brand"] = brand
 
-    facet_list = [f.strip() for f in facets.split(",") if f.strip()] if facets else ["category_id", "brand"]
+    facet_list = [f.strip() for f in facets.split(",") if f.strip()
+                  ] if facets else ["category_id", "brand"]
     sort_list = [sort] if sort else None
 
     items = []
@@ -186,6 +192,7 @@ async def warm_search_cache(
         "message": f"Cache warming completed. Warmed {warmed} entries."
     }
 
+
 @router.get("", response_model=PaginatedProductResponse, include_in_schema=False)
 @router.get("/", response_model=PaginatedProductResponse)
 async def list_products(
@@ -205,27 +212,28 @@ async def list_products(
     if low_stock is not None:
         params += f":{low_stock}"
     cache_key = f"products:list:{params}"
-    
+
     # Try to get from cache
     cached = await redis.get(cache_key)
     if cached:
         return json.loads(cached)
-        
+
     products = await service.get_products(
-        skip=skip, limit=limit, category_id=category_id, brand=brand, 
+        skip=skip, limit=limit, category_id=category_id, brand=brand,
         min_price=min_price, max_price=max_price, q=q, low_stock=low_stock
     )
     total_count = await service.get_products_count(
-        category_id=category_id, brand=brand, 
+        category_id=category_id, brand=brand,
         min_price=min_price, max_price=max_price, q=q, low_stock=low_stock
     )
-    
+
     # Serialize and cache for 5 minutes
     items_data = [ProductResponse.model_validate(p).model_dump(mode='json') for p in products]
     response_data = {"items": items_data, "total": total_count}
     await redis.setex(cache_key, 300, json.dumps(response_data))
-    
+
     return response_data
+
 
 @router.get("/{product_id}", response_model=ProductResponse)
 async def get_product(
@@ -241,10 +249,11 @@ async def get_product(
     product = await service.get_product(product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-        
+
     response_data = ProductResponse.model_validate(product).model_dump(mode='json')
     await redis.setex(cache_key, 300, json.dumps(response_data))
     return response_data
+
 
 @router.get("/{product_id}/recommendations")
 async def get_product_recommendations(
@@ -268,6 +277,7 @@ async def get_product_recommendations(
     await redis.setex(cache_key, 300, json.dumps(recommendations))
     return recommendations
 
+
 @router.post("/", response_model=ProductResponse, status_code=status.HTTP_201_CREATED)
 async def create_product(
     product_in: ProductCreate,
@@ -276,12 +286,13 @@ async def create_product(
     redis: Redis = Depends(get_redis_client)
 ) -> Any:
     product = await service.create_product(product_in)
-    
+
     # Invalidate list cache
     # Since we can't easily iterate all skip/limit keys, a pattern delete might be needed, or we just rely on TTL.
     # For now, let's just clear a known key or let TTL handle it.
     await redis.delete("products:list:0:100")
     return product
+
 
 @router.patch("/{product_id}", response_model=ProductResponse)
 async def update_product(
@@ -294,14 +305,15 @@ async def update_product(
     product = await service.get_product(product_id)
     if not product:
         raise HTTPException(status_code=404, detail="Product not found")
-        
+
     product = await service.update_product(product, product_in)
-    
+
     # Invalidate caches
     await redis.delete(f"product:{product_id}")
     await redis.delete("products:list:0:100")
-    
+
     return product
+
 
 @router.delete("/{product_id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_product(
@@ -313,9 +325,7 @@ async def delete_product(
     success = await service.delete_product(product_id)
     if not success:
         raise HTTPException(status_code=404, detail="Product not found")
-        
+
     await redis.delete(f"product:{product_id}")
     await redis.delete("products:list:0:100")
     return None
-
-

@@ -17,8 +17,10 @@ from app.api.deps import get_current_staff
 
 router = APIRouter()
 
+
 def get_voucher_repo(session: AsyncSession = Depends(get_db_session)) -> VoucherRepository:
     return VoucherRepository(session)
+
 
 @router.get("/", response_model=List[VoucherResponse])
 async def list_vouchers(
@@ -28,6 +30,7 @@ async def list_vouchers(
     repo: VoucherRepository = Depends(get_voucher_repo)
 ):
     return await repo.get_multi(skip=skip, limit=limit)
+
 
 @router.post("/", response_model=VoucherResponse, status_code=status.HTTP_201_CREATED)
 async def create_voucher(
@@ -39,6 +42,7 @@ async def create_voucher(
     if existing:
         raise HTTPException(status_code=400, detail="Voucher code already exists")
     return await repo.create(voucher_in)
+
 
 @router.patch("/{id}", response_model=VoucherResponse)
 async def update_voucher(
@@ -52,6 +56,7 @@ async def update_voucher(
         raise HTTPException(status_code=404, detail="Voucher not found")
     return await repo.update(voucher, voucher_in)
 
+
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_voucher(
     id: UUID,
@@ -63,6 +68,7 @@ async def delete_voucher(
         raise HTTPException(status_code=404, detail="Voucher not found")
     await repo.delete(voucher)
     return None
+
 
 @router.post("/validate", response_model=VoucherValidateResponse)
 async def validate_voucher(

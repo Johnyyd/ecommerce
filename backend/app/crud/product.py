@@ -5,6 +5,7 @@ from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductUpdate
 from typing import Optional, List
 
+
 class ProductRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -93,7 +94,8 @@ class ProductRepository:
         except Exception as e:
             # Log but don't fail the create operation
             import logging
-            logging.getLogger(__name__).warning(f"Failed to enqueue sync job for product {db_obj.id}: {e}")
+            logging.getLogger(__name__).warning(
+                f"Failed to enqueue sync job for product {db_obj.id}: {e}")
 
         return db_obj
 
@@ -116,7 +118,8 @@ class ProductRepository:
         except Exception as e:
             # Log but don't fail the update operation
             import logging
-            logging.getLogger(__name__).warning(f"Failed to enqueue sync job for product {db_obj.id}: {e}")
+            logging.getLogger(__name__).warning(
+                f"Failed to enqueue sync job for product {db_obj.id}: {e}")
 
         return db_obj
 
@@ -136,8 +139,8 @@ class ProductRepository:
             except Exception as e:
                 # Log but don't fail the delete operation
                 import logging
-                logging.getLogger(__name__).warning(f"Failed to enqueue delete job for product {product_id}: {e}")
+                logging.getLogger(__name__).warning(
+                    f"Failed to enqueue delete job for product {product_id}: {e}")
 
             return True
         return False
-

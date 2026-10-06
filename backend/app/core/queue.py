@@ -4,13 +4,14 @@ from typing import Any, Optional, Dict
 from uuid import uuid4, UUID
 from datetime import datetime, timezone
 from arq.connections import create_pool, RedisSettings, ArqRedis
-from arq.jobs import Job, JobStatus
+from arq.jobs import Job
 from app.core.config import settings
 from app.core.redis import get_redis_client
 
 logger = logging.getLogger(__name__)
 
 _pool: Optional[ArqRedis] = None
+
 
 def get_redis_settings() -> RedisSettings:
     return RedisSettings(
@@ -20,6 +21,7 @@ def get_redis_settings() -> RedisSettings:
         database=0
     )
 
+
 async def get_queue_pool() -> ArqRedis:
     """Obtain or initialize the singleton ARQ Redis connection pool."""
     global _pool
@@ -27,9 +29,11 @@ async def get_queue_pool() -> ArqRedis:
         try:
             _pool = await create_pool(get_redis_settings())
         except Exception as e:
-            logger.warning(f"Could not connect to ARQ Redis pool: {e}. Worker queue might be unavailable.")
+            logger.warning(
+                f"Could not connect to ARQ Redis pool: {e}. Worker queue might be unavailable.")
             raise
     return _pool
+
 
 async def close_queue_pool():
     """Gracefully close the ARQ Redis connection pool."""
@@ -37,6 +41,7 @@ async def close_queue_pool():
     if _pool is not None:
         await _pool.close()
         _pool = None
+
 
 async def enqueue_email_job(recipient: str, subject: str, template: str, context: Dict[str, Any]) -> str:
     """Enqueue transactional email sending task."""
@@ -51,6 +56,7 @@ async def enqueue_email_job(recipient: str, subject: str, template: str, context
         await record_sandbox_email(recipient, subject, template, context)
         return f"sandbox_{uuid4()}"
 
+
 async def enqueue_image_optimization_job(original_path: str, filename: str) -> str:
     """Enqueue image WebP conversion and multi-size thumbnail generation."""
     try:
@@ -64,6 +70,7 @@ async def enqueue_image_optimization_job(original_path: str, filename: str) -> s
         process_image_sync(original_path, filename)
         return f"sync_{uuid4()}"
 
+
 async def enqueue_report_job(
     report_type: str,
     date_from: Optional[str],
@@ -74,7 +81,7 @@ async def enqueue_report_job(
     """Enqueue asynchronous sales/revenue report generation."""
     job_id = f"report_{uuid4().hex[:12]}"
     redis = get_redis_client()
-    
+
     # Store initial pending state in Redis for immediate UI response
     meta = {
         "job_id": job_id,
@@ -89,8 +96,8 @@ async def enqueue_report_job(
         "download_url": None,
         "error": None
     }
-    await redis.set(f"reports:meta:{job_id}", json.dumps(meta), ex=86400) # 24hr TTL
-    
+    await redis.set(f"reports:meta:{job_id}", json.dumps(meta), ex=86400)  # 24hr TTL
+
     try:
         pool = await get_queue_pool()
         await pool.enqueue_job(
@@ -108,9 +115,11 @@ async def enqueue_report_job(
         from app.services.reports import generate_report_inline
         # Async inline execution
         import asyncio
-        asyncio.create_task(generate_report_inline(job_id, report_type, date_from, date_to, format_type, user_id))
-        
+        asyncio.create_task(generate_report_inline(job_id, report_type,
+                            date_from, date_to, format_type, user_id))
+
     return job_id
+
 
 async def get_job_status(job_id: str) -> Dict[str, Any]:
     """Retrieve the status and metadata of a background job."""
@@ -210,6 +219,7 @@ async def enqueue_cancel_expired_orders_job() -> str:
         logger.error(f"Failed to enqueue cancel expired orders job: {e}")
         return f"cancel_fallback_{uuid4()}"
 
+
 async def get_queue_metrics() -> Dict[str, Any]:
     """Get high-level statistics of the task queue for admin monitoring."""
     redis = get_redis_client()
@@ -237,10 +247,10 @@ async def get_queue_metrics() -> Dict[str, Any]:
         else:
             rep_keys = await redis.keys("reports:meta:*")
             total_reports = len(rep_keys) if rep_keys else 0
-        
+
         # Ping redis
         ping_ok = await redis.ping()
-        
+
         return {
             "worker_status": "HEALTHY" if ping_ok else "DISCONNECTED",
             "queued_jobs": queued_count or 0,
