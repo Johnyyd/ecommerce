@@ -578,7 +578,7 @@ class WorkerSettings:
     ]
     # Cron jobs run periodically - cancel_expired_orders every 2 minutes
     cron_jobs = [
-        cron(cancel_expired_orders_task, minute="*/2"),
+        cron(cancel_expired_orders_task, minute=set(range(0, 60, 2))),
     ]
     redis_settings = get_redis_settings()
     on_startup = startup

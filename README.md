@@ -11,6 +11,7 @@
 [![Redis](https://img.shields.io/badge/Redis-7-DC382D?logo=redis&logoColor=white)](https://redis.io/)
 [![PgBouncer](https://img.shields.io/badge/PgBouncer-Transaction%20Pool-green)](https://www.pgbouncer.org/)
 [![ARQ](https://img.shields.io/badge/ARQ-Async%20Worker-orange)](https://arq-docs.helpmanual.io/)
+[![Meilisearch](https://img.shields.io/badge/Meilisearch-v1.11%2B-8B5CF6?logo=meilisearch&logoColor=white)](https://meilisearch.com)
 [![Kubernetes](https://img.shields.io/badge/Kubernetes-Cloud%20Native-326CE5?logo=kubernetes&logoColor=white)](https://kubernetes.io/)
 [![Prometheus](https://img.shields.io/badge/Prometheus-Monitoring-E6522C?logo=prometheus&logoColor=white)](https://prometheus.io/)
 [![Grafana](https://img.shields.io/badge/Grafana-v11-F46800?logo=grafana&logoColor=white)](https://grafana.com/)
@@ -31,6 +32,7 @@
 - [✨ 5. Các phân hệ chức năng (Features & Modules)](#-5-các-phân-hệ-chức-năng-features--modules)
   - [Phân hệ Cửa hàng & Khách hàng (Storefront)](#phân-hệ-cửa-hàng--khách-hàng-storefront)
   - [Tìm kiếm toàn văn (PostgreSQL FTS) & AI Vector Embeddings (pgvector)](#tìm-kiếm-toàn-văn-postgresql-fts--ai-vector-embeddings-pgvector)
+  - [Tìm kiếm tiếng Việt với Meilisearch (Vietnamese Search with Meilisearch)](#tìm-kiếm-tiếng-việt-với-meilisearch-vietnamese-search-with-meilisearch)
   - [Cô lập phiên đăng nhập đa tab (Multi-Tab Session Isolation)](#cô-lập-phiên-đăng-nhập-đa-tab-multi-tab-session-isolation)
   - [Ngăn kéo giỏ hàng toàn cục & Thanh toán (Universal Cart & Checkout Flow)](#ngăn-kéo-giỏ-hàng-toàn-cục--thanh-toán-universal-cart--checkout-flow)
   - [Cổng thanh toán VietQR / PayOS chuẩn NAPAS 247](#cổng-thanh-toán-vietqr--payos-chuẩn-napas-247)
@@ -67,8 +69,9 @@
   - [3. Hướng dẫn sử dụng & Đăng nhập](#3-hướng-dẫn-sử-dụng--đăng-nhập)
   - [4. Kiểm thử tải (Benchmark) & Kubernetes Auto-Scaling (HPA)](#4-kiểm-thử-tải-benchmark--kubernetes-auto-scaling-hpa)
 - [🛠️ 14. Khắc phục sự cố thường gặp (Troubleshooting & FAQs)](#️-14-khắc-phục-sự-cố-thường-gặp-troubleshooting--faqs)
-- [🗺️ 15. Lộ trình phát triển tương lai (Development Roadmap)](ROADMAP.md)
-- [📜 16. Giấy phép & Đóng góp (License & Contributing)](#-16-giấy-phép--đóng-góp-license--contributing)
+- [📚 15. Tài liệu tham khảo (Documentation Reference)](#-15-tài-liệu-tham-khảo-documentation-reference)
+- [🗺️ 16. Lộ trình phát triển tương lai (Development Roadmap)](ROADMAP.md)
+- [📜 17. Giấy phép & Đóng góp (License & Contributing)](#-17-giấy-phép--đóng-góp-license--contributing)
 
 ---
 
@@ -81,10 +84,12 @@
 - 🛡️ **Bảo mật & Toàn vẹn dữ liệu**: Mã hóa mật khẩu chuẩn Argon2, xác thực JWT kèm cơ chế **Token Family Rotation** chống tấn công phát lại (Replay Attacks), lọc log nhạy cảm tự động (Sensitive Data Redaction), phân quyền theo vai trò (RBAC: Customer, Manager, Admin).
 - 🪟 **Cô lập phiên đa tab (Multi-Tab Session Isolation)**: Token và giỏ hàng được quản lý theo phạm vi tab (`sessionStorage`), ngăn chặn hoàn toàn hiện tượng đăng nhập Admin ở tab này làm ghi đè quyền của Khách hàng ở tab khác trên cùng trình duyệt.
 - 🔍 **Tìm kiếm toàn văn (PostgreSQL FTS) & AI Vector Similarity (pgvector)**: Tích hợp extension `vector` (0.8.6) và `pg_trgm` (1.6), hỗ trợ tìm kiếm toàn văn gán trọng số (A: Name, B: Description, C: Brand) và vector embeddings 1536 chiều với trigger tự động tối ưu.
+- 🇻🇳 **Tìm kiếm tiếng Việt với Meilisearch (p95=100ms)**: Dung sai chính tả tiếng Việt tối ưu, faceted search, cache warming 150 queries, searchCutoffMs=50ms, đồng bộ real-time qua ARQ Worker.
 - 🔒 **Kiểm soát đồng thời (Concurrency Control)**: Ngăn chặn triệt để tình trạng bán vượt số lượng tồn kho (Overselling) và Deadlock trong thanh toán bằng cơ chế **Pessimistic Locking** (`SELECT ... FOR UPDATE`) có sắp xếp thứ tự và trường `version` hỗ trợ Optimistic Locking.
-- ⚙️ **Hàng đợi tác vụ ngầm (Enterprise ARQ Background Worker)**: Tách biệt hoàn toàn các tác vụ nặng (xuất báo cáo Excel/CSV, tối ưu nén ảnh WebP, gửi email giao dịch Jinja2) khỏi luồng API chính thông qua Redis Queue.
+- ⚙️ **Hàng đợi tác vụ ngầm (Enterprise ARQ Background Worker)**: Tách biệt hoàn toàn các tác vụ nặng (xuất báo cáo Excel/CSV, tối ưu nén ảnh WebP, gửi email giao dịch Jinja2, tạo embeddings AI, đồng bộ Meilisearch, hủy đơn hàng hết hạn) khỏi luồng API chính thông qua Redis Queue.
 - 💳 **Thanh toán VietQR / PayOS chuẩn NAPAS 247**: Tích hợp thanh toán QR Code động, tự động nhận diện nội dung chuyển khoản và Webhook đồng bộ trạng thái an toàn với chữ ký HMAC SHA256.
 - 🚚 **Vận chuyển & Theo dõi hành trình GHN**: Tích hợp luồng fulfillment và timeline theo dõi trạng thái giao vận tương tác chuẩn Giao Hàng Nhanh.
+- ⭐ **Đánh giá người mua đã xác thực (Verified Buyer Reviews)**: Chỉ khách hàng đã nhận hàng (`DELIVERED`) mới được đánh giá, admin moderation, rating distribution tự động.
 - 📈 **Tự động co giãn đàn hồi (Kubernetes HPA)**: Giám sát tài nguyên CPU chu kỳ thực và tự động mở rộng Backend từ **3 Pods lên 6-8 Pods** khi gặp tải cao điểm, tự động thu nhỏ khi hết tải.
 - 🌐 **Mạng riêng ảo an toàn Tailscale WireGuard**: Tích hợp sẵn tính năng chia sẻ an toàn từ xa cho Storefront và Grafana qua `tailscale serve` mà không cần NAT/mở cổng public router.
 - 🛡️ **Bảo mật CI/CD đạt chuẩn OWASP Top 10**: Pipeline kiểm thử thâm nhập tự động với Strix AI, kiểm tra tĩnh Bandit SAST, và bộ test suite bảo mật 14 kịch bản phòng thủ BOLA/IDOR, path traversal, và token forgery.
@@ -234,7 +239,7 @@ flowchart TB
 | **Schema Migration**  | [Alembic](https://alembic.sqlalchemy.org/) | `>=1.13.1` | Quản lý phiên bản cấu trúc cơ sở dữ liệu (Database Migrations) |
 | **Database Engine**   | [PostgreSQL](https://www.postgresql.org/) + [pgvector](https://github.com/pgvector/pgvector) | `16-alpine` / `0.8.6` | Cơ sở dữ liệu quan hệ chính, hỗ trợ lưu trữ vector embeddings 1536 chiều và FTS |
 | **Caching & Queue**   | [Redis](https://redis.io/) (via `redis.asyncio`) | `7-alpine` / `>=5.0.4` | Caching sản phẩm, giỏ hàng, Token Family, và làm Message Broker cho Worker |
-| **Background Worker** | [ARQ](https://arq-docs.helpmanual.io/) | `>=0.25.0` | Hàng đợi tác vụ ngầm bất đồng bộ (Email, tối ưu ảnh WebP, xuất báo cáo) |
+| **Background Worker** | [ARQ](https://arq-docs.helpmanual.io/) | `>=0.25.0` | Hàng đợi tác vụ ngầm bất đồng bộ (Email, tối ưu ảnh WebP, xuất báo cáo, AI embeddings, Meilisearch sync) |
 | **Connection Pool**   | [PgBouncer](https://www.pgbouncer.org/) | `latest` (edoburu) | Transaction-level connection pooling tối ưu tải kết nối cơ sở dữ liệu |
 | **Security & Auth**   | [Passlib](https://passlib.readthedocs.io/) (Argon2) + [PyJWT](https://pyjwt.readthedocs.io/) | `1.7.4` / `2.8.0` | Hashing mật khẩu chuẩn Argon2id, ký và giải mã JWT token |
 | **Image Optimization**| [Pillow](https://python-pillow.org/) | `>=10.3.0` | Xử lý ảnh sản phẩm, nén và chuyển đổi WebP, resize thumbnail |
@@ -242,6 +247,7 @@ flowchart TB
 | **Email Templating**  | [Jinja2](https://jinja.palletsprojects.com/) | `>=3.1.4` | Render mẫu email HTML động (hóa đơn đơn hàng, email kích hoạt, reset mật khẩu) |
 | **Payment Gateway**   | VietQR / PayOS SDK | Chuẩn NAPAS 247 | Tạo mã QR thanh toán động và xác thực Webhook HMAC SHA256 |
 | **Shipping Carrier**  | GHN Integration (Giao Hàng Nhanh) | API v2 | Mô phỏng tạo mã vận đơn, fulfillment và tra cứu hành trình giao hàng |
+| **Search Engine**     | [Meilisearch](https://meilisearch.com/) | `v1.11+` | Tìm kiếm full-text tiếng Việt, tokenizer `vi`, typo tolerance, faceted search |
 | **UUID Generator**    | [uuid6](https://github.com/oittaa/uuid6-python) | `>=2024.1.12` | Sinh UUIDv7 có sắp xếp thời gian (time-ordered) |
 | **Frontend Framework**| [React](https://react.dev/) + [Vite](https://vitejs.dev/) | `18.2` / `4.4+` | Thư viện giao diện SPA hiện đại, build tool tốc độ cao |
 | **Language (FE)**     | [TypeScript](https://www.typescriptlang.org/) | `>=5.0.2` | Đảm bảo tính nhất quán của kiểu dữ liệu toàn bộ ứng dụng |
@@ -484,6 +490,27 @@ ecommerce/
   - Cột `embedding` lưu trữ vector 1536 chiều (tương thích OpenAI text-embedding-3-small) kèm chỉ mục `IVFFlat` (`vector_l2_ops`, 100 lists).
   - Bảng Dead Letter Queue (`failed_sync_tasks`) lưu vết các tác vụ đồng bộ lỗi và bảng `backfill_jobs` theo dõi tiến trình nạp vector hàng loạt.
 
+### Tìm kiếm tiếng Việt với Meilisearch (Vietnamese Search with Meilisearch) - p95=100ms
+- **Dung sai chính tả tiếng Việt tối ưu (Optimized Vietnamese Typo Tolerance)**:
+  - Cấu hình `minWordSizeForTypos`: 1 typo từ 4 ký tự, 2 typo từ 8 ký tự.
+  - Tự động khớp "dien thoai" → "điện thoại", "ao thun" → "áo thun", "may tinh" → "máy tính".
+  - 34/34 tokenizer validation tests passing.
+- **Tìm kiếm có trọng số & Lọc nâng cao (Faceted Search)**:
+  - Searchable attributes: `name` (trọng số cao), `description`, `brand`.
+  - Filterable attributes: `category_id`, `brand`, `price`, `is_active`.
+  - Sortable attributes: `price`, `updated_at`, `created_at`.
+  - Faceting: Hỗ trợ bộ lọc đa mặt (category, brand, price range).
+- **Tối ưu hiệu năng (Performance Optimizations)**:
+  - `searchCutoffMs: 50` - Giới hạn thời gian tìm kiếm, trả về kết quả một phần nhanh hơn.
+  - Cache warming endpoint (`POST /api/v1/products/search/warm-cache`) - Điền trước 150 truy vấn phổ biến.
+  - Redis connection pooling (max 50 connections) - Hỗ trợ 100 concurrent users.
+- **Đồng bộ hóa thực tế (Real-time Sync)**:
+  - ARQ Worker tasks: `generate_embeddings_task`, `sync_to_meilisearch_task`, `incremental_sync_task` (5 phút/lần).
+  - Single product sync/delete với retry (3 lần) và Dead Letter Queue (`failed_sync_tasks`).
+  - CronJob reconciliation hàng ngày lúc 02:00 UTC (`reconcile-search`).
+- **Kết quả Load Test (100 users, 300s)**: p95=100ms, 0% failures, 29 req/s throughput.
+- **Tài liệu tham khảo**: [Meilisearch Vietnamese Config](documentation/meilisearch-vietnamese-config.md) | [Performance Report](documentation/performance-optimization-report.md).
+
 ### Cô lập phiên đăng nhập đa tab (Multi-Tab Session Isolation)
 - **Vấn đề đã giải quyết**: Trong các ứng dụng lưu trữ token ở `localStorage`, việc mở đồng thời 2 tab (ví dụ: Tab 1 Khách hàng đang checkout, Tab 2 Admin đăng nhập) sẽ khiến token Admin ghi đè toàn bộ trình duyệt, làm rò rỉ quyền hạn hoặc hỏng phiên mua hàng.
 - **Giải pháp cách ly toàn diện**:
@@ -509,6 +536,7 @@ ecommerce/
 - **Mã QR động theo đơn hàng**: Tự động sinh mã VietQR chuẩn liên ngân hàng NAPAS 247 kèm số tiền chính xác và nội dung chuyển khoản tự động `DH{order_code}`.
 - **Tự động thăm dò trạng thái (Auto-Polling)**: Giao diện Checkout tự động kiểm tra trạng thái thanh toán ngầm mỗi vài giây mà không cần người dùng tải lại trang.
 - **Webhook bảo mật HMAC SHA256**: Xử lý Webhook callback tức thời từ PayOS, xác thực chữ ký số bằng khóa bí mật để xác nhận đơn hàng thành công ngay khi tiền vào tài khoản. Khóa hoàn toàn mock endpoint khi hệ thống chạy ở môi trường `production`.
+- **Hướng dẫn cấu hình Sandbox & Production**: Xem chi tiết tại [PayOS Setup Guide](documentation/payment-setup.md).
 
 ### Vận chuyển & Tra cứu đơn hàng GHN (Shipping & Tracking Timeline)
 - **Fulfillment & Quản lý vận chuyển**: Admin/Manager có thể tạo mã vận đơn Giao Hàng Nhanh (GHN) khi đơn hàng chuyển sang trạng thái sẵn sàng giao.
@@ -534,6 +562,14 @@ ecommerce/
   1. `send_email_task`: Gửi email xác nhận đơn hàng, email chào mừng và link đặt lại mật khẩu với mẫu HTML động (Jinja2). Hỗ trợ chế độ Mailjet, SMTP và Sandbox Outbox cho môi trường Dev.
   2. `optimize_image_task`: Nén ảnh sản phẩm, tự động chuyển đổi sang chuẩn WebP và sinh kích thước thumbnail thu nhỏ, tiết kiệm hơn 60% băng thông tải trang.
   3. `generate_sales_report_task`: Trích xuất dữ liệu doanh thu, đơn hàng ra file Excel (`.xlsx`) hoặc CSV bất đồng bộ và cung cấp link tải xuống an toàn.
+  4. `generate_embeddings_task`: Tạo vector embeddings 1536 chiều cho sản phẩm (Free LLM API / OpenAI compatible).
+  5. `sync_to_meilisearch_task`: Đồng bộ toàn bộ sản phẩm có embeddings sang Meilisearch.
+  6. `incremental_sync_task`: Đồng bộ tăng dần sản phẩm cập nhật gần đây (chạy 5 phút/lần qua ARQ cron).
+  7. `sync_product_task` / `delete_product_task`: Đồng bộ/xóa đơn lẻ sản phẩm với retry (3 lần) và DLQ.
+  8. `cancel_expired_orders_task`: Tự động hủy đơn hàng PENDING > 15 phút (chạy 2 phút/lần qua ARQ cron).
+- **Cron Jobs ARQ**: `cancel_expired_orders_task` chạy mỗi 2 phút, các task khác theo sự kiện hoặc thủ công.
+- **Kubernetes CronJob Alternative**: `cancel-expired-orders` (5 phút/lần) và `reconcile-search` (02:00 UTC hàng ngày).
+- **Tài liệu tham khảo**: Xem chi tiết tại [Worker Deployment Guide](documentation/worker-deployment.md).
 
 ### Cổng quản trị Admin & Quản lý (Admin Portal - 9 Tabs)
 Giao diện quản trị hiện đại dành riêng cho Staff và Admin với 9 phân khu nghiệp vụ:
@@ -1105,6 +1141,38 @@ Hệ thống được trang bị đầy đủ tài liệu và công cụ đo lư
 
 ---
 
+## 📚 15. Tài liệu tham khảo (Documentation Reference)
+
+Dưới đây là danh sách các tài liệu kỹ thuật chi tiết trong thư mục `documentation/`:
+
+| Tài liệu | Mô tả | Liên kết |
+|----------|-------|----------|
+| **Cài đặt PayOS** | Hướng dẫn cấu hình PayOS Sandbox & Production, VietQR, Webhook HMAC | [payment-setup.md](documentation/payment-setup.md) |
+| **Meilisearch Tiếng Việt** | Cấu hình typo tolerance, synonyms, sync worker, performance (p95=100ms) | [meilisearch-vietnamese-config.md](documentation/meilisearch-vietnamese-config.md) |
+| **Performance Optimization** | Vietnamese search p95=100ms, Redis pooling, cache warming, searchCutoffMs | [performance-optimization-report.md](documentation/performance-optimization-report.md) |
+| **Worker & CronJob** | Triển khai ARQ Worker, task catalog, scaling, Kubernetes CronJob | [worker-deployment.md](documentation/worker-deployment.md) |
+| **Reviews API** | Verified Buyer Review endpoints, moderation, verified purchase logic | [reviews-api.md](documentation/reviews-api.md) |
+| **Helm Values Config** | Cấu hình values.yaml, values-dev.yaml, values-prod.yaml chi tiết | [helm/values-configuration.md](documentation/helm/values-configuration.md) |
+| **Chart Structure** | Cấu trúc Helm chart, templates, dependencies | [helm/chart-structure.md](documentation/helm/chart-structure.md) |
+| **Multi-Environment** | Triển khai multi-environment (dev/staging/prod) | [helm/multi-environment.md](documentation/helm/multi-environment.md) |
+| **CI/CD Pipeline** | GitHub Actions workflow, Strix AI, Bandit, SARIF | [ci-cd/pipeline-overview.md](documentation/ci-cd/pipeline-overview.md) |
+| **ArgoCD GitOps** | Cấu hình ArgoCD, ApplicationSet, sync policies | [ci-cd/argocd-gitops.md](documentation/ci-cd/argocd-gitops.md) |
+| **Deployment Strategies** | Blue-green, canary, rolling update strategies | [ci-cd/deployment-strategies.md](documentation/ci-cd/deployment-strategies.md) |
+| **Loki Setup** | Cấu hình Loki, log aggregation, retention | [logging/loki-setup.md](documentation/logging/loki-setup.md) |
+| **Promtail Config** | Cấu hình Promtail, log shipping, labels | [logging/promtail-config.md](documentation/logging/promtail-config.md) |
+| **Grafana Log Queries** | LogQL queries, dashboard panels, alerting | [logging/grafana-queries.md](documentation/logging/grafana-queries.md) |
+| **Tempo Setup** | Distributed tracing, OpenTelemetry, trace ingestion | [tracing/tempo-setup.md](documentation/tracing/tempo-setup.md) |
+| **OpenTelemetry Backend** | Backend instrumentation, trace context propagation | [tracing/opentelemetry-backend.md](documentation/tracing/opentelemetry-backend.md) |
+| **Grafana Traces** | Trace queries, service maps, latency analysis | [tracing/grafana-traces.md](documentation/tracing/grafana-traces.md) |
+| **Network Policies** | K8s NetworkPolicy, ingress/egress rules, testing | [networkpolicy-management.md](documentation/networkpolicy-management.md) |
+| **Loki/Promtail Troubleshooting** | Debug log ingestion, label issues, performance | [runbooks/loki-promtail-troubleshooting.md](documentation/runbooks/loki-promtail-troubleshooting.md) |
+| **Tempo Trace Analysis** | Trace debugging, root cause analysis, sampling | [runbooks/tempo-trace-analysis.md](documentation/runbooks/tempo-trace-analysis.md) |
+| **Helm Deployment Guide** | Helm install/upgrade/rollback, troubleshooting | [runbooks/helm-deployment-guide.md](documentation/runbooks/helm-deployment-guide.md) |
+| **HPA Tuning** | HPA configuration, metrics, scaling behavior | [runbooks/hpa-tuning.md](documentation/runbooks/hpa-tuning.md) |
+| **Quick Start** | Hướng dẫn bắt đầu nhanh cho developer mới | [QUICK_START.md](documentation/QUICK_START.md) |
+
+---
+
 ## 🛠️ 14. Khắc phục sự cố thường gặp (Troubleshooting & FAQs)
 
 Đúc kết các tình huống thực tế và cách giải quyết triệt để (tham khảo thêm tại [K8S-TROUBLESHOOTING.md](K8S-TROUBLESHOOTING.md) và [REDIS-TROUBLESHOOTING.md](REDIS-TROUBLESHOOTING.md)):
@@ -1186,14 +1254,14 @@ Hệ thống được trang bị đầy đủ tài liệu và công cụ đo lư
 
 ---
 
-## 🗺️ 15. Lộ trình phát triển tương lai (Development Roadmap)
+## 🗺️ 16. Lộ trình phát triển tương lai (Development Roadmap)
 
 Toàn bộ chiến lược nâng cấp kiến trúc, kế hoạch mở rộng (Meilisearch tiếng Việt, AI Recommendation Engine, Refactor Micro-frontends) đã được tổng hợp chi tiết tại:
 👉 **[Xem chi tiết Lộ trình Phát triển (ROADMAP.md)](ROADMAP.md)**
 
 ---
 
-## 📜 16. Giấy phép & Đóng góp (License & Contributing)
+## 📜 17. Giấy phép & Đóng góp (License & Contributing)
 
 - Dự án được phân phối dưới giấy phép **MIT License**. Bạn hoàn toàn có thể tự do tham khảo, học tập và phát triển thêm các tính năng mới.
 - Mọi đóng góp (Pull Request), báo lỗi (Issues) hoặc gợi ý cải tiến kiến trúc đều được hoan nghênh nồng nhiệt!

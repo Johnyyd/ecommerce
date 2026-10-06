@@ -13,14 +13,11 @@ import { Cart } from "@/pages/Cart"
 import { PaymentResult } from "@/pages/PaymentResult"
 import { useAuthStore } from "@/store/useAuthStore"
 import { useThemeStore } from "@/store/useThemeStore"
-import { ThemeInitializer } from "@/providers/ThemeInitializer"
 import { getAuthToken, clearAuthToken } from "@/lib/auth"
 
 function App() {
   const { setUser, setIsLoading } = useAuthStore()
   const { isDark } = useThemeStore()
-
-  // Theme initialization is handled by ThemeInitializer component
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -66,7 +63,7 @@ function App() {
         <Route path="/" component={Storefront} />
         <Route path="/products" component={ProductsPage} />
         <Route path="/product/:id" component={ProductDetail} />
-        <Route path="/products/:id" component={ProductDetail} />
+        // Duplicate route removed; not needed
         <Route path="/cart" component={Cart} />
         <Route path="/checkout" component={Checkout} />
         <Route path="/payment" component={PaymentResult} />

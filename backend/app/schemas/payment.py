@@ -33,11 +33,16 @@ class PaymentCreateResponse(BaseModel):
     amount: float
     currency: str = "VND"
     qr_code_url: str
+    checkout_url: Optional[str] = None
+    payment_link_id: Optional[str] = None
+    expires_at: Optional[str] = None
     account_number: str
     account_name: str
     bank_name: str
     description: str
     payment_url: Optional[str] = None
+    transfer_memo: Optional[str] = None
+    bank_account_number: Optional[str] = None
 
 class PaymentStatusResponse(BaseModel):
     order_id: UUID

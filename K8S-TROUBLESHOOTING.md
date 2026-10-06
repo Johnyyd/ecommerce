@@ -736,3 +736,116 @@ pod/tailscale-xxxx   1/1     Running   0   10s
 3. **Build lại image với tag `latest` và cập nhật Pods:**
    - Thực thi script `.\scripts\windows\update-k8s-backend.bat` để build image `ecommerce-backend:latest`, dọn cache containerd và rollout restart deployment backend.
 
+---
+
+## 17. Lỗi `ValueError: MEILISEARCH_MASTER_KEY must be set to a real value` tại Pods `backend`, `worker`, `db-migration-job`
+
+**Triệu chứng:**
+- Khi chạy script triển khai hoặc xem trạng thái bằng `status.bat` / `status.sh`, cả 3 thành phần Backend đều bị lỗi:
+  - `pod/backend-xxxx`: trạng thái `0/1 Error` / `CrashLoopBackOff` với 3-4 lần restarts.
+  - `pod/worker-xxxx`: trạng thái `0/1 Error` / `CrashLoopBackOff`.
+  - `pod/db-migration-job-xxxx`: trạng thái `0/1 Error`.
+- Xem log bằng `kubectl logs deployment/backend` hoặc `kubectl logs job/db-migration-job`:
+  ```text
+  [ERROR] Exception in worker process
+  Traceback (most recent call last):
+    File "/app/app/main.py", line 5, in <module>
+      from app.core.config import settings
+    File "/app/app/core/config.py", line 97, in <module>
+      settings = Settings()
+    File "/app/app/core/config.py", line 85, in __init__
+      raise ValueError("MEILISEARCH_MASTER_KEY must be set to a real value (not test default)")
+  ValueError: MEILISEARCH_MASTER_KEY must be set to a real value (not test default)
+  [ERROR] Reason: Worker failed to boot.
+  ```
+
+**Nguyên nhân:**
+1. Trong file `.env` ở thư mục gốc, biến `MEILISEARCH_MASTER_KEY=` bị để trống (không có giá trị).
+2. Khi script `start-k8s-windows.bat` tạo Kubernetes Secret:
+   ```bash
+   kubectl create secret generic app-secrets --from-env-file=.env ...
+   ```
+   Khóa `MEILISEARCH_MASTER_KEY` trong Secret `app-secrets` nhận giá trị là chuỗi rỗng `""`.
+3. Trong `backend/app/core/config.py`, logic xác thực kiểm tra:
+   ```python
+   if self.ENVIRONMENT != "test":
+       if not self.MEILISEARCH_MASTER_KEY or self.MEILISEARCH_MASTER_KEY.startswith("test-"):
+           raise ValueError("MEILISEARCH_MASTER_KEY must be set to a real value (not test default)")
+   ```
+   Do `ENVIRONMENT="development"` (hoặc production) và giá trị là `""`, điều kiện ném ngoại lệ `ValueError`. Khi bất kỳ module nào import `settings` (gồm Gunicorn worker, ARQ worker, Alembic migration env), tiến trình đều bị dừng khẩn cấp ngay khi vừa khởi động.
+
+**Cách khắc phục:**
+1. **Bổ sung khóa vào file `.env`:**
+   Mở file `.env` và gán giá trị hợp lệ cho `MEILISEARCH_MASTER_KEY`:
+   ```env
+   MEILISEARCH_MASTER_KEY=masterKey123
+   ```
+2. **Cập nhật lại Secret `app-secrets` trong cụm K8s:**
+   ```bash
+   kubectl create secret generic app-secrets --from-env-file=.env --dry-run=client -o yaml | kubectl apply -f -
+   ```
+3. **Khởi động lại các deployment và chạy lại Migration Job:**
+   ```bash
+   kubectl rollout restart deployment backend worker
+   kubectl delete job db-migration-job --ignore-not-found=true
+   kubectl apply -f k8s/migration-job.yaml
+   ```
+
+---
+
+## 18. Lỗi Pod `worker` bị `Error` với `RuntimeError: */2` trong ARQ Cron Job Scheduler
+
+**Triệu chứng:**
+- Sau khi khắc phục lỗi `MEILISEARCH_MASTER_KEY`, Pod `backend` và `db-migration-job` đã chạy bình thường (`1/1 Running` và `Completed`).
+- Tuy nhiên, Pod `worker` vẫn chuyển sang trạng thái `0/1 Error` sau vài giây chạy.
+- Xem log bằng `kubectl logs deployment/worker`:
+  ```text
+  Starting Enterprise ARQ background worker...
+  05:55:31: Starting worker for 10 functions: ...
+  05:55:31: redis_version=7.4.11 mem_usage=1.15M clients_connected=1 db_keys=0
+  Traceback (most recent call last):
+    ...
+    File "/usr/local/lib/python3.12/site-packages/arq/worker.py", line 748, in run_cron
+      cron_job.calculate_next(n)
+    File "/usr/local/lib/python3.12/site-packages/arq/cron.py", line 113, in calculate_next
+      self.next_run = next_cron(
+    File "/usr/local/lib/python3.12/site-packages/arq/cron.py", line 64, in _get_next_dt
+      raise RuntimeError(v)
+  RuntimeError: */2
+  ```
+
+**Nguyên nhân:**
+- Trong `backend/app/worker.py`, cấu hình cron job tự động hủy đơn hết hạn được định nghĩa như sau:
+  ```python
+  cron_jobs = [
+      cron(cancel_expired_orders_task, minute="*/2"),
+  ]
+  ```
+- Thư viện ARQ của Python **không chấp nhận chuỗi cú pháp crontab Linux** (như `"*/2"`). Thay vào đó, tham số `minute` của hàm `arq.cron.cron` yêu cầu giá trị kiểu số nguyên (`int`) hoặc tập hợp các số nguyên (`set[int]` / `list[int]`).
+- Khi ARQ thực hiện vòng lặp heartbeat đầu tiên và gọi `calculate_next()`, hàm `_get_next_dt` không thể phân tích chuỗi `"*/2"` và ném ngoại lệ `RuntimeError: */2`, khiến tiến trình worker bị crash.
+
+**Cách khắc phục:**
+1. **Sửa tham số `minute` trong `backend/app/worker.py`:**
+   Chuyển định dạng `"*/2"` sang tập hợp các phút chẵn trong giờ:
+   ```python
+   # Trước (gây lỗi):
+   cron_jobs = [
+       cron(cancel_expired_orders_task, minute="*/2"),
+   ]
+
+   # Sau (chuẩn cú pháp ARQ):
+   cron_jobs = [
+       cron(cancel_expired_orders_task, minute=set(range(0, 60, 2))),
+   ]
+   ```
+2. **Build lại image backend và cập nhật Kubernetes:**
+   Chạy script cập nhật để build image mới, nạp vào cụm và khởi động lại worker:
+   ```powershell
+   .\scripts\windows\update-k8s-backend.bat
+   ```
+3. **Kiểm tra trạng thái:**
+   ```powershell
+   .\scripts\windows\status.bat
+   # Pod worker đạt trạng thái: 1/1 Running
+   ```
+

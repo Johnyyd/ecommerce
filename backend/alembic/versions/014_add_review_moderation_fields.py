@@ -11,7 +11,7 @@ from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = '014_add_review_moderation_fields'
-down_revision = '013_add_dlq_columns'
+down_revision = '013'
 branch_labels = None
 depends_on = None
 

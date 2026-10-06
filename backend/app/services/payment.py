@@ -545,7 +545,6 @@ class PaymentService:
         for order in expired_orders:
             # Restore stock for order items
             try:
-                from sqlalchemy.orm import selectinload
                 from app.models.order_item import OrderItem
 
                 order_stmt = select(Order).options(

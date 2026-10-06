@@ -10,269 +10,263 @@ This guide covers the Helm values configuration for the e-commerce platform.
 
 ```yaml
 global:
-  imageRegistry: ""              # Docker registry prefix
-  imagePullSecrets: []           # Image pull secrets
-  environment: "development"     # Environment name
-  domain: "ecommerce.local"      # Base domain
+  imageRegistry: ''              # Docker registry prefix (empty for local images)
+  imageRepository: ecommerce     # Base image repository name
+  imageTag: latest               # Default image tag
+  pullPolicy: IfNotPresent       # Default pull policy
 ```
 
-### Image Configuration
+### Backend Configuration
 
 ```yaml
-images:
-  backend:
+backend:
+  enabled: true
+  replicaCount: 3                # Number of backend pods
+  image:
+    pullPolicy: IfNotPresent
     repository: ecommerce-backend
     tag: latest
+  env:
+    BACKUP_DIR: /backups
+    POSTGRES_PORT: '6432'        # PgBouncer port for connection pooling
+    POSTGRES_SERVER: pgbouncer
+    REDIS_HOST: redis
+    REDIS_PORT: '6379'
+    WEB_CONCURRENCY: '5'         # Gunicorn workers
+  resources:
+    limits:
+      cpu: '1'
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+    fsGroup: 102
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+    seccompProfile:
+      type: RuntimeDefault
+  service:
+    port: 8000
+    type: ClusterIP
+```
+
+### Frontend Configuration
+
+```yaml
+frontend:
+  enabled: true
+  replicaCount: 2                # Number of frontend pods
+  image:
     pullPolicy: IfNotPresent
-  frontend:
     repository: ecommerce-frontend
     tag: latest
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  service:
+    port: 3000
+    type: ClusterIP
+```
+
+### Worker Configuration (ARQ Background Worker)
+
+```yaml
+worker:
+  enabled: true
+  replicaCount: 1                # Number of worker pods
+  image:
     pullPolicy: IfNotPresent
-  worker:
-    repository: ecommerce-backend
+    repository: ecommerce-worker
     tag: latest
-    pullPolicy: IfNotPresent
-  postgres:
-    repository: pgvector/pgvector
-    tag: pg16
-    pullPolicy: IfNotPresent
-  redis:
+  resources:
+    limits:
+      cpu: '1'
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  # Cron job configuration for periodic tasks (backup schedule)
+  # Note: ARQ worker handles its own cron jobs (see backend/app/worker.py)
+  cronJob:
+    enabled: true
+    schedule: "*/5 * * * *"      # Every 5 minutes (backup/reconciliation)
+    successfulJobsHistoryLimit: 3
+    failedJobsHistoryLimit: 5
+```
+
+### PgBouncer Configuration
+
+```yaml
+pgbouncer:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: bitnami/pgbouncer
+    tag: '1.21'
+  resources:
+    limits:
+      cpu: 200m
+      memory: 256Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  service:
+    port: 6432
+```
+
+### PostgreSQL Configuration
+
+```yaml
+postgres:
+  enabled: true
+  replicaCount: 1                # StatefulSet replicas
+  image:
+    repository: postgres
+    tag: 15-alpine
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  service:
+    port: 5432
+```
+
+### Redis Configuration
+
+```yaml
+redis:
+  enabled: true
+  replicaCount: 1                # StatefulSet replicas
+  image:
     repository: redis
     tag: 7-alpine
-    pullPolicy: IfNotPresent
-  pgbouncer:
-    repository: edoburu/pgbouncer
-    tag: latest
-    pullPolicy: IfNotPresent
-  meilisearch:
-    repository: getmeili/meilisearch
-    tag: v1.8
-    pullPolicy: IfNotPresent
-  prometheus:
-    repository: prom/prometheus
-    tag: v2.53.0
-    pullPolicy: IfNotPresent
-  grafana:
-    repository: grafana/grafana
-    tag: 11.1.0
-    pullPolicy: IfNotPresent
-  loki:
-    repository: grafana/loki
-    tag: 2.9.4
-    pullPolicy: IfNotPresent
-  promtail:
-    repository: grafana/promtail
-    tag: 2.9.4
-    pullPolicy: IfNotPresent
-  tempo:
-    repository: grafana/tempo
-    tag: 2.3.1
-    pullPolicy: IfNotPresent
-```
-
-### Resource Management
-
-```yaml
-resources:
-  backend:
-    requests:
-      cpu: "500m"
-      memory: "512Mi"
+  resources:
     limits:
-      cpu: "2000m"
-      memory: "2Gi"
-  frontend:
+      cpu: 200m
+      memory: 256Mi
     requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits:
-      cpu: "500m"
-      memory: "512Mi"
-  worker:
-    requests:
-      cpu: "100m"
-      memory: "128Mi"
-    limits:
-      cpu: "500m"
-      memory: "512Mi"
-```
-
-### Replica Configuration
-
-```yaml
-replicas:
-  backend: 3
-  frontend: 2
-  worker: 1
-  pgbouncer: 2
-```
-
-### Service Configuration
-
-```yaml
-services:
-  backend:
-    type: ClusterIP
-    port: 8000
-  frontend:
-    type: LoadBalancer
-    port: 80
-  postgres:
-    type: ClusterIP
-    port: 5432
-  redis:
-    type: ClusterIP
+      cpu: 50m
+      memory: 128Mi
+  service:
     port: 6379
-  pgbouncer:
-    type: ClusterIP
-    port: 6432
-  meilisearch:
-    type: ClusterIP
+```
+
+### Meilisearch Configuration
+
+```yaml
+meilisearch:
+  enabled: true
+  replicaCount: 1
+  image:
+    pullPolicy: IfNotPresent
+    repository: getmeili/meilisearch
+    tag: v1.11                   # v1.11+ required for Vietnamese tokenizer
+  resources:
+    limits:
+      cpu: '1'
+      memory: 1Gi
+    requests:
+      cpu: 200m
+      memory: 256Mi
+  securityContext:
+    runAsGroup: 1000
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+  service:
     port: 7700
-  loki:
     type: ClusterIP
-    port: 3100
-  tempo:
-    type: ClusterIP
-    port: 3100
-  prometheus:
-    type: ClusterIP
-    port: 9090
-  grafana:
-    type: LoadBalancer
-    port: 3000
+  persistence:
+    storageClass: standard
+    size: 5Gi
+  environment: production
+```
+
+### HPA (Horizontal Pod Autoscaler) Configuration
+
+```yaml
+hpa:
+  enabled: true
+  maxReplicas: 8
+  minReplicas: 2
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
 ```
 
 ### Ingress Configuration
 
 ```yaml
 ingress:
-  enabled: true
   className: nginx
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
-  tls:
-    - secretName: ecommerce-tls
-      hosts:
-        - ecommerce.example.com
-        - grafana.ecommerce.example.com
+  enabled: true
   hosts:
-    - host: ecommerce.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-          service: frontend
-        - path: /api
-          pathType: Prefix
-          service: backend
-    - host: grafana.ecommerce.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-          service: grafana
+  - host: localhost
+    paths:
+    - path: /
+      pathType: Prefix
+  tls: []
 ```
 
-### HPA Configuration
-
-```yaml
-hpa:
-  backend:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 8
-    targetCPUUtilizationPercentage: 70
-    targetMemoryUtilizationPercentage: 80
-  frontend:
-    enabled: false
-    minReplicas: 2
-    maxReplicas: 5
-```
-
-### Monitoring Configuration
-
-```yaml
-monitoring:
-  prometheus:
-    enabled: true
-    retention: 15d
-    storageSize: 10Gi
-  grafana:
-    enabled: true
-    adminUser: admin
-    adminPassword: admin
-    dashboards:
-      - ecommerce-overview
-      - kubernetes-monitoring
-  loki:
-    enabled: true
-    retention: 168h
-    storageSize: 10Gi
-  tempo:
-    enabled: true
-    retention: 72h
-    storageSize: 5Gi
-```
-
-### CronJob Configuration
-
-```yaml
-cronjobs:
-  reconciliation:
-    enabled: true
-    schedule: "0 2 * * *"
-    image: ecommerce-backend:latest
-    command: ["python", "scripts/reconcile_search.py", "--fix"]
-    resources:
-      requests:
-        cpu: "100m"
-        memory: "128Mi"
-      limits:
-        cpu: "500m"
-        memory: "512Mi"
-```
-
-### NetworkPolicy Configuration
+### Network Policy Configuration
 
 ```yaml
 networkPolicy:
   enabled: true
-  defaultDenyAll: true
-  allowExternalEgress: false
 ```
 
-### Persistence Configuration
+### Observability Configuration
 
 ```yaml
-persistence:
-  postgres:
-    enabled: true
-    storageClass: standard
-    size: 10Gi
-  redis:
-    enabled: true
-    storageClass: standard
-    size: 2Gi
-  meilisearch:
-    enabled: true
-    storageClass: standard
-    size: 5Gi
-  loki:
-    enabled: true
-    storageClass: standard
-    size: 10Gi
-  tempo:
-    enabled: true
-    storageClass: standard
-    size: 5Gi
-  prometheus:
-    enabled: true
-    storageClass: standard
-    size: 10Gi
+observability:
+  enabled: true
   grafana:
     enabled: true
-    storageClass: standard
-    size: 1Gi
+  loki:
+    enabled: true
+    retentionDays: 7
+  prometheus:
+    enabled: true
+  promtail:
+    enabled: true
+  tempo:
+    enabled: true
+    tls:
+      enabled: false
+```
+
+### Cancel Expired Orders CronJob (Alternative to ARQ Cron)
+
+```yaml
+# CronJob for auto-cancelling expired orders (alternative to ARQ worker cron)
+# Set enabled: true to use Kubernetes CronJob approach
+# Set enabled: false (default) to use ARQ worker cron (recommended)
+cancelExpiredOrders:
+  enabled: false
+  schedule: "*/5 * * * *"  # Every 5 minutes
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+```
+
+### Fullname Override
+
+```yaml
+fullnameOverride: ecommerce
 ```
 
 ---
@@ -283,80 +277,188 @@ persistence:
 
 ```yaml
 global:
-  environment: "development"
+  imageRegistry: ""
+  imageTag: dev
 
-replicas:
-  backend: 1
-  frontend: 1
-  worker: 1
-  pgbouncer: 1
+backend:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+
+frontend:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "256Mi"
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+
+worker:
+  replicaCount: 1
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "256Mi"
+    requests:
+      cpu: "50m"
+      memory: "64Mi"
+
+# CronJob for auto-cancelling expired orders (disabled in dev, use ARQ worker)
+cancelExpiredOrders:
+  enabled: false
+
+postgres:
+  resources:
+    limits:
+      cpu: "200m"
+      memory: "512Mi"
+    requests:
+      cpu: "50m"
+      memory: "128Mi"
 
 hpa:
-  backend:
-    enabled: false
+  enabled: false
 
 ingress:
   enabled: false
-  tls: []
 
-monitoring:
-  prometheus:
-    storageSize: 1Gi
+observability:
   loki:
-    storageSize: 1Gi
+    enabled: false
+  promtail:
+    enabled: false
   tempo:
-    storageSize: 1Gi
-
-persistence:
-  postgres:
-    size: 1Gi
-  redis:
-    size: 100Mi
-  meilisearch:
-    size: 1Gi
+    enabled: false
 ```
 
 ### Production (values-prod.yaml)
 
 ```yaml
 global:
-  environment: "production"
-  domain: "ecommerce.example.com"
+  imageRegistry: registry.example.com/
+  imageTag: v1.0.0
 
-replicas:
-  backend: 3
-  frontend: 3
-  worker: 2
-  pgbouncer: 3
+backend:
+  replicaCount: 5
+  resources:
+    limits:
+      cpu: "2"
+      memory: "2Gi"
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
 
-hpa:
-  backend:
-    enabled: true
-    minReplicas: 3
-    maxReplicas: 10
+frontend:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+
+worker:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "1"
+      memory: "1Gi"
+    requests:
+      cpu: "200m"
+      memory: "256Mi"
+
+postgres:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "2"
+      memory: "4Gi"
+    requests:
+      cpu: "500m"
+      memory: "1Gi"
+
+redis:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "1Gi"
+    requests:
+      cpu: "100m"
+      memory: "256Mi"
+
+pgbouncer:
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
 
 ingress:
   enabled: true
+  className: nginx
+  hosts:
+    - host: api.example.com
+      paths:
+        - path: /
+          pathType: Prefix
+    - host: app.example.com
+      paths:
+        - path: /
+          pathType: Prefix
   tls:
     - secretName: ecommerce-tls
       hosts:
-        - ecommerce.example.com
+        - api.example.com
+        - app.example.com
 
-monitoring:
-  prometheus:
-    storageSize: 50Gi
+hpa:
+  enabled: true
+  minReplicas: 5
+  maxReplicas: 20
+  targetCPUUtilizationPercentage: 70
+  targetMemoryUtilizationPercentage: 80
+
+networkPolicy:
+  enabled: true
+
+# CronJob for auto-cancelling expired orders (disabled in prod, use ARQ worker cron)
+# The ARQ worker runs cancel_expired_orders_task every 2 minutes (see backend/app/worker.py)
+cancelExpiredOrders:
+  enabled: false
+  schedule: "*/5 * * * *"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  resources:
+    limits:
+      cpu: "500m"
+      memory: "512Mi"
+    requests:
+      cpu: "100m"
+      memory: "128Mi"
+
+observability:
+  enabled: true
+  grafana:
+    enabled: true
   loki:
-    storageSize: 50Gi
+    enabled: true
+    retentionDays: 7
+  promtail:
+    enabled: true
   tempo:
-    storageSize: 20Gi
-
-persistence:
-  postgres:
-    size: 50Gi
-  redis:
-    size: 5Gi
-  meilisearch:
-    size: 20Gi
+    enabled: true
 ```
 
 ---
@@ -372,30 +474,194 @@ global:
 images:
   backend:
     repository: my-registry.io/ecommerce-backend
+  frontend:
+    repository: my-registry.io/ecommerce-frontend
+  worker:
+    repository: my-registry.io/ecommerce-backend
 ```
 
-### Custom Resource Limits
+### Custom Resource Limits for High Traffic
 
 ```yaml
-resources:
-  backend:
+backend:
+  resources:
     limits:
       cpu: "4000m"
       memory: "4Gi"
+    requests:
+      cpu: "1000m"
+      memory: "1Gi"
+
+worker:
+  resources:
+    limits:
+      cpu: "2000m"
+      memory: "2Gi"
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
 ```
 
-### Enable All Monitoring
+### Enable All Monitoring (Production)
 
 ```yaml
-monitoring:
-  prometheus:
-    enabled: true
+observability:
+  enabled: true
   grafana:
     enabled: true
   loki:
     enabled: true
+    retentionDays: 30
+  promtail:
+    enabled: true
   tempo:
     enabled: true
+    tls:
+      enabled: true
+  prometheus:
+    enabled: true
+
+# Increase persistence for production
+persistence:
+  postgres:
+    size: 50Gi
+  redis:
+    size: 5Gi
+  meilisearch:
+    size: 20Gi
+  loki:
+    size: 50Gi
+  tempo:
+    size: 20Gi
+  prometheus:
+    size: 50Gi
+  grafana:
+    size: 5Gi
+```
+
+### Disable Meilisearch (Use PostgreSQL FTS Only)
+
+```yaml
+meilisearch:
+  enabled: false
+```
+
+### Increase Worker Replicas for Heavy Background Processing
+
+```yaml
+worker:
+  replicaCount: 3
+  resources:
+    limits:
+      cpu: "2"
+      memory: "2Gi"
+    requests:
+      cpu: "500m"
+      memory: "512Mi"
+```
+
+---
+
+## 📦 Persistence Configuration
+
+```yaml
+# Persistence is configured per component in their respective sections
+# Example for postgres:
+postgres:
+  persistence:
+    enabled: true
+    storageClass: standard
+    size: 10Gi
+
+# Redis:
+redis:
+  persistence:
+    enabled: true
+    storageClass: standard
+    size: 2Gi
+
+# Meilisearch:
+meilisearch:
+  persistence:
+    storageClass: standard
+    size: 5Gi
+```
+
+---
+
+## 🚀 Deployment Commands
+
+### Install with Default Values
+
+```bash
+helm install ecommerce ./helm/ecommerce \
+  --namespace default \
+  --create-namespace
+```
+
+### Install with Development Values
+
+```bash
+helm install ecommerce ./helm/ecommerce \
+  --namespace default \
+  --create-namespace \
+  -f ./helm/ecommerce/values-dev.yaml
+```
+
+### Install with Production Values
+
+```bash
+helm install ecommerce ./helm/ecommerce \
+  --namespace production \
+  --create-namespace \
+  -f ./helm/ecommerce/values-prod.yaml
+```
+
+### Upgrade with Custom Values
+
+```bash
+helm upgrade ecommerce ./helm/ecommerce \
+  --namespace default \
+  -f ./helm/ecommerce/values.yaml \
+  -f ./custom-values.yaml
+```
+
+### Dry Run for Validation
+
+```bash
+helm install ecommerce ./helm/ecommerce \
+  --namespace default \
+  --dry-run \
+  --debug
+```
+
+### View Rendered Templates
+
+```bash
+helm template ecommerce ./helm/ecommerce \
+  --namespace default \
+  -f ./helm/ecommerce/values-dev.yaml
+```
+
+---
+
+## 🔍 Verification
+
+### Check Deployed Values
+
+```bash
+# Get current values
+helm get values ecommerce -n default
+
+# Get all values (including computed)
+helm get values ecommerce -n default --all
+```
+
+### Verify Pod Resources
+
+```bash
+# Check resource requests/limits
+kubectl get pods -n default -o custom-columns="NAME:.metadata.name,CPU_REQUEST:.spec.containers[0].resources.requests.cpu,CPU_LIMIT:.spec.containers[0].resources.limits.cpu,MEM_REQUEST:.spec.containers[0].resources.requests.memory,MEM_LIMIT:.spec.containers[0].resources.limits.memory"
 ```
 
 ---
@@ -405,9 +671,9 @@ monitoring:
 - [Chart Structure](chart-structure.md)
 - [Multi-Environment Deployment](multi-environment.md)
 - [Helm Deployment Guide](../runbooks/helm-deployment-guide.md)
+- [Worker Deployment & CronJob Setup](../worker-deployment.md)
+- [Meilisearch Vietnamese Config](../meilisearch-vietnamese-config.md)
 
 ---
 
-## 📞 Support
-
-Contact DevOps team for values configuration issues.
+*Last updated: 2024-01-15*

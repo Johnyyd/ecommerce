@@ -36,6 +36,26 @@ spec:
             envFrom:
             - secretRef:
                 name: app-secrets
+            env:
+            - name: REDIS_URL
+              value: "redis://redis:6379"
+            - name: MEILISEARCH_URL
+              value: "http://meilisearch:7700"
+            - name: PAYOS_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PAYOS_CLIENT_ID
+            - name: PAYOS_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PAYOS_API_KEY
+            - name: PAYOS_CHECKSUM_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: app-secrets
+                  key: PAYOS_CHECKSUM_KEY
             resources:
               {{- toYaml .Values.cancelExpiredOrders.resources | nindent 14 }}
           nodeSelector:

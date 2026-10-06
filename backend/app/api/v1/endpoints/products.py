@@ -1,6 +1,7 @@
 import json
+import logging
 from uuid import UUID
-from typing import List, Annotated, Any, Optional
+from typing import List, Annotated, Any, Optional, Dict
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.ext.asyncio import AsyncSession
 # pyrefly: ignore [missing-import]
@@ -18,6 +19,8 @@ from app.models.user import User
 
 
 router = APIRouter()
+
+logger = logging.getLogger(__name__)
 
 def get_product_service(session: AsyncSession = Depends(get_db_session)) -> ProductService:
     repo = ProductRepository(session)
@@ -112,6 +115,76 @@ async def search_products_endpoint(
     }
     await redis.setex(cache_key, 120, json.dumps(response_data))
     return response_data
+
+
+@router.post("/search/warm-cache")
+async def warm_search_cache(
+    search_service: SearchService = Depends(get_search_service),
+    redis: Redis = Depends(get_redis_client)
+) -> Dict[str, Any]:
+    """
+    Warm up search cache with popular queries.
+    Run this on startup or via cron to pre-populate Redis cache.
+    """
+    popular_queries = [
+        "ao thun", "dien thoai", "laptop", "giay the thao", "tui xach",
+        "ao", "quan", "dien thoai iphone", "laptop gaming", "giay chay bo",
+        "ao thun nam", "quan jean", "dien thoai samsung", "laptop van phong", "giay sneaker",
+        "dong ho", "kinh mat", "my pham", "sach", "thoi trang",
+        "apple", "samsung", "xiaomi", "nike", "adidas"
+    ]
+
+    popular_filters = [
+        {},  # No filters
+        {"category_id": "01a1048f-94ac-747e-a2a5-23e03b686853"},  # Thời trang nam
+        {"category_id": "de0103f5-6f3b-4b9b-8815-60b85d265cbf"},  # Test Category
+        {"brand": "Apple"},
+        {"brand": "Samsung"},
+        {"brand": "TestBrand"},
+    ]
+
+    warmed = 0
+    errors = 0
+
+    for query in popular_queries:
+        for filters in popular_filters:
+            try:
+                cache_key = f"products:search:{query}:{filters.get('category_id', '')}:{filters.get('brand', '')}::::1:12::category_id,brand"
+
+                # Check if already cached
+                cached = await redis.get(cache_key)
+                if cached:
+                    continue
+
+                # Perform search to populate cache
+                search_res = await search_service.search_products(
+                    query=query,
+                    filters=filters or None,
+                    limit=12,
+                    offset=0,
+                    facets=["category_id", "brand"],
+                    sort=None
+                )
+
+                response_data = {
+                    "items": search_res.get("hits", []),
+                    "total": search_res.get("estimatedTotalHits") or 0,
+                    "page": 1,
+                    "limit": 12,
+                    "facets": search_res.get("facetDistribution") or {}
+                }
+
+                await redis.setex(cache_key, 300, json.dumps(response_data))  # 5 min TTL
+                warmed += 1
+            except Exception as e:
+                errors += 1
+                logger.warning(f"Cache warm error for query='{query}', filters={filters}: {e}")
+
+    return {
+        "warmed": warmed,
+        "errors": errors,
+        "message": f"Cache warming completed. Warmed {warmed} entries."
+    }
 
 @router.get("", response_model=PaginatedProductResponse, include_in_schema=False)
 @router.get("/", response_model=PaginatedProductResponse)

@@ -56,13 +56,22 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
 
   // Reset states on modal open
   useEffect(() => {
-    if (isOpen) {
+    if (isOpen && paymentData) {
       setViewMode('qr');
       setIsSuccess(false);
-      setTimeLeft(15 * 60);
       setSelectedMethod('COD');
+
+      // Parse expires_at from paymentData if available, otherwise default to 15 minutes
+      if (paymentData.expires_at) {
+        const expiryTime = new Date(paymentData.expires_at).getTime();
+        const now = Date.now();
+        const diffSeconds = Math.max(0, Math.floor((expiryTime - now) / 1000));
+        setTimeLeft(diffSeconds);
+      } else {
+        setTimeLeft(15 * 60);
+      }
     }
-  }, [isOpen, paymentData?.order_id]);
+  }, [isOpen, paymentData?.order_id, paymentData?.expires_at]);
 
   // Copy to clipboard helper with tactile feedback
   const handleCopy = useCallback((text: string, fieldName: string) => {
@@ -79,7 +88,7 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
     return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(amount);
   };
 
-  // 15-minute countdown timer
+  // Countdown timer - uses expires_at from PayOS if available, otherwise 15 min default
   useEffect(() => {
     if (!isOpen || isSuccess || viewMode !== 'qr') return;
     const timer = setInterval(() => {
@@ -342,19 +351,21 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
                       </div>
 
                       {/* Account Number */}
+                      {paymentData.bank_account_number && (
                       <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 border border-zinc-100 text-sm">
                         <div>
                           <span className="block text-zinc-500 text-xs">Account Number</span>
                           <span className="font-mono font-semibold text-zinc-900">{paymentData.bank_account_number}</span>
                         </div>
                         <button
-                          onClick={() => handleCopy(paymentData.bank_account_number, 'Account Number')}
+                          onClick={() => handleCopy(paymentData.bank_account_number!, 'Account Number')}
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-700 bg-white border border-zinc-200 hover:bg-zinc-100 active:scale-95 transition-all"
                         >
                           {copiedField === 'Account Number' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                           {copiedField === 'Account Number' ? 'Copied' : 'Copy'}
                         </button>
                       </div>
+                      )}
 
                       {/* Account Holder */}
                       <div className="flex items-center justify-between p-3 rounded-xl bg-zinc-50 border border-zinc-100 text-sm">
@@ -378,6 +389,7 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
                       </div>
 
                       {/* Memo / Description */}
+                      {paymentData.transfer_memo && (
                       <div className="flex items-center justify-between p-3 rounded-xl bg-amber-50/70 border border-amber-200/60 text-sm">
                         <div>
                           <span className="block text-amber-800 text-xs font-semibold uppercase tracking-wider">
@@ -388,17 +400,30 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
                           </span>
                         </div>
                         <button
-                          onClick={() => handleCopy(paymentData.transfer_memo, 'Transfer Memo')}
+                          onClick={() => handleCopy(paymentData.transfer_memo!, 'Transfer Memo')}
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-950 bg-amber-100/80 border border-amber-300 hover:bg-amber-200 active:scale-95 transition-all"
                         >
                           {copiedField === 'Transfer Memo' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
                           {copiedField === 'Transfer Memo' ? 'Copied' : 'Copy'}
                         </button>
                       </div>
+                      )}
                     </div>
 
                     {/* Footer action buttons */}
                     <div className="w-full mt-6 flex flex-col gap-2.5">
+                      {/* PayOS Checkout button - only show for PayOS payments */}
+                      {paymentData.checkout_url && (
+                        <a
+                          href={paymentData.checkout_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="w-full py-3 rounded-xl bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+                        >
+                          <ArrowClockwise size={16} />
+                          Open PayOS Checkout Page
+                        </a>
+                      )}
                       <button
                         onClick={checkPaymentStatus}
                         disabled={isChecking}

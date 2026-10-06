@@ -10,11 +10,13 @@ export interface PaymentCreateResponse {
   amount: number;
   currency: string;
   qr_code_url: string;
+  checkout_url?: string;
+  payment_link_id?: string;
+  expires_at?: string;
   bank_name: string;
-  bank_account_number: string;
+  bank_account_number?: string;
   account_name: string;
-  transfer_memo: string;
-  expires_at: string;
+  transfer_memo?: string;
 }
 
 export interface PaymentStatusResponse {
