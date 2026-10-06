@@ -13,7 +13,7 @@ error handling, and returning result dictionaries.
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from app.core.queue import get_redis_settings
 from app.crud.product import ProductRepository
