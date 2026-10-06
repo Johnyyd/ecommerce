@@ -255,6 +255,8 @@ class SearchService:
             await self.meilisearch.update_settings(
                 index_name=self.meilisearch.index_name,
                 settings={
+                    # Vietnamese tokenizer
+                    "tokenizer": "vi",
                     # Searchable attributes (weighted for relevance)
                     "searchableAttributes": [
                         "name",
