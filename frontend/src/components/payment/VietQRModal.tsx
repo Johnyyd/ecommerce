@@ -42,7 +42,6 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
 }) => {
   const [copiedField, setCopiedField] = useState<string | null>(null);
   const [timeLeft, setTimeLeft] = useState<number>(15 * 60); // 15 minutes
-  const [expiresAt, setExpiresAt] = useState<number | null>(null);
   const [isChecking, setIsChecking] = useState<boolean>(false);
   const [isSuccess, setIsSuccess] = useState<boolean>(false);
   const [isSimulating, setIsSimulating] = useState<boolean>(false);
@@ -68,10 +67,8 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
         const now = Date.now();
         const diffSeconds = Math.max(0, Math.floor((expiryTime - now) / 1000));
         setTimeLeft(diffSeconds);
-        setExpiresAt(expiryTime);
       } else {
         setTimeLeft(15 * 60);
-        setExpiresAt(null);
       }
     }
   }, [isOpen, paymentData?.order_id, paymentData?.expires_at]);
@@ -361,7 +358,7 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
                           <span className="font-mono font-semibold text-zinc-900">{paymentData.bank_account_number}</span>
                         </div>
                         <button
-                          onClick={() => handleCopy(paymentData.bank_account_number, 'Account Number')}
+                          onClick={() => handleCopy(paymentData.bank_account_number!, 'Account Number')}
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium text-zinc-700 bg-white border border-zinc-200 hover:bg-zinc-100 active:scale-95 transition-all"
                         >
                           {copiedField === 'Account Number' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
@@ -403,7 +400,7 @@ export const VietQRModal: React.FC<VietQRModalProps> = ({
                           </span>
                         </div>
                         <button
-                          onClick={() => handleCopy(paymentData.transfer_memo, 'Transfer Memo')}
+                          onClick={() => handleCopy(paymentData.transfer_memo!, 'Transfer Memo')}
                           className="inline-flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-semibold text-amber-950 bg-amber-100/80 border border-amber-300 hover:bg-amber-200 active:scale-95 transition-all"
                         >
                           {copiedField === 'Transfer Memo' ? <Check size={14} className="text-emerald-600" /> : <Copy size={14} />}
