@@ -28,13 +28,42 @@ def get_user_service(session: AsyncSession = Depends(get_db_session)) -> UserSer
 
 token_service = TokenService()
 
-from app.schemas.user import UserCreate
+from app.schemas.user import UserCreate, UserRegisterRequest, CaptchaResponse
+from app.services.captcha import generate_captcha, verify_captcha
+from app.core.config import settings
+
+@router.get("/captcha", response_model=CaptchaResponse)
+async def get_captcha_challenge():
+    """Generate an internal single-use SVG captcha challenge."""
+    challenge = await generate_captcha()
+    return challenge
 
 @router.post("/register", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def register(
-    user_in: UserCreate,
+    user_in: UserRegisterRequest,
     user_service: UserService = Depends(get_user_service)
 ):
+    # Validate captcha in non-test environments or when provided
+    if settings.ENVIRONMENT != "test":
+        if not user_in.captcha_id or not user_in.captcha_code:
+            raise HTTPException(
+                status_code=400,
+                detail="Vui lòng nhập mã xác thực (Captcha) để đăng ký tài khoản"
+            )
+        is_valid = await verify_captcha(user_in.captcha_id, user_in.captcha_code)
+        if not is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail="Mã xác thực (Captcha) không chính xác hoặc đã hết hạn"
+            )
+    elif user_in.captcha_id and user_in.captcha_code:
+        is_valid = await verify_captcha(user_in.captcha_id, user_in.captcha_code)
+        if not is_valid:
+            raise HTTPException(
+                status_code=400,
+                detail="Mã xác thực (Captcha) không chính xác hoặc đã hết hạn"
+            )
+
     try:
         user = await user_service.create_user(user_in)
         try:

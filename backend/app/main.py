@@ -28,19 +28,17 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
 
-        # Only add security headers in production
-        if settings.ENVIRONMENT == "production":
-            # HSTS
+        # Baseline Defense-in-Depth Security Headers (All environments)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+
+        # Production & HTTPS Specific Headers
+        is_https = request.url.scheme == "https" or request.headers.get("x-forwarded-proto") == "https"
+        if settings.ENVIRONMENT == "production" or is_https:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-            # Prevent MIME sniffing
-            response.headers["X-Content-Type-Options"] = "nosniff"
-            # XSS Protection
-            response.headers["X-XSS-Protection"] = "1; mode=block"
-            # Frame Options
-            response.headers["X-Frame-Options"] = "DENY"
-            # Referrer Policy
-            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-            # CSP - Basic policy, adjust as needed for your frontend
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
                 "script-src 'self'; "

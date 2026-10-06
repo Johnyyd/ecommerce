@@ -24,6 +24,18 @@ spec:
         - name: frontend
           image: ecommerce-frontend:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+          resources:
+            limits:
+              cpu: "300m"
+              memory: "256Mi"
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
           ports:
             - containerPort: 8080
 ---
