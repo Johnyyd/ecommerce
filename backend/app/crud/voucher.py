@@ -6,12 +6,14 @@ from sqlalchemy import select
 from app.models.voucher import Voucher
 from app.schemas.voucher import VoucherCreate, VoucherUpdate, VoucherValidateResponse
 
+
 class VoucherRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
     async def get_multi(self, skip: int = 0, limit: int = 100) -> List[Voucher]:
-        stmt = select(Voucher).where(Voucher.deleted_at.is_(None)).order_by(Voucher.created_at.desc()).offset(skip).limit(limit)
+        stmt = select(Voucher).where(Voucher.deleted_at.is_(None)).order_by(
+            Voucher.created_at.desc()).offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 
@@ -21,7 +23,10 @@ class VoucherRepository:
         return result.scalars().first()
 
     async def get_by_code(self, code: str) -> Optional[Voucher]:
-        stmt = select(Voucher).where(Voucher.code == code.strip().upper(), Voucher.deleted_at.is_(None))
+        stmt = select(Voucher).where(
+            Voucher.code == code.strip().upper(),
+            Voucher.deleted_at.is_(None)
+        )
         result = await self.session.execute(stmt)
         return result.scalars().first()
 
@@ -48,7 +53,7 @@ class VoucherRepository:
             update_data["code"] = update_data["code"].strip().upper()
         if "discount_type" in update_data and update_data["discount_type"]:
             update_data["discount_type"] = update_data["discount_type"].upper()
-            
+
         for field, value in update_data.items():
             setattr(voucher, field, value)
         self.session.add(voucher)
@@ -64,14 +69,14 @@ class VoucherRepository:
         voucher = await self.get_by_code(code)
         if not voucher:
             return VoucherValidateResponse(is_valid=False, message="Mã voucher không tồn tại")
-        
+
         if not voucher.is_active:
             return VoucherValidateResponse(is_valid=False, message="Mã voucher đã bị vô hiệu hóa")
 
         now = datetime.now(timezone.utc)
         if voucher.valid_from and voucher.valid_from > now:
             return VoucherValidateResponse(is_valid=False, message="Mã voucher chưa đến thời gian áp dụng")
-            
+
         if voucher.valid_until and voucher.valid_until < now:
             return VoucherValidateResponse(is_valid=False, message="Mã voucher đã hết hạn sử dụng")
 
@@ -80,7 +85,7 @@ class VoucherRepository:
 
         if order_amount < float(voucher.min_order_amount):
             return VoucherValidateResponse(
-                is_valid=False, 
+                is_valid=False,
                 message=f"Đơn hàng chưa đạt giá trị tối thiểu ${float(voucher.min_order_amount):.2f}"
             )
 
@@ -89,7 +94,7 @@ class VoucherRepository:
             discount = order_amount * (float(voucher.discount_value) / 100.0)
             if voucher.max_discount_amount is not None:
                 discount = min(discount, float(voucher.max_discount_amount))
-        else: # FIXED
+        else:  # FIXED
             discount = float(voucher.discount_value)
 
         discount = min(discount, order_amount)

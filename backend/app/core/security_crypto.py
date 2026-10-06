@@ -2,6 +2,7 @@ import hmac
 import hashlib
 from typing import Dict, Any
 
+
 def create_signature_string(data: Dict[str, Any]) -> str:
     """
     Sort keys alphabetically and format as key1=val1&key2=val2...
@@ -24,6 +25,7 @@ def create_signature_string(data: Dict[str, Any]) -> str:
         parts.append(f"{k}={v_str}")
     return "&".join(parts)
 
+
 def generate_payos_signature(data: Dict[str, Any], checksum_key: str) -> str:
     """
     Computes HMAC-SHA256 signature for PayOS data dictionary.
@@ -35,6 +37,7 @@ def generate_payos_signature(data: Dict[str, Any], checksum_key: str) -> str:
         hashlib.sha256
     ).hexdigest()
     return signature
+
 
 def verify_payos_signature(data: Dict[str, Any], received_signature: str, checksum_key: str) -> bool:
     """

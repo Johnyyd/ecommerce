@@ -3,6 +3,7 @@ from datetime import datetime
 from typing import Optional, Dict, Any
 from pydantic import BaseModel, ConfigDict, Field
 
+
 class PayOSWebhookData(BaseModel):
     orderCode: int
     amount: int
@@ -17,15 +18,18 @@ class PayOSWebhookData(BaseModel):
 
     model_config = ConfigDict(extra="allow")
 
+
 class PayOSWebhookPayload(BaseModel):
     code: str
     desc: str
     data: Dict[str, Any]
     signature: str
 
+
 class PaymentCreateRequest(BaseModel):
     order_id: UUID
     provider: str = Field(default="VIETQR", description="VIETQR, PAYOS, VNPAY, MOMO, COD")
+
 
 class PaymentCreateResponse(BaseModel):
     order_id: UUID
@@ -43,6 +47,7 @@ class PaymentCreateResponse(BaseModel):
     payment_url: Optional[str] = None
     transfer_memo: Optional[str] = None
     bank_account_number: Optional[str] = None
+
 
 class PaymentStatusResponse(BaseModel):
     order_id: UUID

@@ -19,6 +19,7 @@ from app.models.order import Order
 
 logger = logging.getLogger(__name__)
 
+
 def get_reports_dir() -> Path:
     """Ensure report storage directory exists and return Path object."""
     rep_path = Path(settings.REPORTS_DIR)
@@ -27,6 +28,7 @@ def get_reports_dir() -> Path:
     except Exception as e:
         logger.warning("Could not create reports directory: %s", e)
     return rep_path
+
 
 async def update_report_meta(job_id: str, updates: Dict[str, Any]):
     """Update Redis job metadata."""
@@ -37,6 +39,7 @@ async def update_report_meta(job_id: str, updates: Dict[str, Any]):
         meta = json.loads(raw)
         meta.update(updates)
         await redis.set(key, json.dumps(meta), ex=86400)
+
 
 async def build_sales_report(
     job_id: str,
@@ -54,8 +57,9 @@ async def build_sales_report(
     await update_report_meta(job_id, {"status": "PROCESSING", "progress": 30})
 
     async with AsyncSessionLocal() as session:
-        stmt = select(Order).options(selectinload(Order.items), selectinload(Order.payment)).order_by(Order.created_at.desc())
-        
+        stmt = select(Order).options(selectinload(Order.items), selectinload(
+            Order.payment)).order_by(Order.created_at.desc())
+
         # Apply date filters if valid ISO strings
         if date_from:
             try:
@@ -138,18 +142,22 @@ async def build_sales_report(
             cell = ws.cell(row=8, column=col_idx, value=h)
             cell.font = header_font
             cell.fill = header_fill
-            cell.alignment = Alignment(horizontal="center" if "Status" in h or "Count" in h else "left")
+            cell.alignment = Alignment(
+                horizontal="center" if "Status" in h or "Count" in h else "left")
 
         # Data Rows
         current_row = 9
         for o in orders:
             ws.cell(row=current_row, column=1, value=str(o.id)).border = thin_border
-            ws.cell(row=current_row, column=2, value=o.created_at.strftime("%Y-%m-%d %H:%M") if o.created_at else "").border = thin_border
+            ws.cell(row=current_row, column=2, value=o.created_at.strftime(
+                "%Y-%m-%d %H:%M") if o.created_at else "").border = thin_border
             ws.cell(row=current_row, column=3, value=o.status).border = thin_border
             ws.cell(row=current_row, column=4, value=o.payment_method).border = thin_border
-            ws.cell(row=current_row, column=5, value=o.payment.status if o.payment else "UNPAID").border = thin_border
-            ws.cell(row=current_row, column=6, value=sum(it.quantity for it in o.items)).border = thin_border
-            
+            ws.cell(row=current_row, column=5,
+                    value=o.payment.status if o.payment else "UNPAID").border = thin_border
+            ws.cell(row=current_row, column=6, value=sum(
+                it.quantity for it in o.items)).border = thin_border
+
             amt_cell = ws.cell(row=current_row, column=7, value=float(o.total_amount))
             amt_cell.number_format = '$#,##0.00'
             amt_cell.font = Font(bold=True)
@@ -168,7 +176,8 @@ async def build_sales_report(
         # Standard CSV format
         with open(file_path, mode="w", newline="", encoding="utf-8") as f:
             writer = csv.writer(f)
-            writer.writerow(["Order ID", "Date Created", "Status", "Payment Method", "Payment Status", "Items Count", "Total Amount"])
+            writer.writerow(["Order ID", "Date Created", "Status", "Payment Method",
+                            "Payment Status", "Items Count", "Total Amount"])
             for o in orders:
                 writer.writerow([
                     str(o.id),
@@ -204,6 +213,7 @@ async def build_sales_report(
     await update_report_meta(job_id, completion_meta)
     return completion_meta
 
+
 async def generate_sales_report_task(
     ctx: Any,
     job_id: str,
@@ -223,6 +233,7 @@ async def generate_sales_report_task(
         logger.error(f"Worker failed report {job_id}: {e}", exc_info=True)
         await update_report_meta(job_id, {"status": "FAILED", "error": str(e)})
         raise
+
 
 async def generate_report_inline(
     job_id: str,

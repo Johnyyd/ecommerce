@@ -26,6 +26,11 @@ spec:
         - name: backend
           image: ecommerce-backend:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: HOME
               value: "/tmp"

@@ -5,7 +5,6 @@ Handles: payment link creation, webhook verification, auto-cancel, refunds.
 """
 
 import hmac
-import hashlib
 import json
 import logging
 from datetime import datetime, timedelta
@@ -13,13 +12,12 @@ from typing import Any, Dict, Optional
 from uuid import UUID
 
 import httpx
-from sqlalchemy import select, update
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import selectinload
 
 from app.core.config import settings
 from app.core.security_crypto import (
-    create_signature_string,
     generate_payos_signature,
     verify_payos_signature,
 )
@@ -78,7 +76,8 @@ class PayOSService:
         if expired_at is None:
             # Default expiration from config
             from app.core.config import settings
-            expired_at = int((datetime.utcnow() + timedelta(minutes=settings.AUTO_CANCEL_MINUTES)).timestamp())
+            expired_at = int(
+                (datetime.utcnow() + timedelta(minutes=settings.AUTO_CANCEL_MINUTES)).timestamp())
 
         payload = {
             "orderCode": order_code,
@@ -97,7 +96,6 @@ class PayOSService:
             payload["buyerPhone"] = buyer_phone
 
         # Generate HMAC signature
-        sign_str = create_signature_string(payload)
         payload["signature"] = generate_payos_signature(payload, self.checksum_key)
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -144,7 +142,6 @@ class PayOSService:
         payload = {
             "cancellationReason": cancellation_reason,
         }
-        sign_str = create_signature_string(payload)
         payload["signature"] = generate_payos_signature(payload, self.checksum_key)
 
         async with httpx.AsyncClient(timeout=30.0) as client:
@@ -222,7 +219,6 @@ class PaymentService:
         from app.core.config import settings
 
         order_code = abs(hash(str(order_id))) % 100000000
-        description = f"DH{order_code}"
 
         if payment_method == "PAYOS":
             # For PAYOS, the frontend will redirect to the payment URL from create_payment
@@ -545,7 +541,7 @@ class PaymentService:
         for order in expired_orders:
             # Restore stock for order items
             try:
-                from app.models.order_item import OrderItem
+                pass
 
                 order_stmt = select(Order).options(
                     selectinload(Order.order_items)
@@ -602,7 +598,8 @@ class PaymentService:
 
         if cancelled_count > 0:
             await session.commit()
-            logger.info(f"Auto-cancelled {cancelled_count} expired orders, restored stock for {len(restored_products)} products")
+            logger.info(
+                f"Auto-cancelled {cancelled_count} expired orders, restored stock for {len(restored_products)} products")
 
         return cancelled_count
 

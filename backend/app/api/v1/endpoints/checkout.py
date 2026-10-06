@@ -6,6 +6,7 @@ from app.api.v1.endpoints.orders import create_order as create_order_endpoint
 
 router = APIRouter()
 
+
 @router.post("/", response_model=OrderResponse, status_code=status.HTTP_201_CREATED)
 async def checkout(order: OrderCreate, current_user: User = Depends(get_current_user)):
     """Placeholder checkout endpoint that delegates to order creation."""

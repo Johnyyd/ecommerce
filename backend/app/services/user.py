@@ -3,6 +3,7 @@ from app.schemas.user import UserCreate
 from app.interfaces.user import UserRepositoryInterface
 from app.core.security import get_password_hash, verify_password
 
+
 class UserService:
     def __init__(self, user_repo: UserRepositoryInterface):
         self.user_repo = user_repo
@@ -11,9 +12,9 @@ class UserService:
         existing_user = await self.user_repo.get_by_email(user_in.email)
         if existing_user:
             raise ValueError("Email already registered")
-            
+
         # In a real implementation we would also check username uniqueness
-            
+
         hashed_password = get_password_hash(user_in.password)
         new_user = User(
             username=user_in.username,
@@ -43,4 +44,3 @@ class UserService:
         if is_active is not None:
             user.is_active = is_active
         return await self.user_repo.update(user)
-

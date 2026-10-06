@@ -36,7 +36,6 @@ class MeilisearchService:
         """Close the Meilisearch client (no-op for sync client, kept for interface compatibility)."""
         # The official meilisearch-python client is synchronous
         # No async close needed, but kept for interface consistency
-        pass
 
     async def create_index(self, index_name: str = None, settings: Dict[str, Any] = None) -> Dict[str, Any]:
         """Create a Meilisearch index with optional settings."""
@@ -227,6 +226,19 @@ class MeilisearchService:
             self.client.wait_for_task(task.task_uid)
             return {"taskUid": task.task_uid, "status": "succeeded"}
         except MeilisearchApiError as e:
+            # Handle Meilisearch < v1.11 where 'tokenizer' field is not supported
+            if "tokenizer" in settings and "tokenizer" in str(e).lower():
+                logger.warning(
+                    f"Tokenizer not supported by Meilisearch version. Retrying without tokenizer for {index_name}.")
+                clean_settings = {k: v for k, v in settings.items() if k != "tokenizer"}
+                try:
+                    task = index.update_settings(clean_settings)
+                    self.client.wait_for_task(task.task_uid)
+                    return {"taskUid": task.task_uid, "status": "succeeded"}
+                except Exception as inner_e:
+                    logger.error(
+                        f"Failed to update settings without tokenizer for {index_name}: {inner_e}")
+                    raise
             logger.error(f"Failed to update settings for {index_name}: {e}")
             raise Exception(f"Meilisearch API error: {e.message}")
         except MeilisearchCommunicationError as e:
@@ -255,6 +267,8 @@ class SearchService:
             await self.meilisearch.update_settings(
                 index_name=self.meilisearch.index_name,
                 settings={
+                    # Vietnamese tokenizer
+                    "tokenizer": "vi",
                     # Searchable attributes (weighted for relevance)
                     "searchableAttributes": [
                         "name",

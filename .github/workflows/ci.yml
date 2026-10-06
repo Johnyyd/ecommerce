@@ -16,6 +16,19 @@ jobs:
     name: Test & Lint
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    services:
+      meilisearch:
+        image: getmeili/meilisearch:v1.11
+        env:
+          MEILI_MASTER_KEY: masterKey123
+          MEILI_NO_ANALYTICS: "true"
+        ports:
+          - 7700:7700
+        options: >-
+          --health-cmd="curl -f http://localhost:7700/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
@@ -34,6 +47,11 @@ jobs:
           pip install pytest pytest-asyncio flake8 bandit
 
       - name: Run backend tests
+        env:
+          MEILISEARCH_URL: "http://localhost:7700"
+          MEILISEARCH_MASTER_KEY: "masterKey123"
+          MEILISEARCH_TEST_URL: "http://localhost:7700"
+          MEILISEARCH_TEST_MASTER_KEY: "masterKey123"
         run: |
           cd backend
           python -m pytest tests/ -v --tb=short

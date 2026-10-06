@@ -6,12 +6,15 @@ from app.core.utils import generate_uuidv7
 from uuid import UUID
 from datetime import datetime
 
+
 class Voucher(Base):
     __tablename__ = "vouchers"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
     code: Mapped[str] = mapped_column(String(50), nullable=False, unique=True, index=True)
-    discount_type: Mapped[str] = mapped_column(String(20), default="PERCENTAGE", nullable=False) # PERCENTAGE or FIXED
+    discount_type: Mapped[str] = mapped_column(
+        String(20), default="PERCENTAGE", nullable=False)  # PERCENTAGE or FIXED
     discount_value: Mapped[float] = mapped_column(Numeric(10, 2), nullable=False)
     min_order_amount: Mapped[float] = mapped_column(Numeric(10, 2), default=0.0, nullable=False)
     max_discount_amount: Mapped[float | None] = mapped_column(Numeric(10, 2), nullable=True)

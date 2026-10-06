@@ -1,7 +1,6 @@
-import os
 import json
 import logging
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List
 from datetime import datetime, timezone
 from uuid import uuid4
 from email.mime.text import MIMEText
@@ -14,6 +13,7 @@ from app.core.redis import get_redis_client
 logger = logging.getLogger(__name__)
 
 REDIS_SANDBOX_EMAILS_KEY = "email:outbox:sandbox"
+
 
 def generate_welcome_html(username: str) -> str:
     return f"""
@@ -46,12 +46,13 @@ def generate_welcome_html(username: str) -> str:
     </html>
     """
 
+
 def generate_invoice_html(context: Dict[str, Any]) -> str:
     order_id = str(context.get("order_id", "N/A"))
     total_amount = context.get("total_amount", 0.0)
     payment_method = context.get("payment_method", "N/A")
     items = context.get("items", [])
-    
+
     rows = ""
     for item in items:
         qty = item.get("quantity", 1)
@@ -67,7 +68,7 @@ def generate_invoice_html(context: Dict[str, Any]) -> str:
           </td>
         </tr>
         """
-        
+
     return f"""
     <!DOCTYPE html>
     <html>
@@ -94,7 +95,7 @@ def generate_invoice_html(context: Dict[str, Any]) -> str:
           <h1 style="font-size: 22px; font-weight: 700; margin: 12px 0 4px 0;">Order Receipt #{order_id[:8]}</h1>
           <p class="order-id">Full Order ID: {order_id}</p>
         </div>
-        
+
         <table style="width: 100%; border-collapse: collapse;">
           <thead>
             <tr>
@@ -129,6 +130,7 @@ def generate_invoice_html(context: Dict[str, Any]) -> str:
     </body>
     </html>
     """
+
 
 def generate_password_reset_html(username: str, token: str) -> str:
     reset_link = f"{settings.FRONTEND_URL}/reset-password?token={token}"
@@ -166,6 +168,7 @@ def generate_password_reset_html(username: str, token: str) -> str:
     </html>
     """
 
+
 async def record_sandbox_email(recipient: str, subject: str, template: str, context: Dict[str, Any], html_body: str = "") -> Dict[str, Any]:
     """Store sent transactional email in Redis for sandbox debugging and verification."""
     redis = get_redis_client()
@@ -187,6 +190,7 @@ async def record_sandbox_email(recipient: str, subject: str, template: str, cont
         logger.warning(f"Could not write email to Redis sandbox: {e}")
     return email_record
 
+
 async def send_email(recipient: str, subject: str, template: str, context: Dict[str, Any]) -> Dict[str, Any]:
     """
     Main email dispatching routine:
@@ -200,7 +204,8 @@ async def send_email(recipient: str, subject: str, template: str, context: Dict[
     elif template == "order_invoice":
         html_body = generate_invoice_html(context)
     elif template == "password_reset":
-        html_body = generate_password_reset_html(context.get("username", "Customer"), context.get("token", "N/A"))
+        html_body = generate_password_reset_html(context.get(
+            "username", "Customer"), context.get("token", "N/A"))
     else:
         html_body = f"<p>{context.get('message', subject)}</p>"
 
@@ -212,7 +217,7 @@ async def send_email(recipient: str, subject: str, template: str, context: Dict[
             message["To"] = recipient
             message["Subject"] = subject
             message.attach(MIMEText(html_body, "html"))
-            
+
             await aiosmtplib.send(
                 message,
                 hostname=settings.SMTP_HOST,
@@ -229,6 +234,7 @@ async def send_email(recipient: str, subject: str, template: str, context: Dict[
     # 2. Always record in sandbox list
     record = await record_sandbox_email(recipient, subject, template, context, html_body)
     return record
+
 
 async def get_sandbox_outbox(limit: int = 50) -> List[Dict[str, Any]]:
     """Retrieve recent sandbox emails for testing and admin inspection."""

@@ -1,6 +1,6 @@
 from typing import Any, List
 from uuid import UUID
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 
@@ -11,6 +11,7 @@ from app.models.address import Address
 from app.schemas.address import AddressCreate, AddressUpdate, AddressResponse
 
 router = APIRouter()
+
 
 @router.get("/", response_model=List[AddressResponse])
 async def read_addresses(
@@ -25,6 +26,7 @@ async def read_addresses(
     addresses = result.scalars().all()
     return addresses
 
+
 @router.post("/", response_model=AddressResponse)
 async def create_address(
     *,
@@ -37,7 +39,7 @@ async def create_address(
     """
     # If this is the first address or is_default is true, set others to not default
     if address_in.is_default:
-        stmt = select(Address).where(Address.user_id == current_user.id, Address.is_default == True)
+        stmt = select(Address).where(Address.user_id == current_user.id, Address.is_default.is_(True))
         result = await db.execute(stmt)
         old_default = result.scalars().first()
         if old_default:
@@ -52,6 +54,7 @@ async def create_address(
     await db.commit()
     await db.refresh(address)
     return address
+
 
 @router.put("/{id}", response_model=AddressResponse)
 async def update_address(
@@ -72,7 +75,7 @@ async def update_address(
 
     if address_in.is_default and not address.is_default:
         # unset previous default
-        stmt = select(Address).where(Address.user_id == current_user.id, Address.is_default == True)
+        stmt = select(Address).where(Address.user_id == current_user.id, Address.is_default.is_(True))
         result = await db.execute(stmt)
         old_default = result.scalars().first()
         if old_default:
@@ -87,6 +90,7 @@ async def update_address(
     await db.commit()
     await db.refresh(address)
     return address
+
 
 @router.delete("/{id}", response_model=AddressResponse)
 async def delete_address(

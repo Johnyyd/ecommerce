@@ -1,7 +1,7 @@
 from uuid import UUID
 from typing import Any, Optional
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from sqlalchemy.orm import selectinload
@@ -9,17 +9,18 @@ from app.core.db import get_db_session
 from app.api.deps import get_current_user, get_current_staff
 from app.models.user import User
 from app.models.order import Order
-from app.models.address import Address
 from app.schemas.order import OrderResponse
 from app.services.shipping.ghn_service import ghn_service
 
 router = APIRouter()
+
 
 class ShippingFeeRequest(BaseModel):
     to_district_id: Optional[int] = 1444
     to_ward_code: Optional[str] = "20308"
     weight_grams: Optional[int] = 1000
     insurance_value: Optional[int] = 100000
+
 
 @router.post("/calculate-fee")
 async def calculate_shipping_fee(
@@ -35,6 +36,7 @@ async def calculate_shipping_fee(
         insurance_value=body.insurance_value or 100000
     )
     return fee_data
+
 
 @router.post("/orders/{order_id}/fulfill", response_model=OrderResponse)
 async def fulfill_order_shipping(
@@ -57,7 +59,8 @@ async def fulfill_order_shipping(
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Order not found")
 
     if order.status == "CANCELLED":
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Cannot fulfill a cancelled order")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
+                            detail="Cannot fulfill a cancelled order")
 
     # Destination address info
     to_name = staff_user.username
@@ -93,6 +96,7 @@ async def fulfill_order_shipping(
 
     return order
 
+
 @router.get("/tracking/{tracking_code}")
 async def get_tracking_by_code(
     tracking_code: str,
@@ -115,6 +119,7 @@ async def get_tracking_by_code(
         created_at=created_at
     )
     return timeline
+
 
 @router.get("/orders/{order_id}/tracking")
 async def get_order_tracking(

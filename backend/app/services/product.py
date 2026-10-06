@@ -4,6 +4,7 @@ from app.crud.product import ProductRepository
 from app.schemas.product import ProductCreate, ProductUpdate
 from app.models.product import Product
 
+
 class ProductService:
     def __init__(self, repository: ProductRepository):
         self.repository = repository
@@ -12,8 +13,8 @@ class ProductService:
         return await self.repository.get(product_id)
 
     async def get_products(
-        self, 
-        skip: int = 0, 
+        self,
+        skip: int = 0,
         limit: int = 100,
         category_id: Optional[UUID] = None,
         brand: Optional[str] = None,

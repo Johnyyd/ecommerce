@@ -3,6 +3,7 @@ from uuid import UUID
 from typing import Optional
 from datetime import datetime
 
+
 class VoucherBase(BaseModel):
     code: str = Field(..., max_length=50)
     discount_type: str = Field(default="PERCENTAGE", description="PERCENTAGE or FIXED")
@@ -14,8 +15,10 @@ class VoucherBase(BaseModel):
     valid_until: Optional[datetime] = None
     is_active: bool = True
 
+
 class VoucherCreate(VoucherBase):
     pass
+
 
 class VoucherUpdate(BaseModel):
     code: Optional[str] = Field(None, max_length=50)
@@ -28,6 +31,7 @@ class VoucherUpdate(BaseModel):
     valid_until: Optional[datetime] = None
     is_active: Optional[bool] = None
 
+
 class VoucherResponse(VoucherBase):
     id: UUID
     times_used: int
@@ -36,9 +40,11 @@ class VoucherResponse(VoucherBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class VoucherValidateRequest(BaseModel):
     code: str
     order_amount: float
+
 
 class VoucherValidateResponse(BaseModel):
     is_valid: bool

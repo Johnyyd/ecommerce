@@ -28,6 +28,11 @@ spec:
         - name: worker
           image: ecommerce-backend:latest
           imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
           env:
             - name: APP_TYPE
               value: "worker"

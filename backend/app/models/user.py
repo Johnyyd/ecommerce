@@ -9,7 +9,8 @@ from uuid import UUID
 class User(Base):
     __tablename__ = "users"
 
-    id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
+    id: Mapped[UUID] = mapped_column(
+        PGUUID(as_uuid=True), primary_key=True, default=generate_uuidv7)
     username: Mapped[str] = mapped_column(String(50), nullable=False)
     email: Mapped[str] = mapped_column(String(255), nullable=False)
     hashed_password: Mapped[str] = mapped_column(String, nullable=False)
@@ -19,6 +20,8 @@ class User(Base):
     reviews = relationship("Review", back_populates="user", foreign_keys="Review.user_id")
 
     __table_args__ = (
-        Index("ix_users_email_unique", "email", unique=True, postgresql_where=text("deleted_at IS NULL")),
-        Index("ix_users_username_unique", "username", unique=True, postgresql_where=text("deleted_at IS NULL")),
+        Index("ix_users_email_unique", "email", unique=True,
+              postgresql_where=text("deleted_at IS NULL")),
+        Index("ix_users_username_unique", "username", unique=True,
+              postgresql_where=text("deleted_at IS NULL")),
     )

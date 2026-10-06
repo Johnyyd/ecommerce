@@ -1,10 +1,11 @@
 import logging
 from datetime import datetime, timezone, timedelta
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, Optional
 import httpx
 from app.core.config import settings
 
 logger = logging.getLogger("app.shipping.ghn")
+
 
 class GHNService:
     """
@@ -39,7 +40,7 @@ class GHNService:
         to_ward_code: str = "20308",
         weight_grams: int = 1000,
         insurance_value: int = 100000,
-        service_type_id: int = 2 # 2: E-Commerce Standard Delivery
+        service_type_id: int = 2  # 2: E-Commerce Standard Delivery
     ) -> Dict[str, Any]:
         """
         Calculates shipping fee via GHN v2 API /v2/shipping-order/fee.
@@ -112,7 +113,7 @@ class GHNService:
         if not self.is_demo_mode:
             try:
                 payload = {
-                    "payment_type_id": 1, # 1: Sender pays shipping fee
+                    "payment_type_id": 1,  # 1: Sender pays shipping fee
                     "note": f"Order #{clean_id}",
                     "required_note": "CHOXEMHANGKHONGTHU",
                     "from_name": "Enterprise E-Commerce Store",
@@ -159,9 +160,11 @@ class GHNService:
                             "is_real_api": True
                         }
                     else:
-                        logger.warning("GHN Create Order returned %s: %s", resp.status_code, resp.text)
+                        logger.warning("GHN Create Order returned %s: %s",
+                                       resp.status_code, resp.text)
             except Exception as e:
-                logger.warning("GHN create_shipping_order failed, falling back to simulated order: %s", e)
+                logger.warning(
+                    "GHN create_shipping_order failed, falling back to simulated order: %s", e)
 
         # High-fidelity GHN Tracking Code generation
         tracking_code = f"GHN{clean_id}"
@@ -269,5 +272,6 @@ class GHNService:
             "current_status_desc": step_definitions[active_step - 1]["title"],
             "timeline": timeline,
         }
+
 
 ghn_service = GHNService()

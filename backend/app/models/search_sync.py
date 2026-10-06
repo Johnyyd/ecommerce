@@ -21,13 +21,15 @@ class FailedSyncTask(Base):
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     product_id: Mapped[UUID] = mapped_column(PGUUID(as_uuid=True), nullable=False)
-    task_type: Mapped[SyncTaskType] = mapped_column(SQLEnum(SyncTaskType), default=SyncTaskType.SYNC, nullable=False)
+    task_type: Mapped[SyncTaskType] = mapped_column(
+        SQLEnum(SyncTaskType), default=SyncTaskType.SYNC, nullable=False)
     payload: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
     attempt: Mapped[int] = mapped_column(Integer, default=1, nullable=False)
     max_attempts: Mapped[int] = mapped_column(Integer, default=3, nullable=False)
     error: Mapped[str] = mapped_column(Text, nullable=False)
     error_type: Mapped[str] = mapped_column(String(100), nullable=False)
-    occurred_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    occurred_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
     resolved_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     resolved_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
     details: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
@@ -48,10 +50,12 @@ class BackfillJob(Base):
     total_items: Mapped[Optional[int]] = mapped_column(Integer, nullable=True)
     processed_items: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
     failed_items: Mapped[int] = mapped_column(Integer, default=0, nullable=False)
-    started_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), server_default=func.now(), nullable=False)
+    started_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now(), nullable=False)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
     progress_json: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
 
     __table_args__ = (
-        CheckConstraint("status IN ('pending', 'running', 'completed', 'failed')", name="ck_backfill_status"),
+        CheckConstraint("status IN ('pending', 'running', 'completed', 'failed')",
+                        name="ck_backfill_status"),
     )

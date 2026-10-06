@@ -15,9 +15,6 @@ from opentelemetry.sdk.resources import Resource, SERVICE_NAME
 from opentelemetry.sdk.trace import TracerProvider
 from opentelemetry.sdk.trace.export import BatchSpanProcessor, SimpleSpanProcessor
 from fastapi import FastAPI, Request
-from fastapi.responses import Response
-
-from app.core.config import settings
 
 
 def init_telemetry(app: Optional[FastAPI] = None) -> TracerProvider:

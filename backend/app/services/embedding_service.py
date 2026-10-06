@@ -8,7 +8,6 @@ services: async functions, configuration from settings, graceful error handling.
 
 import logging
 from typing import List, Optional
-import openai
 from openai import AsyncOpenAI
 from app.core.config import settings
 

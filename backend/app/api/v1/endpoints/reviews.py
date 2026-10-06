@@ -11,6 +11,7 @@ from app.crud.review import ReviewRepository
 
 router = APIRouter()
 
+
 def get_review_repo(session: AsyncSession = Depends(get_db_session)) -> ReviewRepository:
     return ReviewRepository(session)
 
@@ -76,7 +77,8 @@ async def moderate_review(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to moderate review: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Failed to moderate review: {str(e)}")
 
 
 @router.get("/product/{product_id}", response_model=ProductReviewSummary)
@@ -88,6 +90,7 @@ async def get_product_reviews(
     Public endpoint: Get rating distribution, average score, and reviews for a product.
     """
     return await repo.get_product_summary(product_id)
+
 
 @router.post("/", response_model=ReviewResponse, status_code=status.HTTP_201_CREATED)
 async def create_review(
@@ -118,7 +121,9 @@ async def create_review(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to submit review: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Failed to submit review: {str(e)}")
+
 
 @router.delete("/{review_id}", status_code=status.HTTP_200_OK)
 async def delete_review(
@@ -138,4 +143,5 @@ async def delete_review(
     except ValueError as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(e))
     except Exception as e:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail=f"Failed to delete review: {str(e)}")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                            detail=f"Failed to delete review: {str(e)}")

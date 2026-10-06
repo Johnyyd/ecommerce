@@ -11,9 +11,11 @@ from uuid import UUID
 
 router = APIRouter()
 
+
 def get_user_service(session: AsyncSession = Depends(get_db_session)) -> UserService:
     repo = UserRepository(session)
     return UserService(repo)
+
 
 @router.post("/", response_model=UserResponse, status_code=status.HTTP_201_CREATED)
 async def create_user(
@@ -26,6 +28,7 @@ async def create_user(
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
 
+
 @router.get("/", response_model=List[UserResponse])
 async def list_users(
     skip: int = Query(0, ge=0),
@@ -34,6 +37,7 @@ async def list_users(
     service: UserService = Depends(get_user_service)
 ):
     return await service.get_users(skip=skip, limit=limit)
+
 
 @router.patch("/{id}", response_model=UserResponse)
 async def update_user_admin(
@@ -46,4 +50,3 @@ async def update_user_admin(
         return await service.update_user(id, role=user_in.role, is_active=user_in.is_active)
     except ValueError as e:
         raise HTTPException(status_code=400, detail=str(e))
-

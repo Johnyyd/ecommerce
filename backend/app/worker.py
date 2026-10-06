@@ -13,7 +13,7 @@ error handling, and returning result dictionaries.
 
 import asyncio
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict
 
 from app.core.queue import get_redis_settings
 from app.crud.product import ProductRepository
@@ -135,7 +135,8 @@ async def generate_embeddings_task(ctx: Any, batch_size: int = 50) -> Dict[str, 
                             logger.debug(f"Generated embedding for product {product.id}")
                         elif text_idx in product_map:
                             stats["failed"] += 1
-                            logger.warning(f"Failed to generate embedding for product {product_map[text_idx].id}")
+                            logger.warning(
+                                f"Failed to generate embedding for product {product_map[text_idx].id}")
 
                     # Commit the batch
                     await session.commit()
@@ -342,7 +343,8 @@ async def incremental_sync_task(ctx: Any) -> Dict[str, Any]:
 
                     if result.get("status") == "succeeded":
                         stats["updated"] = len(documents)
-                        logger.info(f"Incrementally synced {len(documents)} products to Meilisearch")
+                        logger.info(
+                            f"Incrementally synced {len(documents)} products to Meilisearch")
                     else:
                         stats["failed"] = len(documents)
                         logger.warning(f"Incremental sync returned unexpected result: {result}")

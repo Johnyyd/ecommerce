@@ -11,6 +11,7 @@ from app.models.user import User
 from app.core.utils import generate_uuidv7
 from app.schemas.review import ReviewCreate, ReviewResponse, ProductReviewSummary, AdminReviewResponse
 
+
 class ReviewRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
@@ -69,20 +70,22 @@ class ReviewRepository:
 
     async def create_verified_review(self, user_id: UUID, review_in: ReviewCreate) -> Review:
         # 1. Verify order belongs to user
-        order_stmt = select(Order).options(selectinload(Order.items)).where(Order.id == review_in.order_id)
+        order_stmt = select(Order).options(selectinload(Order.items)
+                                           ).where(Order.id == review_in.order_id)
         order_res = await self.session.execute(order_stmt)
         order = order_res.scalars().first()
 
         if not order:
             raise ValueError("Order not found")
-            
+
         if order.user_id != user_id:
             raise PermissionError("Order does not belong to the authenticated user")
 
         # 2. Check that order status is delivered, completed, or processing
         valid_statuses = ("DELIVERED", "COMPLETED", "PROCESSING")
         if order.status.upper() not in valid_statuses:
-            raise ValueError(f"Reviews can only be submitted for completed orders (Order status: {order.status})")
+            raise ValueError(
+                f"Reviews can only be submitted for completed orders (Order status: {order.status})")
 
         # 3. Verify product was purchased in this order
         purchased_product_ids = {item.product_id for item in order.items}
@@ -266,4 +269,3 @@ class ReviewRepository:
         await self.session.commit()
         await self.session.refresh(review)
         return review
-

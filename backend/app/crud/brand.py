@@ -5,12 +5,14 @@ from sqlalchemy import select
 from app.models.brand import Brand
 from app.schemas.brand import BrandCreate, BrandUpdate
 
+
 class BrandRepository:
     def __init__(self, session: AsyncSession):
         self.session = session
 
     async def get_multi(self, skip: int = 0, limit: int = 100) -> List[Brand]:
-        stmt = select(Brand).where(Brand.deleted_at.is_(None)).order_by(Brand.name.asc()).offset(skip).limit(limit)
+        stmt = select(Brand).where(Brand.deleted_at.is_(None)).order_by(
+            Brand.name.asc()).offset(skip).limit(limit)
         result = await self.session.execute(stmt)
         return list(result.scalars().all())
 

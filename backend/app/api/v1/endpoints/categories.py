@@ -12,12 +12,14 @@ from app.api.deps import get_current_staff
 
 router = APIRouter()
 
+
 @router.get("", response_model=List[CategoryResponse], include_in_schema=False)
 @router.get("/", response_model=List[CategoryResponse])
 async def list_categories(session: AsyncSession = Depends(get_db_session)):
     stmt = select(Category).order_by(Category.name.asc())
     result = await session.execute(stmt)
     return list(result.scalars().all())
+
 
 @router.post("/", response_model=CategoryResponse, status_code=status.HTTP_201_CREATED)
 async def create_category(
@@ -26,16 +28,18 @@ async def create_category(
     session: AsyncSession = Depends(get_db_session)
 ):
     # Check if slug or name already exists
-    stmt = select(Category).where((Category.slug == category_in.slug) | (Category.name == category_in.name))
+    stmt = select(Category).where((Category.slug == category_in.slug)
+                                  | (Category.name == category_in.name))
     result = await session.execute(stmt)
     if result.scalars().first():
         raise HTTPException(status_code=400, detail="Category name or slug already exists")
-    
+
     cat = Category(name=category_in.name, slug=category_in.slug)
     session.add(cat)
     await session.commit()
     await session.refresh(cat)
     return cat
+
 
 @router.delete("/{id}", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_category(
@@ -48,7 +52,7 @@ async def delete_category(
     cat = result.scalars().first()
     if not cat:
         raise HTTPException(status_code=404, detail="Category not found")
-    
+
     await session.delete(cat)
     await session.commit()
     return None

@@ -1,21 +1,23 @@
-import sys, os
+from fastapi.middleware.cors import CORSMiddleware
+from starlette.middleware.base import BaseHTTPMiddleware
+from slowapi.middleware import SlowAPIMiddleware
+from slowapi.errors import RateLimitExceeded
+from slowapi import _rate_limit_exceeded_handler
+import logging
+from contextlib import asynccontextmanager
+from pathlib import Path
+from fastapi.staticfiles import StaticFiles
+from prometheus_fastapi_instrumentator import Instrumentator
+from app.core.telemetry import init_telemetry, tracing_middleware
+from app.core.logging import setup_logging
+from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup, reviews, async_jobs, shipping
+from app.core.rate_limiter import limiter
+from app.core.config import settings
+from fastapi import FastAPI, Request
+import sys
+import os
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from fastapi import FastAPI, Request, Response
-from app.core.config import settings
-from app.core.rate_limiter import limiter
-from app.api.v1.endpoints import users, auth, products, orders, cart, addresses, payments, categories, brands, vouchers, backup, reviews, async_jobs, shipping
-from app.core.logging import setup_logging
-from app.core.telemetry import init_telemetry, tracing_middleware
-from prometheus_fastapi_instrumentator import Instrumentator
-from fastapi.staticfiles import StaticFiles
-from pathlib import Path
-from contextlib import asynccontextmanager
-import logging
-from slowapi import _rate_limit_exceeded_handler
-from slowapi.errors import RateLimitExceeded
-from slowapi.middleware import SlowAPIMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
 
 setup_logging()
 logger = logging.getLogger("app.main")
@@ -23,24 +25,25 @@ logger = logging.getLogger("app.main")
 # Initialize OpenTelemetry
 tracer_provider = init_telemetry()
 
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     """Add security headers to all responses."""
+
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
 
-        # Only add security headers in production
-        if settings.ENVIRONMENT == "production":
-            # HSTS
+        # Baseline Defense-in-Depth Security Headers (All environments)
+        response.headers["X-Content-Type-Options"] = "nosniff"
+        response.headers["X-Frame-Options"] = "DENY"
+        response.headers["X-XSS-Protection"] = "1; mode=block"
+        response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
+        response.headers["Permissions-Policy"] = "camera=(), microphone=(), geolocation=(), payment=()"
+
+        # Production & HTTPS Specific Headers
+        is_https = request.url.scheme == "https" or request.headers.get(
+            "x-forwarded-proto") == "https"
+        if settings.ENVIRONMENT == "production" or is_https:
             response.headers["Strict-Transport-Security"] = "max-age=31536000; includeSubDomains; preload"
-            # Prevent MIME sniffing
-            response.headers["X-Content-Type-Options"] = "nosniff"
-            # XSS Protection
-            response.headers["X-XSS-Protection"] = "1; mode=block"
-            # Frame Options
-            response.headers["X-Frame-Options"] = "DENY"
-            # Referrer Policy
-            response.headers["Referrer-Policy"] = "strict-origin-when-cross-origin"
-            # CSP - Basic policy, adjust as needed for your frontend
             response.headers["Content-Security-Policy"] = (
                 "default-src 'self'; "
                 "script-src 'self'; "
@@ -54,6 +57,7 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
             )
 
         return response
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -81,7 +85,6 @@ app.add_middleware(SlowAPIMiddleware)
 app.add_middleware(SecurityHeadersMiddleware)
 
 # CORS Middleware - Use configured origins
-from fastapi.middleware.cors import CORSMiddleware
 app.add_middleware(
     CORSMiddleware,
     allow_origins=settings.CORS_ORIGINS,
@@ -121,6 +124,7 @@ app.include_router(backup.router, prefix="/api/v1/admin/backups", tags=["backups
 app.include_router(reviews.router, prefix="/api/v1/reviews", tags=["reviews"])
 app.include_router(shipping.router, prefix="/api/v1/shipping", tags=["shipping"])
 app.include_router(async_jobs.router, prefix="/api/v1", tags=["async-jobs"])
+
 
 @app.get("/api/health")
 @app.get("/health")

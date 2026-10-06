@@ -42,6 +42,19 @@ jobs:
   backend-ci:
     name: Backend CI (Pytest & Security)
     runs-on: ubuntu-latest
+    services:
+      meilisearch:
+        image: getmeili/meilisearch:v1.11
+        env:
+          MEILI_MASTER_KEY: masterKey123
+          MEILI_NO_ANALYTICS: "true"
+        ports:
+          - 7700:7700
+        options: >-
+          --health-cmd="curl -f http://localhost:7700/health || exit 1"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=5
     defaults:
       run:
         working-directory: ./backend
@@ -70,6 +83,10 @@ jobs:
           POSTGRES_USER: "ecommerce_user"
           POSTGRES_PASSWORD: "ecommerce_password"
           POSTGRES_DB: "ecommerce_db"
+          MEILISEARCH_URL: "http://localhost:7700"
+          MEILISEARCH_MASTER_KEY: "masterKey123"
+          MEILISEARCH_TEST_URL: "http://localhost:7700"
+          MEILISEARCH_TEST_MASTER_KEY: "masterKey123"
         run: pytest tests/ --cov=app --cov-report=xml
 
   docker-build-push:

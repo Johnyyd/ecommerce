@@ -4,6 +4,7 @@ from typing import List
 from app.core.redis import get_redis_client
 from app.schemas.cart import CartItemIn, CartItemOut
 
+
 class CartService:
     def __init__(self):
         self.redis = get_redis_client()
